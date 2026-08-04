@@ -1,0 +1,81 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1); // เปิดแสดง error ช่วยดีบัก (ปิดเมื่อขึ้น production)
+
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+session_start();
+
+
+include_once "../../config/db.php";
+
+if (!isset($conn) || $conn->connect_error) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Database connection failed: " . ($conn->connect_error ?? "unknown error")
+    ]);
+    exit;
+}
+
+$sql = "SELECT 
+            d.delivery_id AS id,
+            d.customer_id,
+            c.name AS customerName,
+            c.phone,
+            c.address,
+            c.map_pin AS mapPin,
+            d.gas_type AS gasType,
+            d.brand,
+            d.size,
+            d.cylinder_id AS deliveryCylinderId,
+            d.received_cylinder_id AS receivedCylinderId,
+            d.status,
+            d.delivered_map_pin AS deliveredMapPin,
+            d.proof_image_path AS proofImagePath,
+            d.delivered_at AS deliveredAt,
+            d.delivery_date AS deliveryDate,
+            d.accepted_at,
+            d.started_at,
+            d.completed_at,
+            s.staff_id,
+            COALESCE(s.staff_name, 'ไม่ระบุชื่อ') AS assignedStaff,
+            s.username AS staffUsername
+        FROM delivery d
+        LEFT JOIN customer c ON d.customer_id = c.customer_id
+        LEFT JOIN delivery_staff s ON d.staff_id = s.staff_id
+        ORDER BY d.delivery_id DESC";
+
+$result = $conn->query($sql);
+
+// ตรวจสอบ query ว่าสำเร็จหรือไม่
+if (!$result) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Query failed: " . $conn->error
+    ]);
+    exit;
+}
+
+// ดึงข้อมูล
+$data = [];
+while ($row = $result->fetch_assoc()) {
+    $row['proofImagePath'] = $row['proofImagePath'] ?? '';
+    $data[] = $row;
+}
+
+// ส่งผลลัพธ์
+echo json_encode([
+    "success" => true,
+    "data" => $data
+], JSON_UNESCAPED_UNICODE);
+
+$conn->close();
+?>
