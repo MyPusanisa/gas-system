@@ -2,21 +2,22 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 header("Content-Type: application/json");
-// อนุญาตให้ทุก Origin (รวมถึง IP 10.60.1.228) เข้าใช้งาน API นี้ได้
-header("Access-Control-Allow-Origin: *"); 
-// หมายเหตุ: เมื่อใช้ "*" จะต้องคอมเมนต์หรือลบบรรทัด Allow-Credentials ออก เพื่อไม่ให้เบราว์เซอร์บล็อกซ้ำซ้อน
-// header("Access-Control-Allow-Credentials: true");
+
+// แก้ไข CORS ให้ตรงกับ Origin ของ Frontend และรองรับ Credentials
+header("Access-Control-Allow-Origin: http://localhost:5173"); 
+header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-$conn = new mysqli("localhost", "root", "", "gas_system");
+// ระบุ Port 3307 ในการเชื่อมต่อ MySQL
+$conn = new mysqli("localhost", "root", "", "gas_system", 3307);
 if ($conn->connect_error) {
-    die(json_encode(["success" => false, "message" => "DB connection failed"]));
+    die(json_encode(["success" => false, "message" => "DB connection failed: " . $conn->connect_error]));
 }
 mysqli_set_charset($conn, "utf8mb4");
 ?>

@@ -16,6 +16,7 @@ if (!$conn) {
     exit;
 }
 
+// แก้ไขจาก JOIN customers เป็น JOIN customer
 $sql = "SELECT 
             d.delivery_id AS id,
             d.delivery_date,

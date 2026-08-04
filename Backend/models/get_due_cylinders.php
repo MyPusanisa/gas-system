@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once "../config/db.php";
 
-$sql = "SELECT * FROM cylinders WHERE next_check_date <= CURDATE() ORDER BY next_check_date ASC";
+$sql = "SELECT * FROM gas_cylinder WHERE next_check_date <= CURDATE() ORDER BY next_check_date ASC";
 $result = $conn->query($sql);
 
 $data = [];

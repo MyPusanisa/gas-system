@@ -3,7 +3,7 @@ header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 include_once "../../config/db.php";
 
-$sql = "SELECT customer_id, name, phone, address, map_pin FROM customer";
+$sql = "SELECT customer_id, name, phone, address, map_pin FROM customers";
 $result = $conn->query($sql);
 $data = [];
 while ($row = $result->fetch_assoc()) {

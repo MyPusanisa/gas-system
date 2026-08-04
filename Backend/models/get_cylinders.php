@@ -14,7 +14,7 @@ require_once "../config/db.php";
 mysqli_set_charset($conn, "utf8mb4");
 
 // ดึงข้อมูลตาราง cylinders
-$sql = "SELECT * FROM cylinders ORDER BY serial_number ASC";
+$sql = "SELECT * FROM gas_cylinder ORDER BY serial_number ASC";
 $result = mysqli_query($conn, $sql);
 
 if (!$result) {
@@ -36,4 +36,3 @@ echo json_encode([
 ], JSON_UNESCAPED_UNICODE);
 
 mysqli_close($conn);
-?>

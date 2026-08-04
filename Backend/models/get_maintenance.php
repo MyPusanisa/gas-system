@@ -27,7 +27,7 @@ $sql = "SELECT
     m.admin_id,
     COALESCE(c.serial_number, NULLIF(m.cylinder_id, '0'), '-') AS serial_number
 FROM maintenance m
-LEFT JOIN cylinders c ON m.cylinder_id = c.serial_number
+LEFT JOIN gas_cylinder c ON m.cylinder_id = c.serial_number
 ORDER BY m.maintenance_id DESC";
 
 $result = mysqli_query($conn, $sql);

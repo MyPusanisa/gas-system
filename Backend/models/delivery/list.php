@@ -49,7 +49,7 @@ $sql = "SELECT
             COALESCE(s.staff_name, 'ไม่ระบุชื่อ') AS assignedStaff,
             s.username AS staffUsername
         FROM delivery d
-        LEFT JOIN customer c ON d.customer_id = c.customer_id
+        LEFT JOIN customers c ON d.customer_id = c.customer_id
         LEFT JOIN delivery_staff s ON d.staff_id = s.staff_id
         ORDER BY d.delivery_id DESC";
 

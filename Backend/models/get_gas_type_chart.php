@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once "../config/db.php";
 
-$sql = "SELECT gas_type, COUNT(*) as total FROM cylinders GROUP BY gas_type";
+// แก้ไขจาก cylinders เป็น gas_cylinder
+$sql = "SELECT gas_type, COUNT(*) as total FROM gas_cylinder GROUP BY gas_type";
 $result = $conn->query($sql);
 
 $data = [];

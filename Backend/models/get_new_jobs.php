@@ -16,6 +16,7 @@ if (!$conn) {
     exit;
 }
 
+// แก้ไขจาก JOIN customers เป็น JOIN customer
 $sql = "SELECT 
             d.delivery_id AS id,
             c.name AS customerName
@@ -23,7 +24,6 @@ $sql = "SELECT
         JOIN customers c ON d.customer_id = c.customer_id
         WHERE d.status = 'assigned'
         ORDER BY d.delivery_id DESC";
-
 $result = $conn->query($sql);
 
 if (!$result) {

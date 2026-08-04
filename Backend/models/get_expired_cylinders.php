@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once "../config/db.php";
 
-$sql = "SELECT * FROM cylinders WHERE expiry_date <= CURDATE() ORDER BY expiry_date ASC";
+// แก้ไขจาก cylinders เป็น gas_cylinder
+$sql = "SELECT * FROM gas_cylinder WHERE expiry_date <= CURDATE() ORDER BY expiry_date ASC";
 $result = $conn->query($sql);
 
 $data = [];

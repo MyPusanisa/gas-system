@@ -1,12 +1,26 @@
 <?php
-
+// 1. ดึงไฟล์เชื่อมต่อ DB
 include_once "../config/db.php";
+
+// 2. ล้าง Header เดิมที่อาจถูกสั่งไว้ใน db.php ทิ้งให้หมด
+header_remove("Access-Control-Allow-Origin");
+header_remove("Access-Control-Allow-Credentials");
+
+// 3. ตั้งค่า CORS Headers ใหม่ที่ถูกต้อง
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 $data = json_decode(file_get_contents("php://input"), true);
 
 $username = $data["username"] ?? '';
 $password = $data["password"] ?? '';
-
 
 // =====================================
 // ตรวจ admin
