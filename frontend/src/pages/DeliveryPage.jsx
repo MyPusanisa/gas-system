@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
-// Import ไลบรารีสำหรับสแกน QR Code
 import { Html5QrcodeScanner } from "html5-qrcode";
 
 function DeliveryPage() {
@@ -40,11 +39,12 @@ function DeliveryPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [newMapPin, setNewMapPin] = useState("");
-  const [newGasType, setNewGasType] = useState("LPG");
+  
+  // ปรับสำหรับ Admin: ระบุสเปกแก๊สแทนการเลือก Serial Number ถัง
   const [newBrand, setNewBrand] = useState("");
+  const [newGasType, setNewGasType] = useState("LPG");
   const [newSize, setNewSize] = useState("");
   const [newStaffId, setNewStaffId] = useState("");
-  const [newSerialNumber, setNewSerialNumber] = useState(""); // ใช้ serial_number แทน cylinder_id
 
   const apiFetch = async (url, options = {}) => {
     const res = await fetch(url, { ...options, credentials: "include" });
@@ -57,14 +57,32 @@ function DeliveryPage() {
       throw new Error("Server responded with non-JSON (likely PHP error)");
     }
   };
+  // ดึงตัวเลือก ยี่ห้อ/ชนิดแก๊ส/ขนาดถัง จากตารางถังแก๊สในฐานข้อมูลแบบ Dynamic
+    const brandOptions = useMemo(() => {
+      if (!Array.isArray(cylinders)) return [];
+      const brands = cylinders.map((c) => c.brand || c.brand_name).filter(Boolean);
+      return Array.from(new Set(brands));
+    }, [cylinders]);
 
-  const findCustomerByPhone = (phone) =>
-    customers.find((c) => c.phone?.trim() === phone.trim());
+    const gasTypeOptions = useMemo(() => {
+      if (!Array.isArray(cylinders)) return [];
+      const types = cylinders.map((c) => c.gas_type || c.gasType || c.type).filter(Boolean);
+      return Array.from(new Set(types));
+    }, [cylinders]);
 
-  const findCustomerByAddress = (address) =>
-    customers.find(
-      (c) => c.address?.trim().toLowerCase() === address.trim().toLowerCase()
-    );
+    const sizeOptions = useMemo(() => {
+      if (!Array.isArray(cylinders)) return [];
+      const sizes = cylinders.map((c) => c.size || c.cylinder_size).filter(Boolean);
+      return Array.from(new Set(sizes));
+    }, [cylinders]);
+
+    const findCustomerByPhone = (phone) =>
+      customers.find((c) => c.phone?.trim() === phone.trim());
+
+    const findCustomerByAddress = (address) =>
+      customers.find(
+        (c) => c.address?.trim().toLowerCase() === address.trim().toLowerCase()
+      );
 
   const calculateExpiry = (manuDate) => {
     if (!manuDate) return "";
@@ -128,19 +146,18 @@ function DeliveryPage() {
     loadData();
   }, []);
 
-  // 📷 useEffect สำหรับเปิด-ปิด ตัวสแกน QR Code ด้วย Html5QrcodeScanner
+  // 📷 useEffect สำหรับสแกน QR Code
   useEffect(() => {
     let scanner = null;
     if (scanningJobId) {
       scanner = new Html5QrcodeScanner(
         "qr-reader-container",
         { fps: 10, qrbox: { width: 220, height: 220 } },
-        /* verbose= */ false
+        false
       );
 
       scanner.render(
         (decodedText) => {
-          // ดึง Serial Number ท้าย URL เช่น http://.../cylinder/SN-1001 -> SN-1001
           const extractedSerial = decodedText.split("/").pop().trim();
           
           setConfirmCylinderInputs((prev) => ({
@@ -151,9 +168,7 @@ function DeliveryPage() {
           scanner.clear().catch((err) => console.error(err));
           setScanningJobId(null);
         },
-        (error) => {
-          // กำลังสแกน...
-        }
+        (error) => {}
       );
     }
 
@@ -180,13 +195,14 @@ function DeliveryPage() {
     if (exist && exist.mapPin) setNewMapPin(exist.mapPin);
   }, [newAddress, customers]);
 
+  // Admin สร้างงานโดยระบุสเปกแก๊ส
   const createDeliveryJob = async () => {
     if (!newCustomerName || !newPhone || !newAddress || !newStaffId) {
       alert("กรุณากรอกข้อมูลลูกค้าและพนักงานให้ครบ");
       return;
     }
-    if (!newSerialNumber) {
-      alert("กรุณาเลือกถังแก๊ส");
+    if (!newBrand || !newGasType || !newSize) {
+      alert("กรุณาระบุยี่ห้อ ชนิดแก๊ส และขนาดถังให้ครบถ้วน");
       return;
     }
 
@@ -206,7 +222,9 @@ function DeliveryPage() {
         customer_id: existingCustomer ? existingCustomer.customer_id : null,
       },
       delivery: {
-        serial_number: newSerialNumber, // เปลี่ยนคีย์ส่งเป็น serial_number
+        brand: newBrand,
+        gas_type: newGasType,
+        size: newSize,
         staff_id: newStaffId,
       },
     };
@@ -218,7 +236,7 @@ function DeliveryPage() {
         body: JSON.stringify(payload),
       });
       if (res.success) {
-        alert("สร้างงานจัดส่งเรียบร้อย และอัปเดตสถานะถังแล้ว");
+        alert("สร้างงานจัดส่งเรียบร้อยแล้ว");
         await loadData();
         setNewCustomerName("");
         setNewPhone("");
@@ -228,7 +246,6 @@ function DeliveryPage() {
         setNewBrand("");
         setNewSize("");
         setNewStaffId("");
-        setNewSerialNumber("");
       } else {
         alert(res.message || "สร้างงานไม่สำเร็จ");
       }
@@ -238,31 +255,61 @@ function DeliveryPage() {
     }
   };
 
-  const confirmReceiveJob = async (jobId, expectedSerialNumber) => {
-    const serialNumber = confirmCylinderInputs[jobId]?.trim();
-    if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
+  // พนักงานสแกน QR ยืนยันการรับงาน
+    const confirmReceiveJob = async (jobItem) => {
+      const serialNumber = confirmCylinderInputs[jobItem.id]?.trim();
+      if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
 
-    // ตรวจสอบว่าถังแก๊สที่สแกนตรงกับ Serial Number ที่ต้องส่งหรือไม่
-    if (expectedSerialNumber && serialNumber !== expectedSerialNumber) {
-      alert(`❌ ถังแก๊สไม่ตรงกับงาน! คุณสแกนได้ "${serialNumber}" แต่ต้องนำถัง "${expectedSerialNumber}" ไปส่ง`);
-      return;
-    }
+      // 1. ตรวจสอบว่าถังอยู่ในคลังหรือไม่
+      const cylinder = cylinders.find((c) => c.serial_number === serialNumber);
+      if (!cylinder) {
+        alert(`❌ ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
+        return;
+      }
+      if (cylinder.status !== "ในคลัง") {
+        alert(`❌ ถังแก๊ส "${serialNumber}" ไม่อยู่ในคลัง (สถานะปัจจุบัน: ${cylinder.status})`);
+        return;
+      }
+
+      // 2. ตรวจสอบเงื่อนไข Brand, Gas Type, Size (เพิ่มการ Fallback หาค่า field ต่างๆ)
+      const targetBrand = jobItem.req_brand || jobItem.brand || "";
+      const targetGasType = jobItem.req_gas_type || jobItem.gasType || jobItem.gas_type || "";
+      const targetSize = jobItem.req_size || jobItem.size || "";
+  
+      const cylBrand = cylinder.brand || "";
+      const cylGasType = cylinder.gas_type || cylinder.gasType || "";
+      const cylSize = cylinder.size || "";
+  
+      if (
+        cylBrand !== targetBrand ||
+        cylGasType !== targetGasType ||
+        cylSize !== targetSize
+      ) {
+        alert(
+            `❌ สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
+          `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
+          `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
+        );
+        return;
+      }
+
+    // ... ดำเนินการยิง API update.php ต่อไป
 
     try {
       const res = await apiFetch("http://localhost/Backend/models/delivery/update.php", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          delivery_id: jobId,
+          delivery_id: jobItem.id,
           action: "pick",
           serialNumber: serialNumber,
         }),
       });
 
       if (res.success) {
-        alert("รับงานและยืนยันถังแก๊สเรียบร้อยแล้ว!");
+        alert("ตรวจสอบสเปกถูกต้อง! รับงานและผูกถังแก๊สเรียบร้อยแล้ว");
         await loadData();
-        setConfirmCylinderInputs((prev) => ({ ...prev, [jobId]: "" }));
+        setConfirmCylinderInputs((prev) => ({ ...prev, [jobItem.id]: "" }));
       } else {
         alert(res.message || "ไม่สามารถรับงานได้");
       }
@@ -377,7 +424,6 @@ function DeliveryPage() {
 
   const handleDeleteDelivery = async (deliveryId) => {
     if (!deliveryId) {
-      console.error("No delivery_id provided", deliveryId);
       alert("ไม่พบรหัสงานที่จะลบ");
       return;
     }
@@ -400,11 +446,6 @@ function DeliveryPage() {
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     }
   };
-
-  const availableCylinders = useMemo(
-    () => cylinders.filter((cyl) => cyl.status === "ในคลัง"),
-    [cylinders]
-  );
 
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
@@ -505,30 +546,43 @@ function DeliveryPage() {
               onChange={(e) => setNewMapPin(e.target.value)}
               style={styles.input}
             />
-            
-            {/* เลือกถังแก๊สในคลังด้วย Serial Number */}
+
+            {/* ดึงยี่ห้อจากตารางถังแก๊ส */}
             <select
-              value={newSerialNumber}
-              onChange={(e) => {
-                const selectedSerial = e.target.value;
-                setNewSerialNumber(selectedSerial);
-                const cyl = cylinders.find((c) => c.serial_number === selectedSerial);
-                if (cyl) {
-                  setNewGasType(cyl.gas_type || cyl.gasType || "");
-                  setNewBrand(cyl.brand || "");
-                  setNewSize(cyl.size || "");
-                }
-              }}
+              value={newBrand}
+              onChange={(e) => setNewBrand(e.target.value)}
               style={styles.input}
             >
-              <option value="">-- เลือกถังแก๊สในคลัง (Serial Number) --</option>
-              {availableCylinders.map((cyl) => (
-                <option key={cyl.serial_number} value={cyl.serial_number}>
-                  {cyl.serial_number} - {cyl.brand} {cyl.size} ({cyl.gas_type || cyl.gasType})
-                </option>
+              <option value="">-- เลือกยี่ห้อ --</option>
+              {brandOptions.map((b) => (
+                <option key={b} value={b}>{b}</option>
               ))}
             </select>
-            
+
+            {/* ดึงชนิดแก๊สจากตารางถังแก๊ส */}
+            <select
+              value={newGasType}
+              onChange={(e) => setNewGasType(e.target.value)}
+              style={styles.input}
+            >
+              <option value="">-- เลือกชนิดแก๊ส --</option>
+              {gasTypeOptions.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+
+            {/* ดึงขนาดถังจากตารางถังแก๊ส */}
+            <select
+              value={newSize}
+              onChange={(e) => setNewSize(e.target.value)}
+              style={styles.input}
+            >
+              <option value="">-- เลือกขนาดถัง --</option>
+              {sizeOptions.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
             <select
               value={newStaffId}
               onChange={(e) => setNewStaffId(e.target.value)}
@@ -595,28 +649,23 @@ function DeliveryPage() {
                   <strong>Map Pin:</strong>
                   <span>{item.mapPin || "-"}</span>
                 </div>
+                {/* โค้ดที่ปรับแก้ไขแล้ว */}
                 <div style={styles.row}>
-                  <strong>ชนิดแก๊ส:</strong>
-                  <span>{item.gasType}</span>
-                </div>
-                <div style={styles.row}>
-                  <strong>ยี่ห้อ:</strong>
-                  <span>{item.brand}</span>
-                </div>
-                <div style={styles.row}>
-                  <strong>ขนาด:</strong>
-                  <span>{item.size}</span>
+                  <strong>สเปกถังแก๊สที่ต้องส่ง:</strong>
+                  <span style={{ color: "#facc15", fontWeight: "bold" }}>
+                    {(item.req_brand || item.brand || "-")} | {(item.req_gas_type || item.gasType || item.gas_type || "LPG")} | {(item.req_size || item.size || "-")}
+                  </span>
                 </div>
                 <div style={styles.row}>
                   <strong>ผู้รับผิดชอบ:</strong>
                   <span>{item.assignedStaff || "ไม่ระบุชื่อ"}</span>
                 </div>
-                
-                {/* แสดง Serial Number ถังส่ง และ ถังคืน */}
+
+                {/* แสดง Serial Number ถัง เมื่อผูกแล้ว */}
                 {(item.serial_number || item.deliveryCylinderId) && (
                   <div style={styles.row}>
-                    <strong>Serial Number ถังที่ส่ง:</strong>
-                    <span style={{ fontWeight: "bold", color: "#facc15" }}>
+                    <strong>Serial Number ถังที่ส่ง (สแกนรับแล้ว):</strong>
+                    <span style={{ fontWeight: "bold", color: "#22c55e" }}>
                       {item.serial_number || item.deliveryCylinderId}
                     </span>
                   </div>
@@ -659,7 +708,6 @@ function DeliveryPage() {
                         📷 เปิดกล้องสแกน QR Code
                       </button>
 
-                      {/* แสดง Serial Number ที่สแกนได้ */}
                       {confirmCylinderInputs[item.id] && (
                         <div style={{ background: "#1f2937", padding: "10px 14px", borderRadius: "8px", border: "1px solid #22c55e", marginBottom: "12px" }}>
                           <span style={{ fontSize: "12px", color: "#9ca3af" }}>Serial Number ที่สแกนได้: </span>
@@ -668,7 +716,7 @@ function DeliveryPage() {
                       )}
 
                       <button
-                        onClick={() => confirmReceiveJob(item.id, item.serial_number || item.deliveryCylinderId)}
+                        onClick={() => confirmReceiveJob(item)}
                         disabled={!confirmCylinderInputs[item.id]}
                         style={{
                           ...styles.blueBtn,
@@ -677,7 +725,7 @@ function DeliveryPage() {
                           cursor: confirmCylinderInputs[item.id] ? "pointer" : "not-allowed",
                         }}
                       >
-                        ✅ ยืนยันรับงาน
+                        ✅ ตรวจสอบสเปกและรับงาน
                       </button>
                     </div>
                   )}

@@ -6,7 +6,8 @@ import GasPage from "./pages/GasPage"
 import DeliveryPage from "./pages/DeliveryPage"
 import QRCodePage from "./pages/QRCodePage"
 import MaintenancePage from "./pages/MaintenancePage"
-import CylinderPage from "./pages/CylinderPage";
+import CylinderPage from "./pages/CylinderPage"
+import StaffPage from "./pages/StaffPage" // 👈 เพิ่มบรรทัดนี้เพื่อ import StaffPage
 import ProtectedRoute from "./components/ProtectedRoute"
 
 function App() {
@@ -30,11 +31,20 @@ function App() {
         }
       />
 
+      {/* หน้ารายชื่อพนักงานส่ง (คุมสิทธิ์เฉพาะ admin) */}
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <StaffPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/gas"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-            {/* ส่งทั้ง cylinders และ setCylinders เข้าไปให้หน้า GasPage จัดการ */}
             <GasPage
               cylinders={cylinders}
               setCylinders={setCylinders}
@@ -76,8 +86,7 @@ function App() {
         }
       />
 
-      {/* หน้าสำหรับฝั่งลูกค้าสแกนตรวจสอบข้อมูล (ไม่ต้องผ่านการตรวจสิทธิ์ ProtectedRoute) */}
-
+      {/* หน้าสำหรับฝั่งลูกค้าสแกนตรวจสอบข้อมูล */}
       <Route path="/cylinder/:id" element={<QRCodePage cylinders={cylinders} />} />
 
     </Routes>

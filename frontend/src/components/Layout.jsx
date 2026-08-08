@@ -100,6 +100,14 @@ function Layout({ children }) {
                 >
                   Maintenance
                 </button>
+                {/* 👈 เพิ่มปุ่มเมนูพนักงานส่งตรงนี้ */}
+                <button
+                  type="button"
+                  style={getMenuButtonStyle("/staff")}
+                  onClick={() => navigate("/staff")}
+                >
+                  พนักงานส่ง
+                </button>
               </>
             )}
             <button

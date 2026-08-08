@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-// 1. นำเข้าไลบรารีสำหรับสร้างภาพ QR Code
 import { QRCodeSVG } from 'qrcode.react';
 
 function GasPage({ cylinders = [], setCylinders, deliveries }) {
   const [newSerialNumber, setNewSerialNumber] = useState("");
   const [newBrand, setNewBrand] = useState("");
-  const [newGasType, setNewGasType] = useState("LPG");
+  const [newGasType, setNewGasType] = useState("");
   const [newSize, setNewSize] = useState("");
   const [newManufactureDate, setNewManufactureDate] = useState("");
   const [newExpiryDate, setNewExpiryDate] = useState("");
-  const [newQrCode, setNewQrCode] = useState("");
   const [newLastCheckDate, setNewLastCheckDate] = useState("");
   const [newNextCheckDate, setNewNextCheckDate] = useState("");
   const [newDeliveredDate, setNewDeliveredDate] = useState("");
@@ -19,10 +17,22 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
   const [editingSerial, setEditingSerial] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State สำหรับเก็บ URL คิวอาร์โค้ดที่แอดมินเลือกเปิดดู
+  // Dynamic Options State
+  const [gasBrands, setGasBrands] = useState([]);
+  const [gasTypes, setGasTypes] = useState([]);
+  const [gasSizes, setGasSizes] = useState([]);
+  const [gasLocations, setGasLocations] = useState([]);
+  const [gasStatuses, setGasStatuses] = useState([]);
+
+  // Modal State
+  const [showOptionModal, setShowOptionModal] = useState(false);
+  const [modalTarget, setModalTarget] = useState("brand"); 
+  const [newOptionValue, setNewOptionValue] = useState("");
+
   const [selectedQR, setSelectedQR] = useState(null);
 
   const API_BASE = "http://localhost/Backend/models";
+  const API_GAS_BASE = "http://localhost/Backend/models/gas";
   
   const calculateNextCheckDate = (manufactureDate) => {
     if (!manufactureDate) return "";
@@ -49,18 +59,35 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
     }
   };
 
+  // ดึงข้อมูลตัวเลือกทั้งหมดจาก Database
+  const fetchOptions = async () => {
+    try {
+      const res = await fetch(`${API_GAS_BASE}/manage_options.php`);
+      const json = await res.json();
+      if (json.success) {
+        setGasBrands(json.data.brands || []);
+        setGasTypes(json.data.types || []);
+        setGasSizes(json.data.sizes || []);
+        setGasLocations(json.data.locations || []);
+        setGasStatuses(json.data.statuses || []);
+      }
+    } catch (err) {
+      console.error("โหลดตัวเลือกไม่สำเร็จ:", err);
+    }
+  };
+
   useEffect(() => {
     fetchCylinders();
+    fetchOptions();
   }, []);
 
   const clearForm = () => {
     setNewSerialNumber("");
     setNewBrand("");
-    setNewGasType("LPG");
+    setNewGasType("");
     setNewSize("");
     setNewManufactureDate("");
     setNewExpiryDate("");
-    setNewQrCode("");
     setNewLastCheckDate("");
     setNewNextCheckDate("");
     setNewDeliveredDate("");
@@ -83,8 +110,6 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
 
     const expiryDate = newExpiryDate || calculateExpiryDate(newManufactureDate);
     const nextCheckDate = newNextCheckDate || calculateNextCheckDate(newManufactureDate);
-
-    // สร้าง QR Code จาก Serial Number
     const qrCode = `http://192.168.1.176:5173/cylinder/${newSerialNumber}`;
 
     const cylinderData = {
@@ -146,17 +171,71 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
   const editCylinder = (item) => {
     setNewSerialNumber(item.serial_number);
     setNewBrand(item.brand || "");
-    setNewGasType(item.gas_type || "LPG");
+    setNewGasType(item.gas_type || "");
     setNewSize(item.size || "");
     setNewManufactureDate(item.manufacture_date || "");
     setNewExpiryDate(item.expiry_date || "");
-    setNewQrCode(item.qr_code || "");
     setNewLastCheckDate(item.last_check_date || "");
     setNewNextCheckDate(item.next_check_date || "");
     setNewDeliveredDate(item.delivered_date || "");
     setNewCurrentLocation(item.current_location || "");
     setNewStatus(item.status || "ในคลัง");
     setEditingSerial(item.serial_number);
+  };
+
+  const openOptionModal = (target) => {
+    setModalTarget(target);
+    setNewOptionValue("");
+    setShowOptionModal(true);
+  };
+
+  // เพิ่ม Option ใหม่ + โหลดข้อมูลกลับเข้า Dropdown อัตโนมัติ
+  const handleAddOption = async () => {
+    if (!newOptionValue.trim()) return alert("กรุณากรอกข้อมูล");
+    try {
+      const res = await fetch(`${API_GAS_BASE}/manage_options.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add",
+          target: modalTarget,
+          value: newOptionValue.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewOptionValue("");
+        await fetchOptions(); // Re-fetch ตัวเลือกใหม่
+      } else {
+        alert(data.message || "เกิดข้อผิดพลาดในการเพิ่มข้อมูล");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("เชื่อมต่อ API ไม่สำเร็จ");
+    }
+  };
+
+  const handleDeleteOption = async (id, name) => {
+    if (!window.confirm(`ยืนยันลบ "${name}" ออกจากรายการตัวเลือก?`)) return;
+    try {
+      const res = await fetch(`${API_GAS_BASE}/manage_options.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          target: modalTarget,
+          id: id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchOptions();
+      } else {
+        alert(data.message || "เกิดข้อผิดพลาด");
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getStatusStyle = (status) => {
@@ -197,6 +276,22 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
     return new Date(item.expiry_date) <= new Date();
   });
 
+  const getModalTitle = () => {
+    if (modalTarget === "brand") return "ยี่ห้อ";
+    if (modalTarget === "type") return "ชนิดแก๊ส";
+    if (modalTarget === "size") return "ขนาดถัง";
+    if (modalTarget === "status") return "สถานะ";
+    return "สถานที่";
+  };
+
+  const getCurrentOptionsList = () => {
+    if (modalTarget === "brand") return gasBrands.map(i => ({ id: i.id, name: i.brand_name || i.name }));
+    if (modalTarget === "type") return gasTypes.map(i => ({ id: i.id, name: i.type_name || i.name }));
+    if (modalTarget === "size") return gasSizes.map(i => ({ id: i.id, name: i.size_name || i.name }));
+    if (modalTarget === "status") return gasStatuses.map(i => ({ id: i.id, name: i.status_name || i.name }));
+    return gasLocations.map(i => ({ id: i.id, name: i.location_name || i.name }));
+  };
+
   return (
     <Layout
       gasLevel={610}
@@ -207,7 +302,7 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
     >
       <h1 style={{ marginBottom: "20px", color: "white" }}>จัดการถังแก๊ส 🛢</h1>
 
-      {/* ฟอร์มเพิ่ม/แก้ไข (เอาช่อง รหัสถัง ออกเรียบร้อย) */}
+      {/* ฟอร์มเพิ่ม/แก้ไข */}
       <div style={formGridStyle}>
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>Serial Number *</label>
@@ -216,50 +311,74 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
             onChange={(e) => setNewSerialNumber(e.target.value)} 
             style={inputStyle} 
             placeholder="SN-001" 
-            disabled={!!editingSerial} // ถ้าแก้ไข ห้ามแก้ Serial Number เพราะเป็น Primary Key
+            disabled={!!editingSerial}
           />
         </div>
+
+        {/* Select ยี่ห้อ */}
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>ยี่ห้อ *</label>
-          <select value={newBrand} onChange={(e) => setNewBrand(e.target.value)} style={inputStyle}>
-            <option value="">-- เลือกยี่ห้อ --</option>
-            <option value="ปตท.">ปตท.</option>
-            <option value="World Gas">เวิลด์แก๊ส</option>
-            <option value="สยามแก๊ส">สยามแก๊ส</option>
-            <option value="ยูนิคแก๊ส">ยูนิคแก๊ส</option>
-            <option value="PT Gas">พีที (PT Gas)</option>
-            <option value="พีเอพี">พีเอพี</option>
-          </select>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <select value={newBrand} onChange={(e) => setNewBrand(e.target.value)} style={inputStyle}>
+              <option value="">-- เลือกยี่ห้อ --</option>
+              {gasBrands.map((item) => {
+                const name = item.brand_name || item.name;
+                return (
+                  <option key={item.id} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+            <button type="button" onClick={() => openOptionModal("brand")} style={gearBtnStyle} title="ตั้งค่ายี่ห้อ">⚙️</button>
+          </div>
         </div>
+
+        {/* Select ชนิดแก๊ส */}
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>ชนิดแก๊ส *</label>
-          <select value={newGasType} onChange={(e) => setNewGasType(e.target.value)} style={inputStyle}>
-            <option value="LPG">LPG</option>
-          </select>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <select value={newGasType} onChange={(e) => setNewGasType(e.target.value)} style={inputStyle}>
+              <option value="">-- เลือกชนิด --</option>
+              {gasTypes.map((item) => {
+                const name = item.type_name || item.name;
+                return (
+                  <option key={item.id} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+            <button type="button" onClick={() => openOptionModal("type")} style={gearBtnStyle} title="ตั้งค่าชนิดแก๊ส">⚙️</button>
+          </div>
         </div>
+
+        {/* Select ขนาดถัง */}
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>ขนาดถัง *</label>
-          <select value={newSize} onChange={(e) => setNewSize(e.target.value)} style={inputStyle}>
-            <option value="">-- เลือกขนาด --</option>
-            <option value="4 กก.">4 กก.</option>
-            <option value="7 กก.">7 กก.</option>
-            <option value="11.5 กก.">11.5 กก.</option>
-            <option value="13.5 กก.">13.5 กก.</option>
-            <option value="15 กก.">15 กก.</option>
-            <option value="48 กก.">48 กก.</option>
-          </select>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <select value={newSize} onChange={(e) => setNewSize(e.target.value)} style={inputStyle}>
+              <option value="">-- เลือกขนาด --</option>
+              {gasSizes.map((item) => {
+                const name = item.size_name || item.name;
+                return (
+                  <option key={item.id} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+            <button type="button" onClick={() => openOptionModal("size")} style={gearBtnStyle} title="ตั้งค่าขนาดถัง">⚙️</button>
+          </div>
         </div>
+
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>วันที่ผลิต *</label>
           <input type="date" value={newManufactureDate} onChange={(e) => setNewManufactureDate(e.target.value)} style={inputStyle} />
         </div>
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>วันหมดอายุ (คำนวณอัตโนมัติ)</label>
-          <input type="date" value={newExpiryDate || calculateExpiryDate(newManufactureDate)} readOnly style={{ ...inputStyle, background: "#e5e7eb" }} />
-        </div>
-        <div style={fieldGroupStyle}>
-          <label style={labelStyle}>QR Code (URL)</label>
-          <input value={newQrCode} onChange={(e) => setNewQrCode(e.target.value)} style={inputStyle} placeholder="https://..." />
+          <input type="date" value={newExpiryDate || calculateExpiryDate(newManufactureDate)} readOnly style={{ ...inputStyle, background: "#e5e7eb", color: "#333" }} />
         </div>
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>วันที่ตรวจล่าสุด</label>
@@ -267,34 +386,53 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
         </div>
         <div style={fieldGroupStyle}>
           <label style={labelStyle}>วันที่ตรวจครั้งถัดไป (คำนวณ)</label>
-          <input type="date" value={newNextCheckDate || calculateNextCheckDate(newManufactureDate)} readOnly style={{ ...inputStyle, background: "#e5e7eb" }} />
+          <input type="date" value={newNextCheckDate || calculateNextCheckDate(newManufactureDate)} readOnly style={{ ...inputStyle, background: "#e5e7eb", color: "#333" }} />
         </div>
-        <div style={fieldGroupStyle}>
-          <label style={labelStyle}>วันที่ส่งมอบให้ลูกค้า</label>
-          <input type="date" value={newDeliveredDate} onChange={(e) => setNewDeliveredDate(e.target.value)} style={inputStyle} />
-        </div>
-        <div style={fieldGroupStyle}>
-          <label style={labelStyle}>สถานที่ปัจจุบัน (UI)</label>
-          <input value={newCurrentLocation} onChange={(e) => setNewCurrentLocation(e.target.value)} style={inputStyle} placeholder="คลังเชียงใหม่" />
-        </div>
-        {!editingSerial && (
-          <div style={fieldGroupStyle}>
-            <label style={labelStyle}>สถานะเริ่มต้น</label>
-            <input type="text" value="ในคลัง" readOnly style={{ ...inputStyle, background: "#e5e7eb" }} />
-          </div>
-        )}
+
         {editingSerial && (
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>สถานะ</label>
-            <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} style={inputStyle}>
-              <option value="ในคลัง">ในคลัง</option>
-              <option value="กำลังส่ง">กำลังส่ง</option>
-              <option value="ปกติ">ปกติ</option>
-              <option value="รอซ่อม">รอซ่อม</option>
-              <option value="ชำรุด">ชำรุด</option>
-            </select>
+            <label style={labelStyle}>วันที่ส่งมอบให้ลูกค้า</label>
+            <input type="date" value={newDeliveredDate} onChange={(e) => setNewDeliveredDate(e.target.value)} style={inputStyle} />
           </div>
         )}
+
+        {/* Select สถานที่ปัจจุบัน */}
+        <div style={fieldGroupStyle}>
+          <label style={labelStyle}>สถานที่ปัจจุบัน</label>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <select value={newCurrentLocation} onChange={(e) => setNewCurrentLocation(e.target.value)} style={inputStyle}>
+              <option value="">-- เลือกสถานที่ --</option>
+              {gasLocations.map((item) => {
+                const name = item.location_name || item.name;
+                return (
+                  <option key={item.id} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+            <button type="button" onClick={() => openOptionModal("location")} style={gearBtnStyle} title="ตั้งค่าสถานที่">⚙️</button>
+          </div>
+        </div>
+
+        {/* Select สถานะ */}
+        <div style={fieldGroupStyle}>
+          <label style={labelStyle}>{editingSerial ? "สถานะ" : "สถานะเริ่มต้น"}</label>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} style={inputStyle}>
+              <option value="">-- เลือกสถานะ --</option>
+              {gasStatuses.map((item) => {
+                const name = item.status_name || item.name;
+                return (
+                  <option key={item.id} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
+            </select>
+            <button type="button" onClick={() => openOptionModal("status")} style={gearBtnStyle} title="ตั้งค่าสถานะ">⚙️</button>
+          </div>
+        </div>
       </div>
 
       <div style={{ marginTop: "14px", marginBottom: "20px" }}>
@@ -314,7 +452,7 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
         />
       </div>
 
-      {/* ตารางแสดงผล (ลบคอลัมน์ รหัสถัง ออกเรียบร้อย) */}
+      {/* ตารางแสดงผล */}
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
@@ -369,7 +507,7 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
         </table>
       </div>
 
-      {/* Pop-up แสดงภาพ QR Code */}
+      {/* Pop-up QR Code */}
       {selectedQR && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
@@ -381,12 +519,61 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
               {selectedQR}
             </p>
             <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: "10px" }}>
-              <button onClick={() => window.print()} style={printButtonStyle}>
-                🖨️ สั่งพิมพ์
-              </button>
-              <button onClick={() => setSelectedQR(null)} style={closeButtonStyle}>
-                ปิด
-              </button>
+              <button onClick={() => window.print()} style={printButtonStyle}>🖨️ สั่งพิมพ์</button>
+              <button onClick={() => setSelectedQR(null)} style={closeButtonStyle}>ปิด</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal จัดการตัวเลือก */}
+      {showOptionModal && (
+        <div style={modalOverlayStyle}>
+          <div style={{ ...modalContentStyle, width: "360px", textAlign: "left" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+              <h3 style={{ margin: 0, color: "white", fontSize: "16px" }}>
+                ⚙️ จัดการ{getModalTitle()}
+              </h3>
+              <button onClick={() => setShowOptionModal(false)} style={closeButtonStyle}>✕</button>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
+              <input
+                type="text"
+                placeholder={`กรอก${getModalTitle()}ใหม่...`}
+                value={newOptionValue}
+                onChange={(e) => setNewOptionValue(e.target.value)}
+                style={inputStyle}
+              />
+              <button onClick={handleAddOption} style={primaryButtonStyle}>➕ เพิ่ม</button>
+            </div>
+
+            <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {getCurrentOptionsList().map((item) => (
+                  <li
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "8px 10px",
+                      background: "#111827",
+                      borderRadius: "6px",
+                      marginBottom: "6px",
+                      color: "white",
+                    }}
+                  >
+                    <span>{item.name}</span>
+                    <button
+                      onClick={() => handleDeleteOption(item.id, item.name)}
+                      style={deleteButtonStyle}
+                    >
+                      ❌ ลบ
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
@@ -399,16 +586,17 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
 const formGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px", marginBottom: "16px" };
 const fieldGroupStyle = { display: "flex", flexDirection: "column", gap: "6px" };
 const labelStyle = { fontSize: "13px", fontWeight: "bold", color: "#e5e7eb" };
-const inputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" };
-const searchInputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" };
+const inputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", width: "100%", boxSizing: "border-box" };
+const searchInputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", width: "100%", boxSizing: "border-box" };
 const tableStyle = { width: "100%", borderCollapse: "collapse", background: "#1f2937", color: "white", borderRadius: "12px", overflow: "hidden" };
 const thStyle = { padding: "10px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", whiteSpace: "nowrap" };
 const tdStyle = { padding: "10px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", wordBreak: "break-word" };
-const primaryButtonStyle = { marginRight: "10px", padding: "10px 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer" };
+const primaryButtonStyle = { marginRight: "10px", padding: "10px 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
 const secondaryButtonStyle = { padding: "10px 14px", border: "none", borderRadius: "8px", background: "#6b7280", color: "white", cursor: "pointer" };
 const editButtonStyle = { marginRight: "8px", padding: "6px 10px", border: "none", borderRadius: "6px", background: "#f59e0b", color: "white", cursor: "pointer" };
 const deleteButtonStyle = { padding: "6px 10px", border: "none", borderRadius: "6px", background: "#dc2626", color: "white", cursor: "pointer" };
 
+const gearBtnStyle = { padding: "8px 12px", borderRadius: "8px", border: "none", background: "#374151", color: "white", cursor: "pointer", fontSize: "14px" };
 const qrButtonStyle = { marginRight: "8px", padding: "6px 10px", border: "none", borderRadius: "6px", background: "#059669", color: "white", cursor: "pointer", fontWeight: "bold" };
 const printButtonStyle = { padding: "8px 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
 const closeButtonStyle = { padding: "8px 14px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
