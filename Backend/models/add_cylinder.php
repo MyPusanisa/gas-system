@@ -23,33 +23,38 @@ function calculateNextCheckDate($manufactureDate) {
     return $date->format('Y-m-d');
 }
 
-$cylinder_id = $data['cylinder_id'] ?? '';
-$serial_number = $data['serial_number'] ?? '';
-$brand = $data['brand'] ?? '';
-$gas_type = $data['gas_type'] ?? 'LPG';
-$size = $data['size'] ?? '';
+// รับค่าจาก React Frontend
+$serial_number    = $data['serial_number'] ?? '';
+// หากไม่ได้ส่ง cylinder_id มา ให้ใช้ serial_number แทน
+$cylinder_id      = $data['cylinder_id'] ?? $serial_number; 
+$brand            = $data['brand'] ?? '';
+$gas_type         = $data['gas_type'] ?? 'LPG';
+$size             = $data['size'] ?? '';
 $manufacture_date = $data['manufacture_date'] ?? '';
-$expiry_date = $data['expiry_date'] ?? ($manufacture_date ? calculateExpiryDate($manufacture_date) : null);
-$qr_code = $data['qr_code'] ?? ($cylinder_id ? "https://yourdomain.com/cylinder/{$cylinder_id}" : '');
-$last_check_date = $data['last_check_date'] ?? null;
-$next_check_date = $data['next_check_date'] ?? ($manufacture_date ? calculateNextCheckDate($manufacture_date) : null);
-$delivered_date = $data['delivered_date'] ?? null;
-$current_location = $data['current_location'] ?? '';
-$status = $data['status'] ?? 'ในคลัง';
+$expiry_date      = $data['expiry_date'] ?? ($manufacture_date ? calculateExpiryDate($manufacture_date) : null);
 
-// ตรวจสอบข้อมูลจำเป็น
-if (!$cylinder_id || !$serial_number || !$brand || !$gas_type || !$size || !$manufacture_date) {
+// สร้าง URL สำหรับ QR Code หากไม่ได้ส่งมา
+$qr_code          = $data['qr_code'] ?? ($serial_number ? "http://192.168.1.176:5173/cylinder/{$serial_number}" : '');
+
+$last_check_date  = !empty($data['last_check_date']) ? $data['last_check_date'] : null;
+$next_check_date  = $data['next_check_date'] ?? ($manufacture_date ? calculateNextCheckDate($manufacture_date) : null);
+$delivered_date   = !empty($data['delivered_date']) ? $data['delivered_date'] : null;
+$current_location = $data['current_location'] ?? '';
+$status           = $data['status'] ?? 'ในคลัง';
+
+// ตรวจสอบเฉพาะฟิลด์ที่จำเป็นจริง ๆ (ตัดการเช็ค $cylinder_id แบบบังคับออก)
+if (!$serial_number || !$brand || !$gas_type || !$size || !$manufacture_date) {
     echo json_encode(['success' => false, 'message' => 'Missing required fields']);
     exit;
 }
 
-// ตรวจสอบรหัสถังซ้ำ
-$check = $conn->prepare("SELECT cylinder_id FROM gas_cylinder WHERE cylinder_id = ?");
-$check->bind_param("s", $cylinder_id);
+// ตรวจสอบรหัสถังซ้ำ (เช็คจาก cylinder_id หรือ serial_number)
+$check = $conn->prepare("SELECT cylinder_id FROM gas_cylinder WHERE cylinder_id = ? OR serial_number = ?");
+$check->bind_param("ss", $cylinder_id, $serial_number);
 $check->execute();
 $check->store_result();
 if ($check->num_rows > 0) {
-    echo json_encode(['success' => false, 'message' => 'Cylinder ID already exists']);
+    echo json_encode(['success' => false, 'message' => 'Serial Number หรือ Cylinder ID นี้มีในระบบแล้ว']);
     $check->close();
     $conn->close();
     exit;
@@ -67,11 +72,11 @@ $stmt->bind_param("sssssssssssss",
 );
 
 if ($stmt->execute()) {
-    echo json_encode(['success' => true, 'message' => 'Cylinder added successfully', 'cylinder_id' => $cylinder_id]);
+    echo json_encode(['success' => true, 'message' => 'เพิ่มถังแก๊สสำเร็จ', 'cylinder_id' => $cylinder_id]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $stmt->error]);
 }
 
 $stmt->close();
 $conn->close();
-?> 
+?>

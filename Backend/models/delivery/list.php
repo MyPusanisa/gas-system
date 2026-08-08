@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1); // เปิดแสดง error ช่วยดีบัก (ปิดเมื่อขึ้น production)
+ini_set('display_errors', 1);
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -13,8 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 session_start();
-
-
 include_once "../../config/db.php";
 
 if (!isset($conn) || $conn->connect_error) {
@@ -25,18 +23,30 @@ if (!isset($conn) || $conn->connect_error) {
     exit;
 }
 
+// ปรับคำสั่ง SQL ดึงฟิลด์ req_brand, req_gas_type, req_size และ serial_number
 $sql = "SELECT 
             d.delivery_id AS id,
+            d.delivery_id,
             d.customer_id,
             c.name AS customerName,
             c.phone,
             c.address,
             c.map_pin AS mapPin,
-            d.gas_type AS gasType,
-            d.brand,
-            d.size,
-            d.cylinder_id AS deliveryCylinderId,
-            d.received_cylinder_id AS receivedCylinderId,
+            
+            /* ดึงค่าสเปกที่ระบุไว้ในใบงาน */
+            COALESCE(d.req_brand, d.brand) AS brand,
+            COALESCE(d.req_brand, d.brand) AS req_brand,
+            COALESCE(d.req_gas_type, d.gas_type) AS gasType,
+            COALESCE(d.req_gas_type, d.gas_type) AS req_gas_type,
+            COALESCE(d.req_size, d.size) AS size,
+            COALESCE(d.req_size, d.size) AS req_size,
+            
+            /* ดึง Serial Number ของถังแก๊ส */
+            COALESCE(d.serial_number, d.cylinder_id) AS serial_number,
+            COALESCE(d.serial_number, d.cylinder_id) AS deliveryCylinderId,
+            COALESCE(d.received_serial_number, d.received_cylinder_id) AS received_serial_number,
+            COALESCE(d.received_serial_number, d.received_cylinder_id) AS receivedCylinderId,
+            
             d.status,
             d.delivered_map_pin AS deliveredMapPin,
             d.proof_image_path AS proofImagePath,
@@ -55,7 +65,6 @@ $sql = "SELECT
 
 $result = $conn->query($sql);
 
-// ตรวจสอบ query ว่าสำเร็จหรือไม่
 if (!$result) {
     echo json_encode([
         "success" => false,
@@ -64,14 +73,12 @@ if (!$result) {
     exit;
 }
 
-// ดึงข้อมูล
 $data = [];
 while ($row = $result->fetch_assoc()) {
     $row['proofImagePath'] = $row['proofImagePath'] ?? '';
     $data[] = $row;
 }
 
-// ส่งผลลัพธ์
 echo json_encode([
     "success" => true,
     "data" => $data

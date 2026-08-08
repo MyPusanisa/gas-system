@@ -4,12 +4,14 @@ header("Access-Control-Allow-Origin: *");
 
 require_once "../../config/db.php";
 
+// เพิ่ม password ใน SELECT
 $sql = "SELECT 
             staff_id,
             staff_name,
             staff_phone,
             address,
             username,
+            password,
             status
         FROM delivery_staff
         ORDER BY staff_id ASC";
