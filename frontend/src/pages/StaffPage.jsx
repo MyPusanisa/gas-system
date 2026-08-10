@@ -24,6 +24,24 @@ function StaffPage() {
     status: "active",
   });
 
+  const [selectedStaff, setSelectedStaff] = useState(1); // staff_id
+const [period, setPeriod] = useState("day"); // 'day' | 'month' | 'year'
+const [history, setHistory] = useState([]);
+const [summary, setSummary] = useState(0);
+
+const fetchHistory = async () => {
+  const res = await fetch(`http://localhost/Backend/models/staff/history.php?staff_id=${selectedStaff}&period=${period}`);
+  const data = await res.json();
+  if (data.success) {
+    setHistory(data.data);
+    setSummary(data.total_completed);
+  }
+};
+
+useEffect(() => {
+  if (selectedStaff) fetchHistory();
+}, [selectedStaff, period]);
+
   // Clear message after 5 seconds
   useEffect(() => {
     if (message.text) {
@@ -378,18 +396,18 @@ function StaffPage() {
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
-          <tr>
-            <th style={{ ...thStyle, width: "50px" }}>ID</th>
-            <th style={{ ...thStyle, width: "120px" }}>ชื่อ</th>
-            <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
-            <th style={{ ...thStyle, width: "100px" }}>Username</th>
-            <th style={{ ...thStyle, width: "100px" }}>Password</th>
-            <th style={{ ...thStyle, width: "200px" }}>ที่อยู่</th> {/* คอลัมน์ที่อยู่อยู่ที่นี่ */}
-            <th style={{ ...thStyle, width: "90px" }}>สถานะ</th>
-            <th style={{ ...thStyle, width: "80px" }}>จำนวนงาน</th>
-            <th style={{ ...thStyle, width: "140px" }}>จัดการ</th>
-          </tr>
-        </thead>
+  <tr>
+    <th style={{ ...thStyle, width: "50px" }}>ID</th>
+    <th style={{ ...thStyle, width: "120px" }}>ชื่อ</th>
+    <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
+    <th style={{ ...thStyle, width: "100px" }}>Username</th>
+    <th style={{ ...thStyle, width: "100px" }}>Password</th>
+    <th style={{ ...thStyle, width: "200px" }}>ที่อยู่</th>
+    <th style={{ ...thStyle, width: "90px" }}>สถานะ</th>
+    <th style={{ ...thStyle, width: "80px" }}>จำนวนงาน</th>
+    <th style={{ ...thStyle, width: "140px" }}>จัดการ</th>
+  </tr>
+</thead>
         
           <tbody>
             {filteredStaffs.length > 0 ? (

@@ -1,114 +1,83 @@
 <?php
-
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST");
-header("Content-Type: application/json");
-
-require_once "../config/db.php";
-
-$data = json_decode(file_get_contents("php://input"), true);
-
-if (!$data) {
-    echo json_encode([
-        "success" => false,
-        "message" => "ไม่ได้รับข้อมูล JSON"
-    ]);
-    exit;
+while (ob_get_level()) {
+    ob_end_clean();
 }
 
-// รับค่า serial_number มาจาก Frontend
-$serial_number = $data["serial_number"] ?? null;
-$maintenance_type = $data["maintenance_type"] ?? null;
-$result = $data["result"] ?? null;
-$description = $data["description"] ?? null;
-$admin_id = $data["admin_id"] ?? null;
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Content-Type: application/json; charset=UTF-8");
 
-if (!$serial_number || !$maintenance_type || !$result) {
-    echo json_encode([
-        "success" => false,
-        "message" => "ข้อมูลไม่ครบถ้วน (ต้องการ serial_number, maintenance_type, result)"
-    ]);
-    exit;
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
 }
 
-// 1. ค้นหา cylinder_id จาก serial_number ก่อน
-$findSql = "SELECT cylinder_id FROM cylinders WHERE serial_number = ?";
-$findStmt = mysqli_prepare($conn, $findSql);
-mysqli_stmt_bind_param($findStmt, "s", $serial_number);
-mysqli_stmt_execute($findStmt);
-$findResult = mysqli_stmt_get_result($findStmt);
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
 
-if ($row = mysqli_fetch_assoc($findResult)) {
-    $cylinder_id = $row["cylinder_id"];
-} else {
-    // กรณีใช้ serial_number แทน cylinder_id ในกรณีที่ตารางบันทึกตรงๆ
-    $cylinder_id = $serial_number; 
+$conn = new mysqli("localhost", "root", "", "gas_system", 3307);
+if ($conn->connect_error) {
+    echo json_encode(["success" => false, "message" => "DB Connection Failed: " . $conn->connect_error]);
+    exit();
 }
-mysqli_stmt_close($findStmt);
+$conn->set_charset("utf8mb4");
 
-/* เวลา server */
-$maintenance_date = date("Y-m-d H:i:s");
+$input = json_decode(file_get_contents("php://input"), true);
 
-/* คำนวณ next maintenance (+90 วัน) */
-$next_maintenance_date = date("Y-m-d H:i:s", strtotime("+90 days"));
-
-// 2. บันทึกข้อมูลการตรวจลงตาราง maintenance
-$sql = "INSERT INTO maintenance (
-    maintenance_date,
-    description,
-    maintenance_type,
-    result,
-    cylinder_id,
-    admin_id,
-    next_maintenance_date
-) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-$stmt = mysqli_prepare($conn, $sql);
-
-if (!$stmt) {
-    echo json_encode([
-        "success" => false,
-        "message" => mysqli_error($conn)
-    ]);
-    exit;
+if (!$input) {
+    echo json_encode(["success" => false, "message" => "ไม่พบข้อมูลที่ส่งมาจาก Frontend"]);
+    exit();
 }
 
-mysqli_stmt_bind_param(
-    $stmt,
-    "sssssss",
-    $maintenance_date,
-    $description,
-    $maintenance_type,
-    $result,
-    $cylinder_id,
-    $admin_id,
-    $next_maintenance_date
-);
+try {
+    $serial_number = $input['serial_number'] ?? null;
+    $type          = $input['maintenance_type'] ?? 'ตรวจสภาพ';
+    $result        = $input['result'] ?? 'ผ่าน';
+    $next_action   = $input['next_action'] ?? '';
+    $description   = $input['description'] ?? '';
 
-if (mysqli_stmt_execute($stmt)) {
-    // 3. อัปเดตวันตรวจครั้งถัดไปในตาราง cylinders
-    $updateSql = "UPDATE cylinders SET next_check_date = ?, last_check_date = ? WHERE serial_number = ? OR cylinder_id = ?";
-    $updateStmt = mysqli_prepare($conn, $updateSql);
-    $todayDate = date("Y-m-d");
-    $nextCheckDateOnly = date("Y-m-d", strtotime("+90 days"));
+    if (!$serial_number) {
+        throw new Exception("ไม่ได้ระบุ Serial Number ของถังแก๊ส");
+    }
+
+    // 1. บันทึกข้อมูลเข้าตาราง maintenance (ตัด created_at ออก)
+    $sql = "INSERT INTO maintenance (serial_number, maintenance_type, result, next_action, description) 
+            VALUES (?, ?, ?, ?, ?)";
     
-    if ($updateStmt) {
-        mysqli_stmt_bind_param($updateStmt, "ssss", $nextCheckDateOnly, $todayDate, $serial_number, $cylinder_id);
-        mysqli_stmt_execute($updateStmt);
-        mysqli_stmt_close($updateStmt);
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("SQL Prepare Failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("sssss", $serial_number, $type, $result, $next_action, $description);
+    
+    if (!$stmt->execute()) {
+        throw new Exception("SQL Execute Failed: " . $stmt->error);
+    }
+
+    // 2. อัปเดตวันตรวจครั้งถัดไปในตาราง gas_cylinder (บวกไป 1 ปี)
+    $update_sql = "UPDATE gas_cylinder SET next_check_date = DATE_ADD(CURRENT_DATE(), INTERVAL 1 YEAR) WHERE serial_number = ?";
+    $up_stmt = $conn->prepare($update_sql);
+    if ($up_stmt) {
+        $up_stmt->bind_param("s", $serial_number);
+        $up_stmt->execute();
     }
 
     echo json_encode([
         "success" => true,
-        "message" => "บันทึกสำเร็จ"
+        "message" => "บันทึกผลการตรวจเรียบร้อยแล้ว"
     ]);
-} else {
+
+} catch (Exception $e) {
+    http_response_code(200);
     echo json_encode([
         "success" => false,
-        "message" => mysqli_stmt_error($stmt)
+        "message" => "Database Error: " . $e->getMessage()
     ]);
 }
 
-mysqli_stmt_close($stmt);
-mysqli_close($conn);
+$conn->close();
+exit();
+?>

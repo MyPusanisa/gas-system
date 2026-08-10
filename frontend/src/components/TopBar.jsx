@@ -28,9 +28,9 @@ function TopBar({
 
   const fetchNewJobsCount = async () => {
     try {
-      const apiUrl = process.env.REACT_APP_API_BASE_URL
-        ? `${process.env.REACT_APP_API_BASE_URL}/models/delivery/get_new_jobs_count.php`
-        : "/Backend/models/delivery/get_new_jobs_count.php";
+      // แก้ไขการดึง URL ให้รองรับ Vite และกำหนด URL หลักตรงๆ
+      const baseUrl = import.meta.env?.VITE_API_BASE_URL || "http://localhost/Backend";
+      const apiUrl = `${baseUrl}/models/delivery/get_new_jobs_count.php`;
 
       const response = await fetch(apiUrl, {
         method: "GET",

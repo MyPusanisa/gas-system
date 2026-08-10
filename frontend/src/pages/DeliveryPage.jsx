@@ -3,8 +3,10 @@ import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
 function DeliveryPage() {
-  const role = localStorage.getItem("role");
-  const username = localStorage.getItem("username");
+  // อ่านค่าจาก localStorage ให้แน่ใจว่าได้ค่าล่าสุดเสมอ
+  const [role, setRole] = useState(() => localStorage.getItem("role") || "");
+  const [username, setUsername] = useState(() => localStorage.getItem("username") || "");
+  const [staffId, setStaffId] = useState(() => localStorage.getItem("staff_id") || "");
 
   const [deliveries, setDeliveries] = useState([]);
   const [cylinders, setCylinders] = useState([]);
@@ -57,32 +59,33 @@ function DeliveryPage() {
       throw new Error("Server responded with non-JSON (likely PHP error)");
     }
   };
+
   // ดึงตัวเลือก ยี่ห้อ/ชนิดแก๊ส/ขนาดถัง จากตารางถังแก๊สในฐานข้อมูลแบบ Dynamic
-    const brandOptions = useMemo(() => {
-      if (!Array.isArray(cylinders)) return [];
-      const brands = cylinders.map((c) => c.brand || c.brand_name).filter(Boolean);
-      return Array.from(new Set(brands));
-    }, [cylinders]);
+  const brandOptions = useMemo(() => {
+    if (!Array.isArray(cylinders)) return [];
+    const brands = cylinders.map((c) => c.brand || c.brand_name).filter(Boolean);
+    return Array.from(new Set(brands));
+  }, [cylinders]);
 
-    const gasTypeOptions = useMemo(() => {
-      if (!Array.isArray(cylinders)) return [];
-      const types = cylinders.map((c) => c.gas_type || c.gasType || c.type).filter(Boolean);
-      return Array.from(new Set(types));
-    }, [cylinders]);
+  const gasTypeOptions = useMemo(() => {
+    if (!Array.isArray(cylinders)) return [];
+    const types = cylinders.map((c) => c.gas_type || c.gasType || c.type).filter(Boolean);
+    return Array.from(new Set(types));
+  }, [cylinders]);
 
-    const sizeOptions = useMemo(() => {
-      if (!Array.isArray(cylinders)) return [];
-      const sizes = cylinders.map((c) => c.size || c.cylinder_size).filter(Boolean);
-      return Array.from(new Set(sizes));
-    }, [cylinders]);
+  const sizeOptions = useMemo(() => {
+    if (!Array.isArray(cylinders)) return [];
+    const sizes = cylinders.map((c) => c.size || c.cylinder_size).filter(Boolean);
+    return Array.from(new Set(sizes));
+  }, [cylinders]);
 
-    const findCustomerByPhone = (phone) =>
-      customers.find((c) => c.phone?.trim() === phone.trim());
+  const findCustomerByPhone = (phone) =>
+    customers.find((c) => c.phone?.trim() === phone.trim());
 
-    const findCustomerByAddress = (address) =>
-      customers.find(
-        (c) => c.address?.trim().toLowerCase() === address.trim().toLowerCase()
-      );
+  const findCustomerByAddress = (address) =>
+    customers.find(
+      (c) => c.address?.trim().toLowerCase() === address.trim().toLowerCase()
+    );
 
   const calculateExpiry = (manuDate) => {
     if (!manuDate) return "";
@@ -103,15 +106,31 @@ function DeliveryPage() {
       ]);
 
       if (deliveriesRes.status === "fulfilled" && deliveriesRes.value.success) {
-        setDeliveries(deliveriesRes.value.data);
-      } else if (deliveriesRes.status === "rejected") {
-        console.error("โหลด deliveries ล้มเหลว:", deliveriesRes.reason);
-        if (deliveriesRes.reason?.message?.includes("401") || deliveriesRes.reason?.message?.includes("Unauthorized")) {
-          localStorage.clear();
-          window.location.href = "/login";
-          return;
-        }
-      }
+  const rawData = deliveriesRes.value.data || [];
+  
+  const formattedDeliveries = rawData.map((d) => ({
+    ...d,
+    // รองรับทั้ง id และ delivery_id
+    id: d.id || d.delivery_id,
+    
+    // รองรับชื่อลูกค้า
+    customerName: d.customerName || d.customer_name || d.name || "ไม่ระบุชื่อลูกค้า",
+    phone: d.phone || d.customer_phone || "-",
+    address: d.address || d.customer_address || "-",
+    mapPin: d.mapPin || d.map_pin || "-",
+    
+    // สเปกแก๊ส
+    brand: d.brand || d.req_brand || "-",
+    gasType: d.gasType || d.gas_type || d.req_gas_type || "LPG",
+    size: d.size || d.req_size || "-",
+    
+    // รหัสคนส่งและสถานะ
+    staff_id: String(d.staff_id ?? d.staffId ?? ""),
+    status: d.status || "pending",
+  }));
+
+  setDeliveries(formattedDeliveries);
+}
 
       if (cylindersRes.status === "fulfilled" && cylindersRes.value.success) {
         setCylinders(cylindersRes.value.data);
@@ -195,8 +214,7 @@ function DeliveryPage() {
     if (exist && exist.mapPin) setNewMapPin(exist.mapPin);
   }, [newAddress, customers]);
 
-  // Admin สร้างงานโดยระบุสเปกแก๊ส
-  const createDeliveryJob = async () => {
+const createDeliveryJob = async () => {
     if (!newCustomerName || !newPhone || !newAddress || !newStaffId) {
       alert("กรุณากรอกข้อมูลลูกค้าและพนักงานให้ครบ");
       return;
@@ -206,27 +224,17 @@ function DeliveryPage() {
       return;
     }
 
-    const selectedStaff = staffs.find((s) => s.staff_id === newStaffId);
-    if (!selectedStaff) {
-      alert("ไม่พบข้อมูลพนักงาน");
-      return;
-    }
-
-    const existingCustomer = findCustomerByPhone(newPhone);
+    // ปรับ Payload ส่งแบบ Flat JSON ให้ Backend ดึงไป Insert ลง DB ได้ทันที
     const payload = {
-      customer: {
-        name: newCustomerName.trim(),
-        phone: newPhone.trim(),
-        address: newAddress.trim(),
-        mapPin: newMapPin.trim(),
-        customer_id: existingCustomer ? existingCustomer.customer_id : null,
-      },
-      delivery: {
-        brand: newBrand,
-        gas_type: newGasType,
-        size: newSize,
-        staff_id: newStaffId,
-      },
+      customer_name: newCustomerName.trim(),
+      phone: newPhone.trim(),
+      address: newAddress.trim(),
+      map_pin: newMapPin.trim(),
+      brand: newBrand,
+      gas_type: newGasType,
+      size: newSize,
+      staff_id: newStaffId,
+      status: "pending"
     };
 
     try {
@@ -235,65 +243,68 @@ function DeliveryPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.success) {
+
+      // ตรวจสอบเงื่อนไขว่า response ส่งอะไรกลับมา
+      if (res && (res.success || res.status === "success" || res.delivery_id)) {
         alert("สร้างงานจัดส่งเรียบร้อยแล้ว");
-        await loadData();
+        
+        // ล้างค่าอินพุต
         setNewCustomerName("");
         setNewPhone("");
         setNewAddress("");
         setNewMapPin("");
-        setNewGasType("LPG");
         setNewBrand("");
         setNewSize("");
         setNewStaffId("");
+
+        // โหลดข้อมูลงานจัดส่งใหม่ทันที
+        await loadData();
       } else {
-        alert(res.message || "สร้างงานไม่สำเร็จ");
+        alert(res.message || "สร้างงานไม่สำเร็จ กรุณาตรวจสอบไฟล์ create.php");
       }
     } catch (error) {
-      console.error(error);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      console.error("Create Delivery Error:", error);
+      alert("เกิดข้อผิดพลาดในการสร้างงาน");
     }
   };
 
   // พนักงานสแกน QR ยืนยันการรับงาน
-    const confirmReceiveJob = async (jobItem) => {
-      const serialNumber = confirmCylinderInputs[jobItem.id]?.trim();
-      if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
+  const confirmReceiveJob = async (jobItem) => {
+    const serialNumber = confirmCylinderInputs[jobItem.id]?.trim();
+    if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
 
-      // 1. ตรวจสอบว่าถังอยู่ในคลังหรือไม่
-      const cylinder = cylinders.find((c) => c.serial_number === serialNumber);
-      if (!cylinder) {
-        alert(`❌ ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
-        return;
-      }
-      if (cylinder.status !== "ในคลัง") {
-        alert(`❌ ถังแก๊ส "${serialNumber}" ไม่อยู่ในคลัง (สถานะปัจจุบัน: ${cylinder.status})`);
-        return;
-      }
+    // 1. ตรวจสอบว่าถังอยู่ในคลังหรือไม่
+    const cylinder = cylinders.find((c) => c.serial_number === serialNumber);
+    if (!cylinder) {
+      alert(`❌ ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
+      return;
+    }
+    if (cylinder.status !== "ในคลัง") {
+      alert(`❌ ถังแก๊ส "${serialNumber}" ไม่อยู่ในคลัง (สถานะปัจจุบัน: ${cylinder.status})`);
+      return;
+    }
 
-      // 2. ตรวจสอบเงื่อนไข Brand, Gas Type, Size (เพิ่มการ Fallback หาค่า field ต่างๆ)
-      const targetBrand = jobItem.req_brand || jobItem.brand || "";
-      const targetGasType = jobItem.req_gas_type || jobItem.gasType || jobItem.gas_type || "";
-      const targetSize = jobItem.req_size || jobItem.size || "";
-  
-      const cylBrand = cylinder.brand || "";
-      const cylGasType = cylinder.gas_type || cylinder.gasType || "";
-      const cylSize = cylinder.size || "";
-  
-      if (
-        cylBrand !== targetBrand ||
-        cylGasType !== targetGasType ||
-        cylSize !== targetSize
-      ) {
-        alert(
-            `❌ สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
-          `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
-          `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
-        );
-        return;
-      }
+    // 2. ตรวจสอบเงื่อนไข Brand, Gas Type, Size (เพิ่มการ Fallback หาค่า field ต่างๆ)
+    const targetBrand = jobItem.req_brand || jobItem.brand || "";
+    const targetGasType = jobItem.req_gas_type || jobItem.gasType || jobItem.gas_type || "";
+    const targetSize = jobItem.req_size || jobItem.size || "";
 
-    // ... ดำเนินการยิง API update.php ต่อไป
+    const cylBrand = cylinder.brand || "";
+    const cylGasType = cylinder.gas_type || cylinder.gasType || "";
+    const cylSize = cylinder.size || "";
+
+    if (
+      cylBrand !== targetBrand ||
+      cylGasType !== targetGasType ||
+      cylSize !== targetSize
+    ) {
+      alert(
+        `❌ สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
+        `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
+        `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
+      );
+      return;
+    }
 
     try {
       const res = await apiFetch("http://localhost/Backend/models/delivery/update.php", {
@@ -450,9 +461,32 @@ function DeliveryPage() {
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
   const visibleDeliveries = useMemo(() => {
-    if (role === "admin") return deliveries;
-    return deliveries.filter((d) => d.staffUsername === username);
-  }, [deliveries, role, username]);
+    // อ่านค่า Role และ ID จาก localStorage โดยตรง
+    const currentRole = localStorage.getItem("role") || role;
+    const currentStaffId = localStorage.getItem("staff_id") || staffId;
+    const currentUsername = localStorage.getItem("username") || username;
+
+    // 1. ถ้าเป็น admin ให้แสดงงานจัดส่ง "ทั้งหมด" ทันที ไม่ต้องกรอง
+    if (currentRole === "admin" || currentRole === "ผู้ดูแลระบบ") {
+      return deliveries;
+    }
+
+    // 2. ถ้าเป็น staff ให้กรองเฉพาะงานของตัวเอง หรือ งานกลางที่ยังไม่มีคนรับ
+    return deliveries.filter((d) => {
+      const dStaffId = String(d.staff_id ?? d.staffId ?? "");
+      const myStaffId = String(currentStaffId ?? "");
+      const dStaffName = String(d.assignedStaff ?? d.staff_name ?? "").toLowerCase();
+      const myUsername = String(currentUsername ?? "").toLowerCase();
+
+      const isMyJob =
+        (myStaffId && dStaffId === myStaffId) ||
+        (myUsername && dStaffName.includes(myUsername));
+
+      const isUnassigned = !dStaffId || dStaffId === "0" || dStaffId === "null";
+
+      return isMyJob || isUnassigned;
+    });
+  }, [deliveries, role, username, staffId]);
 
   const currentStaffActiveJob = useMemo(
     () => deliveries.find((d) => d.assignedStaff === username && d.status === "delivering"),
@@ -465,9 +499,20 @@ function DeliveryPage() {
   });
 
   const deliverySuccessItems = deliveries.filter((d) => d.status === "success");
+
+  const currentRole = localStorage.getItem("role") || role;
+  const currentUsername = localStorage.getItem("username") || username;
+  const currentStaffId = localStorage.getItem("staff_id") || staffId;
+
   const newAssignedJobItems =
-    role === "staff"
-      ? deliveries.filter((d) => d.assignedStaff === username && d.status === "pending")
+    currentRole === "staff"
+      ? deliveries.filter((d) => {
+          const isMyJob =
+            String(d.staff_id) === String(currentStaffId) ||
+            d.assignedStaff === currentUsername ||
+            d.staffUsername === currentUsername;
+          return isMyJob && d.status === "pending";
+        })
       : [];
 
   const getStatusStyle = (status) => {
@@ -649,7 +694,6 @@ function DeliveryPage() {
                   <strong>Map Pin:</strong>
                   <span>{item.mapPin || "-"}</span>
                 </div>
-                {/* โค้ดที่ปรับแก้ไขแล้ว */}
                 <div style={styles.row}>
                   <strong>สเปกถังแก๊สที่ต้องส่ง:</strong>
                   <span style={{ color: "#facc15", fontWeight: "bold" }}>
