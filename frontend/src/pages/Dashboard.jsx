@@ -1,5 +1,7 @@
+import { API_BASE } from "../config"; // 👈 เพิ่มบรรทัดนี้ไว้ด้านบนสุดของ Dashboard.jsx
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import API_BASE_URL from "../config";
 import {
   LineChart,
   Line,
@@ -30,6 +32,9 @@ function Dashboard() {
   const safeFetchJson = async (url) => {
     try {
       const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const text = await res.text();
       try {
         return JSON.parse(text);
@@ -44,27 +49,27 @@ function Dashboard() {
   };
 
   const fetchSummary = async () => {
-    const data = await safeFetchJson("http://localhost/Backend/models/get_dashboard_summary.php");
+    const data = await safeFetchJson(`${API_BASE}/get_dashboard_summary.php`);
     if (data && data.success) setSummary(data.data);
   };
 
   const fetchStaffRounds = async () => {
-    const data = await safeFetchJson("http://localhost/Backend/models/get_staff_delivery_rounds.php");
+    const data = await safeFetchJson(`${API_BASE}/get_staff_delivery_rounds.php`);
     if (data && data.success) setStaffRounds(data.data);
   };
 
   const fetchNearDueCylinders = async () => {
-    const data = await safeFetchJson("http://localhost/Backend/models/get_near_due_cylinders.php");
+    const data = await safeFetchJson(`${API_BASE}/get_near_due_cylinders.php`);
     if (data && data.success) setNearDueCylinders(data.data);
   };
 
   const fetchGasTypeChart = async () => {
-    const data = await safeFetchJson("http://localhost/Backend/models/get_gas_type_chart.php");
+    const data = await safeFetchJson(`${API_BASE}/get_gas_type_chart.php`);
     if (data && data.success) setGasTypeData(data.data);
   };
 
   const fetchDeliveryChart = async () => {
-    const data = await safeFetchJson("http://localhost/Backend/models/get_delivery_chart.php");
+    const data = await safeFetchJson(`${API_BASE}/get_delivery_chart.php`);
     if (data && data.success) setDeliveryChartData(data.data);
   };
 
@@ -89,7 +94,6 @@ function Dashboard() {
           <Card title="หมดอายุ" value={summary.expired} />
         </div>
 
-        {/* ========== GRAPH 1: ประเภทแก๊ส ========== */}
         <div style={panelStyle}>
           <h2 style={panelTitleStyle}>📊 จำนวนถังแยกตามประเภทแก๊ส</h2>
           {gasTypeData.length === 0 ? (

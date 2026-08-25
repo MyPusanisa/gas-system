@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import API_BASE_URL from "../config"; 
 
 function MaintenancePage({
   cylinders: propCylinders,
@@ -41,7 +42,7 @@ function MaintenancePage({
   const [historySearchTerm, setHistorySearchTerm] = useState("");
 
   // --- Modal Management State ---
-  const [activeModal, setActiveModal] = useState(null); // 'type' | 'result' | 'action' | 'note' | null
+  const [activeModal, setActiveModal] = useState(null);
   const [newItemInput, setNewItemInput] = useState("");
 
   // --- Edit Modal State ---
@@ -53,7 +54,7 @@ function MaintenancePage({
   const [editDesc, setEditDesc] = useState("");
 
   const todayStr = new Date().toISOString().split("T")[0];
-  const todayDate = new Date(todayStr);
+  const todayDate = useMemo(() => new Date(todayStr), [todayStr]);
 
   const parseLocalDate = (dateStr) => {
     if (!dateStr || typeof dateStr !== "string") return null;
@@ -65,7 +66,7 @@ function MaintenancePage({
 
   const fetchMaintenances = async () => {
     try {
-      const res = await fetch("http://localhost/Backend/models/get_maintenance.php");
+      const res = await fetch(`${API_BASE_URL}/get_maintenance.php`);
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setMaintenances(data.data);
@@ -81,7 +82,7 @@ function MaintenancePage({
   const fetchCylinders = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost/Backend/models/get_due_cylinders.php");
+      const res = await fetch(`${API_BASE_URL}/get_due_cylinders.php`);
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         const enrichedData = data.data.map((item) => ({
@@ -128,7 +129,6 @@ function MaintenancePage({
     return "ใกล้ถึงกำหนด";
   };
 
-  // --- Handlers จัดการ เพิ่ม/ลบ ตัวเลือก ---
   const getCurrentModalList = () => {
     if (activeModal === "type") return typeOptions;
     if (activeModal === "result") return resultOptions;
@@ -169,7 +169,6 @@ function MaintenancePage({
     return "";
   };
 
-  // --- 🔍 Search Filters ---
   const filteredDueCylinders = useMemo(() => {
     if (!Array.isArray(dueCylinders)) return [];
     return dueCylinders.filter((item) => {
@@ -233,7 +232,7 @@ function MaintenancePage({
     };
 
     try {
-      const res = await fetch("http://localhost/Backend/models/save_maintenance.php", {
+      const res = await fetch(`${API_BASE_URL}/save_maintenance.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -279,7 +278,7 @@ function MaintenancePage({
     }
 
     try {
-      const res = await fetch("http://localhost/Backend/models/update_maintenance.php", {
+      const res = await fetch(`${API_BASE_URL}/update_maintenance.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -336,8 +335,6 @@ function MaintenancePage({
       <div style={formCardStyle}>
         <h2 style={{ marginTop: 0, color: "white" }}>บันทึกผลตรวจ</h2>
         <div style={formGridStyle}>
-          
-          {/* เลือกถังแก๊ส */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>เลือกถังที่ตรวจ (ถึงกำหนดตรวจ) *</label>
             <select
@@ -354,7 +351,6 @@ function MaintenancePage({
             </select>
           </div>
 
-          {/* ประเภทการตรวจ/บำรุง + ปุ่มเฟือง */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>ประเภทการตรวจ/บำรุง *</label>
             <div style={inputWithBtnStyle}>
@@ -379,7 +375,6 @@ function MaintenancePage({
             </div>
           </div>
 
-          {/* ผลการตรวจ + ปุ่มเฟือง */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>ผลการตรวจ *</label>
             <div style={inputWithBtnStyle}>
@@ -404,7 +399,6 @@ function MaintenancePage({
             </div>
           </div>
 
-          {/* สิ่งที่ต้องทำต่อ + ปุ่มเฟือง */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>สิ่งที่ต้องทำต่อ 🔄</label>
             <div style={inputWithBtnStyle}>
@@ -429,7 +423,6 @@ function MaintenancePage({
             </div>
           </div>
 
-          {/* เลือกหมายเหตุสำเร็จรูป + ปุ่มเฟือง */}
           <div style={{ ...fieldGroupStyle, gridColumn: "1 / -1" }}>
             <label style={labelStyle}>เลือกหมายเหตุสำเร็จรูป 🏷️</label>
             <div style={inputWithBtnStyle}>
@@ -454,7 +447,6 @@ function MaintenancePage({
             </div>
           </div>
 
-          {/* รายละเอียดเพิ่มเติม */}
           <div style={fieldGroupStyleFull}>
             <label style={labelStyle}>รายละเอียดเพิ่มเติม</label>
             <textarea
@@ -471,7 +463,6 @@ function MaintenancePage({
         </button>
       </div>
 
-      {/* 🔍 ค้นหาตารางบน */}
       <div style={{ marginBottom: "16px" }}>
         <input
           type="text"
@@ -574,17 +565,14 @@ function MaintenancePage({
         </table>
       </div>
 
-      {/* ⚙️ Dynamic Modal สำหรับจัดการเพิ่ม/ลบ ตัวเลือก (ถอดแบบจากในรูป) */}
       {activeModal && (
         <div style={modalOverlayStyle}>
           <div style={darkModalStyle}>
-            {/* Header Modal */}
             <div style={modalHeaderStyle}>
               <span style={{ fontWeight: "bold", fontSize: "16px" }}>⚙️ {getModalTitle()}</span>
               <button onClick={() => setActiveModal(null)} style={closeModalIconStyle}>✕</button>
             </div>
 
-            {/* Input และ ปุ่มเพิ่ม */}
             <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
               <input
                 type="text"
@@ -596,7 +584,6 @@ function MaintenancePage({
               <button onClick={handleAddItem} style={blueAddButtonStyle}>+ เพิ่ม</button>
             </div>
 
-            {/* รายการตัวเลือกแบบการ์ดพร้อมปุ่มลบ */}
             <div style={itemListContainerStyle}>
               {getCurrentModalList().map((item, idx) => (
                 <div key={idx} style={itemCardStyle}>
@@ -609,7 +596,6 @@ function MaintenancePage({
         </div>
       )}
 
-      {/* Modal แก้ไขประวัติการตรวจ */}
       {editingItem && (
         <div style={modalOverlayStyle}>
           <div style={modalStyle}>
@@ -685,7 +671,7 @@ function MaintenancePage({
   );
 }
 
-// --- Dynamic Styles & Scaffolding ---
+// --- Styles Objects ---
 const summaryRowStyle = { display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "20px" };
 const summaryCardStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", minWidth: "220px", flex: "1" };
 const summaryNumberStyle = { fontSize: "28px", fontWeight: "bold", marginTop: "10px" };
@@ -698,29 +684,31 @@ const inputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #c
 const inputWithBtnStyle = { display: "flex", gap: "6px", alignItems: "center" };
 const iconButtonStyle = { padding: "8px 12px", background: "#374151", border: "1px solid #4b5563", borderRadius: "8px", cursor: "pointer", fontSize: "14px", color: "#fff" };
 const textAreaStyle = { minHeight: "80px", padding: "10px", borderRadius: "8px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", backgroundColor: "#fff", color: "#000" };
-const searchInputStyle = { padding: "10px 14px", borderRadius: "8px", border: "1px solid #374151", width: "100%", boxSizing: "border-box", backgroundColor: "#1f2937", color: "#fff", fontSize: "14px" };
+const searchInputStyle = { padding: "10px 14px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", width: "100%", boxSizing: "border-box" };
+
 const tableStyle = { width: "100%", borderCollapse: "collapse", background: "#1f2937", color: "white", borderRadius: "12px", overflow: "hidden" };
-const thStyle = { padding: "12px 10px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", fontWeight: "bold", whiteSpace: "nowrap", backgroundColor: "#2d3a4a" };
-const tdStyle = { padding: "10px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px" };
-const primaryButtonStyle = { padding: "10px 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold", whiteSpace: "nowrap" };
-const editButtonStyle = { padding: "4px 8px", border: "none", borderRadius: "6px", background: "#f59e0b", color: "black", cursor: "pointer", fontWeight: "bold", fontSize: "12px" };
-const cancelButtonStyle = { padding: "10px 14px", border: "none", borderRadius: "8px", background: "#6b7280", color: "white", cursor: "pointer", fontWeight: "bold" };
-const badgeStyle = { padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", whiteSpace: "nowrap", display: "inline-block", textAlign: "center" };
-const actionBadgeStyle = { padding: "3px 8px", borderRadius: "6px", fontSize: "12px", background: "#374151", color: "#60a5fa", border: "1px solid #4b5563" };
+const thStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", whiteSpace: "nowrap" };
+const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px" };
+
+const primaryButtonStyle = { padding: "10px 16px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
+const cancelButtonStyle = { padding: "10px 16px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
+const editButtonStyle = { padding: "6px 10px", border: "none", borderRadius: "6px", background: "#f59e0b", color: "white", cursor: "pointer" };
+
+const badgeStyle = { padding: "4px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold" };
 const overdueStyle = { background: "#ef4444", color: "white" };
 const dueTodayStyle = { background: "#f59e0b", color: "black" };
 const normalStyle = { background: "#10b981", color: "white" };
+const actionBadgeStyle = { background: "#3b82f6", color: "white", padding: "3px 8px", borderRadius: "4px", fontSize: "12px" };
 
-// --- Dark UI Modal Styles (ตรงตามภาพอ้างอิง) ---
-const modalOverlayStyle = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.75)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 };
-const darkModalStyle = { backgroundColor: "#1e293b", color: "white", padding: "20px", borderRadius: "12px", width: "90%", maxWidth: "420px", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", border: "1px solid #334155" };
-const modalHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #334155", paddingBottom: "10px" };
-const closeModalIconStyle = { background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "18px" };
-const darkInputStyle = { padding: "10px 12px", borderRadius: "8px", border: "1px solid #475569", backgroundColor: "#0f172a", color: "#fff", flex: 1, fontSize: "14px" };
-const blueAddButtonStyle = { padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "#2563eb", color: "#fff", fontWeight: "bold", cursor: "pointer" };
+const modalOverlayStyle = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0, 0, 0, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 };
+const modalStyle = { background: "#1f2937", color: "white", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "500px" };
+const darkModalStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", width: "90%", maxWidth: "400px", border: "1px solid #374151" };
+const modalHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" };
+const closeModalIconStyle = { background: "none", border: "none", color: "#9ca3af", fontSize: "18px", cursor: "pointer" };
+const darkInputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", flex: 1 };
+const blueAddButtonStyle = { padding: "10px 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" };
 const itemListContainerStyle = { maxHeight: "250px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" };
-const itemCardStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", backgroundColor: "#0f172a", borderRadius: "8px", border: "1px solid #334155" };
-const redDeleteButtonStyle = { padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "#dc2626", color: "#fff", fontSize: "12px", fontWeight: "bold", cursor: "pointer" };
-const modalStyle = { backgroundColor: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", width: "90%", maxWidth: "480px" };
+const itemCardStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#111827", borderRadius: "8px" };
+const redDeleteButtonStyle = { padding: "4px 8px", border: "none", borderRadius: "6px", background: "#dc2626", color: "white", cursor: "pointer", fontSize: "12px" };
 
 export default MaintenancePage;

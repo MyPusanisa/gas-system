@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG } from "qrcode.react";
+import { fetchAPI } from "../services/api"; // 👈 นำ fetchAPI มาใช้งาน
 
 function GasPage({ cylinders = [], setCylinders, deliveries }) {
   const [newSerialNumber, setNewSerialNumber] = useState("");
@@ -28,12 +29,8 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
   const [showOptionModal, setShowOptionModal] = useState(false);
   const [modalTarget, setModalTarget] = useState("brand"); 
   const [newOptionValue, setNewOptionValue] = useState("");
-
   const [selectedQR, setSelectedQR] = useState(null);
 
-  const API_BASE = "http://localhost/Backend/models";
-  const API_GAS_BASE = "http://localhost/Backend/models/gas";
-  
   const calculateNextCheckDate = (manufactureDate) => {
     if (!manufactureDate) return "";
     const date = new Date(manufactureDate);
@@ -48,31 +45,25 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
     return date.toISOString().split("T")[0];
   };
 
+  // ดึงข้อมูลถังแก๊สทั้งหมด
   const fetchCylinders = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/get_cylinders.php`);
-      const json = await res.json();
-      if (json.success) setCylinders(json.data);
-    } catch (err) {
-      console.error(err);
-      alert("โหลดข้อมูลไม่สำเร็จ");
+    const json = await fetchAPI("/get_cylinders.php");
+    if (json.success) {
+      setCylinders(json.data);
+    } else {
+      alert(json.message || "โหลดข้อมูลไม่สำเร็จ");
     }
   };
 
   // ดึงข้อมูลตัวเลือกทั้งหมดจาก Database
   const fetchOptions = async () => {
-    try {
-      const res = await fetch(`${API_GAS_BASE}/manage_options.php`);
-      const json = await res.json();
-      if (json.success) {
-        setGasBrands(json.data.brands || []);
-        setGasTypes(json.data.types || []);
-        setGasSizes(json.data.sizes || []);
-        setGasLocations(json.data.locations || []);
-        setGasStatuses(json.data.statuses || []);
-      }
-    } catch (err) {
-      console.error("โหลดตัวเลือกไม่สำเร็จ:", err);
+    const json = await fetchAPI("/gas/manage_options.php");
+    if (json.success) {
+      setGasBrands(json.data.brands || []);
+      setGasTypes(json.data.types || []);
+      setGasSizes(json.data.sizes || []);
+      setGasLocations(json.data.locations || []);
+      setGasStatuses(json.data.statuses || []);
     }
   };
 
@@ -97,13 +88,7 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
   };
 
   const addOrUpdateCylinder = async () => {
-    if (
-      !newSerialNumber ||
-      !newBrand ||
-      !newGasType ||
-      !newSize ||
-      !newManufactureDate
-    ) {
+    if (!newSerialNumber || !newBrand || !newGasType || !newSize || !newManufactureDate) {
       alert("กรุณากรอกข้อมูลที่จำเป็นให้ครบ (Serial Number, ยี่ห้อ, ชนิด, ขนาด, วันที่ผลิต)");
       return;
     }
@@ -127,44 +112,35 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
       status: newStatus,
     };
 
-    const url = editingSerial ? `${API_BASE}/update_cylinder.php` : `${API_BASE}/add_cylinder.php`;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cylinderData),
-      });
-      const result = await res.json();
-      if (result.success) {
-        await fetchCylinders();
-        clearForm();
-        alert(result.message);
-      } else {
-        alert(result.message);
-      }
-    } catch (err) {
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    const endpoint = editingSerial ? "/update_cylinder.php" : "/add_cylinder.php";
+    const result = await fetchAPI(endpoint, {
+      method: "POST",
+      body: JSON.stringify(cylinderData),
+    });
+
+    if (result.success) {
+      await fetchCylinders();
+      clearForm();
+      alert(result.message || "บันทึกข้อมูลเรียบร้อย");
+    } else {
+      alert(result.message || "เกิดข้อผิดพลาดในการบันทึก");
     }
   };
 
   const deleteCylinder = async (serialNumber) => {
     if (!window.confirm(`ยืนยันลบถัง Serial: ${serialNumber}?`)) return;
-    try {
-      const res = await fetch(`${API_BASE}/delete_cylinder.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serial_number: serialNumber }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        await fetchCylinders();
-        if (editingSerial === serialNumber) clearForm();
-        alert(result.message);
-      } else {
-        alert(result.message);
-      }
-    } catch (err) {
-      alert("ลบไม่สำเร็จ");
+
+    const result = await fetchAPI("/delete_cylinder.php", {
+      method: "POST",
+      body: JSON.stringify({ serial_number: serialNumber }),
+    });
+
+    if (result.success) {
+      await fetchCylinders();
+      if (editingSerial === serialNumber) clearForm();
+      alert(result.message || "ลบข้อมูลเรียบร้อย");
+    } else {
+      alert(result.message || "ลบไม่สำเร็จ");
     }
   };
 
@@ -189,52 +165,42 @@ function GasPage({ cylinders = [], setCylinders, deliveries }) {
     setShowOptionModal(true);
   };
 
-  // เพิ่ม Option ใหม่ + โหลดข้อมูลกลับเข้า Dropdown อัตโนมัติ
   const handleAddOption = async () => {
     if (!newOptionValue.trim()) return alert("กรุณากรอกข้อมูล");
-    try {
-      const res = await fetch(`${API_GAS_BASE}/manage_options.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "add",
-          target: modalTarget,
-          value: newOptionValue.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setNewOptionValue("");
-        await fetchOptions(); // Re-fetch ตัวเลือกใหม่
-      } else {
-        alert(data.message || "เกิดข้อผิดพลาดในการเพิ่มข้อมูล");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("เชื่อมต่อ API ไม่สำเร็จ");
+
+    const data = await fetchAPI("/gas/manage_options.php", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "add",
+        target: modalTarget,
+        value: newOptionValue.trim(),
+      }),
+    });
+
+    if (data.success) {
+      setNewOptionValue("");
+      await fetchOptions();
+    } else {
+      alert(data.message || "เกิดข้อผิดพลาดในการเพิ่มข้อมูล");
     }
   };
 
   const handleDeleteOption = async (id, name) => {
     if (!window.confirm(`ยืนยันลบ "${name}" ออกจากรายการตัวเลือก?`)) return;
-    try {
-      const res = await fetch(`${API_GAS_BASE}/manage_options.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "delete",
-          target: modalTarget,
-          id: id,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        await fetchOptions();
-      } else {
-        alert(data.message || "เกิดข้อผิดพลาด");
-      }
-    } catch (err) {
-      console.error(err);
+
+    const data = await fetchAPI("/gas/manage_options.php", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "delete",
+        target: modalTarget,
+        id: id,
+      }),
+    });
+
+    if (data.success) {
+      await fetchOptions();
+    } else {
+      alert(data.message || "เกิดข้อผิดพลาด");
     }
   };
 

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchAPI } from "../services/api";
+
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -7,37 +9,32 @@ function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    try {
-      const res = await fetch("http://localhost/Backend/models/login.php", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      });
+    if (!username || !password) {
+      setError("กรุณากรอก Username และ Password ให้ครบถ้วน");
+      return;
+    }
 
-      const data = await res.json();
+    setError("");
+    const data = await fetchAPI("/login.php", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
 
-      if (data.success) {
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("role", data.role);
-        localStorage.setItem("name", data.name);
-        localStorage.setItem("admin_id", data.admin_id)
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("staff_id", data.staff_id);
-        
-        if (data.role === "admin") {
-          navigate("/dashboard");
-        } else {
-          // เช่น staff หรือ delivery_staff
-          navigate("/delivery");
-        }
+    if (data.success) {
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("role", data.role);
+      localStorage.setItem("name", data.name);
+      localStorage.setItem("admin_id", data.admin_id);
+      localStorage.setItem("username", data.username);
+      localStorage.setItem("staff_id", data.staff_id);
+
+      if (data.role === "admin") {
+        navigate("/dashboard");
       } else {
-        setError(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        navigate("/delivery");
       }
-    } catch (err) {
-      setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+    } else {
+      setError(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
     }
   };
 

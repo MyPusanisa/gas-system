@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom"
 import { useEffect, useState } from "react"
+import { API_BASE } from "../config";
 
 const formatDate = (date) => {
   if (!date) return "-"
@@ -23,7 +24,7 @@ const getInspectionStatus = (statusFromDb) => {
 }
 
 function CylinderPage() {
-  // รับค่า id ซึ่งตอนนี้หมายถึง serial_number จาก URL (เช่น /cylinder/SN-1001)
+  // รับค่า id ซึ่งหมายถึง serial_number จาก URL (เช่น /cylinder/SN-1001)
   const { id } = useParams() 
   const [cylinder, setCylinder] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -33,8 +34,15 @@ function CylinderPage() {
     const fetchCylinder = async () => {
       try {
         setLoading(true)
-        // ยิงไปดึงข้อมูลโดยใช้ serial_number 
-        const res = await fetch(`http://localhost/Backend/models/get_cylinder_by_id.php?serial_number=${id}`)
+        setError(null)
+        
+        // แก้ไข endpoint จาก login.php เป็นการดึงข้อมูลถังตาม serial_number
+        const res = await fetch(`${API_BASE}/get_cylinder.php?serial_number=${encodeURIComponent(id)}`)
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`)
+        }
+
         const result = await res.json()
 
         if (result.success) {

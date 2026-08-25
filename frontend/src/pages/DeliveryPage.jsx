@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import API_BASE_URL from "../config"; // 👈 Import API_BASE_URL จาก config กลาง
+
+// สร้าง UPLOADS_BASE_URL อ้างอิงจากโฟลเดอร์ root ของ Backend
+const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
 
 function DeliveryPage() {
   // อ่านค่าจาก localStorage ให้แน่ใจว่าได้ค่าล่าสุดเสมอ
@@ -99,38 +103,31 @@ function DeliveryPage() {
       setLoading(true);
 
       const [deliveriesRes, cylindersRes, staffsRes, customersRes] = await Promise.allSettled([
-        apiFetch("http://localhost/Backend/models/delivery/list.php"),
-        apiFetch("http://localhost/Backend/models/cylinder/list.php"),
-        apiFetch("http://localhost/Backend/models/staff/list.php"),
-        apiFetch("http://localhost/Backend/models/customer/list.php"),
+        apiFetch(`${API_BASE_URL}/delivery/list.php`),
+        apiFetch(`${API_BASE_URL}/cylinder/list.php`),
+        apiFetch(`${API_BASE_URL}/staff/list.php`),
+        apiFetch(`${API_BASE_URL}/customer/list.php`),
       ]);
 
       if (deliveriesRes.status === "fulfilled" && deliveriesRes.value.success) {
-  const rawData = deliveriesRes.value.data || [];
-  
-  const formattedDeliveries = rawData.map((d) => ({
-    ...d,
-    // รองรับทั้ง id และ delivery_id
-    id: d.id || d.delivery_id,
-    
-    // รองรับชื่อลูกค้า
-    customerName: d.customerName || d.customer_name || d.name || "ไม่ระบุชื่อลูกค้า",
-    phone: d.phone || d.customer_phone || "-",
-    address: d.address || d.customer_address || "-",
-    mapPin: d.mapPin || d.map_pin || "-",
-    
-    // สเปกแก๊ส
-    brand: d.brand || d.req_brand || "-",
-    gasType: d.gasType || d.gas_type || d.req_gas_type || "LPG",
-    size: d.size || d.req_size || "-",
-    
-    // รหัสคนส่งและสถานะ
-    staff_id: String(d.staff_id ?? d.staffId ?? ""),
-    status: d.status || "pending",
-  }));
+        const rawData = deliveriesRes.value.data || [];
+        
+        const formattedDeliveries = rawData.map((d) => ({
+          ...d,
+          id: d.id || d.delivery_id,
+          customerName: d.customerName || d.customer_name || d.name || "ไม่ระบุชื่อลูกค้า",
+          phone: d.phone || d.customer_phone || "-",
+          address: d.address || d.customer_address || "-",
+          mapPin: d.mapPin || d.map_pin || "-",
+          brand: d.brand || d.req_brand || "-",
+          gasType: d.gasType || d.gas_type || d.req_gas_type || "LPG",
+          size: d.size || d.req_size || "-",
+          staff_id: String(d.staff_id ?? d.staffId ?? ""),
+          status: d.status || "pending",
+        }));
 
-  setDeliveries(formattedDeliveries);
-}
+        setDeliveries(formattedDeliveries);
+      }
 
       if (cylindersRes.status === "fulfilled" && cylindersRes.value.success) {
         setCylinders(cylindersRes.value.data);
@@ -214,7 +211,7 @@ function DeliveryPage() {
     if (exist && exist.mapPin) setNewMapPin(exist.mapPin);
   }, [newAddress, customers]);
 
-const createDeliveryJob = async () => {
+  const createDeliveryJob = async () => {
     if (!newCustomerName || !newPhone || !newAddress || !newStaffId) {
       alert("กรุณากรอกข้อมูลลูกค้าและพนักงานให้ครบ");
       return;
@@ -224,7 +221,6 @@ const createDeliveryJob = async () => {
       return;
     }
 
-    // ปรับ Payload ส่งแบบ Flat JSON ให้ Backend ดึงไป Insert ลง DB ได้ทันที
     const payload = {
       customer_name: newCustomerName.trim(),
       phone: newPhone.trim(),
@@ -238,17 +234,15 @@ const createDeliveryJob = async () => {
     };
 
     try {
-      const res = await apiFetch("http://localhost/Backend/models/delivery/create.php", {
+      const res = await apiFetch(`${API_BASE_URL}/delivery/create.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      // ตรวจสอบเงื่อนไขว่า response ส่งอะไรกลับมา
       if (res && (res.success || res.status === "success" || res.delivery_id)) {
         alert("สร้างงานจัดส่งเรียบร้อยแล้ว");
         
-        // ล้างค่าอินพุต
         setNewCustomerName("");
         setNewPhone("");
         setNewAddress("");
@@ -257,7 +251,6 @@ const createDeliveryJob = async () => {
         setNewSize("");
         setNewStaffId("");
 
-        // โหลดข้อมูลงานจัดส่งใหม่ทันที
         await loadData();
       } else {
         alert(res.message || "สร้างงานไม่สำเร็จ กรุณาตรวจสอบไฟล์ create.php");
@@ -273,7 +266,6 @@ const createDeliveryJob = async () => {
     const serialNumber = confirmCylinderInputs[jobItem.id]?.trim();
     if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
 
-    // 1. ตรวจสอบว่าถังอยู่ในคลังหรือไม่
     const cylinder = cylinders.find((c) => c.serial_number === serialNumber);
     if (!cylinder) {
       alert(`❌ ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
@@ -284,7 +276,6 @@ const createDeliveryJob = async () => {
       return;
     }
 
-    // 2. ตรวจสอบเงื่อนไข Brand, Gas Type, Size (เพิ่มการ Fallback หาค่า field ต่างๆ)
     const targetBrand = jobItem.req_brand || jobItem.brand || "";
     const targetGasType = jobItem.req_gas_type || jobItem.gasType || jobItem.gas_type || "";
     const targetSize = jobItem.req_size || jobItem.size || "";
@@ -307,7 +298,7 @@ const createDeliveryJob = async () => {
     }
 
     try {
-      const res = await apiFetch("http://localhost/Backend/models/delivery/update.php", {
+      const res = await apiFetch(`${API_BASE_URL}/delivery/update.php`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -337,13 +328,13 @@ const createDeliveryJob = async () => {
     formData.append("proof", file);
 
     try {
-      const res = await fetch("http://localhost/Backend/models/delivery/upload_proof.php", {
+      const res = await fetch(`${API_BASE_URL}/delivery/upload_proof.php`, {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       if (data.success) {
-        const completeRes = await apiFetch("http://localhost/Backend/models/delivery/update.php", {
+        const completeRes = await apiFetch(`${API_BASE_URL}/delivery/update.php`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -376,7 +367,7 @@ const createDeliveryJob = async () => {
     };
     if (newCylinderData) payload.new_cylinder = newCylinderData;
 
-    const res = await apiFetch("http://localhost/Backend/models/delivery/update.php", {
+    const res = await apiFetch(`${API_BASE_URL}/delivery/update.php`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -441,7 +432,7 @@ const createDeliveryJob = async () => {
 
     if (!window.confirm("คุณแน่ใจที่จะลบงานนี้? การดำเนินการนี้ไม่สามารถกู้คืนได้")) return;
     try {
-      const res = await apiFetch("http://localhost/Backend/models/delivery/delete_delivery.php", {
+      const res = await apiFetch(`${API_BASE_URL}/delivery/delete_delivery.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delivery_id: deliveryId }),
@@ -461,17 +452,14 @@ const createDeliveryJob = async () => {
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
   const visibleDeliveries = useMemo(() => {
-    // อ่านค่า Role และ ID จาก localStorage โดยตรง
     const currentRole = localStorage.getItem("role") || role;
     const currentStaffId = localStorage.getItem("staff_id") || staffId;
     const currentUsername = localStorage.getItem("username") || username;
 
-    // 1. ถ้าเป็น admin ให้แสดงงานจัดส่ง "ทั้งหมด" ทันที ไม่ต้องกรอง
     if (currentRole === "admin" || currentRole === "ผู้ดูแลระบบ") {
       return deliveries;
     }
 
-    // 2. ถ้าเป็น staff ให้กรองเฉพาะงานของตัวเอง หรือ งานกลางที่ยังไม่มีคนรับ
     return deliveries.filter((d) => {
       const dStaffId = String(d.staff_id ?? d.staffId ?? "");
       const myStaffId = String(currentStaffId ?? "");
@@ -592,7 +580,6 @@ const createDeliveryJob = async () => {
               style={styles.input}
             />
 
-            {/* ดึงยี่ห้อจากตารางถังแก๊ส */}
             <select
               value={newBrand}
               onChange={(e) => setNewBrand(e.target.value)}
@@ -604,7 +591,6 @@ const createDeliveryJob = async () => {
               ))}
             </select>
 
-            {/* ดึงชนิดแก๊สจากตารางถังแก๊ส */}
             <select
               value={newGasType}
               onChange={(e) => setNewGasType(e.target.value)}
@@ -616,7 +602,6 @@ const createDeliveryJob = async () => {
               ))}
             </select>
 
-            {/* ดึงขนาดถังจากตารางถังแก๊ส */}
             <select
               value={newSize}
               onChange={(e) => setNewSize(e.target.value)}
@@ -705,7 +690,6 @@ const createDeliveryJob = async () => {
                   <span>{item.assignedStaff || "ไม่ระบุชื่อ"}</span>
                 </div>
 
-                {/* แสดง Serial Number ถัง เมื่อผูกแล้ว */}
                 {(item.serial_number || item.deliveryCylinderId) && (
                   <div style={styles.row}>
                     <strong>Serial Number ถังที่ส่ง (สแกนรับแล้ว):</strong>
@@ -728,7 +712,6 @@ const createDeliveryJob = async () => {
                 )}
               </div>
 
-              {/* 📷 ยืนยันรับงานด้วย QR Code (Role: Staff) */}
               {role === "staff" && item.status === "pending" && (
                 <div style={styles.sectionBox}>
                   <h3>📷 ยืนยันรับงาน (สแกน QR Code ถังแก๊ส)</h3>
@@ -782,7 +765,7 @@ const createDeliveryJob = async () => {
                   {item.proofImagePath ? (
                     <div>
                       <img
-                        src={`http://localhost/Backend/uploads/${item.proofImagePath}`}
+                        src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
                         alt="proof"
                         style={styles.proofImage}
                       />
@@ -820,7 +803,7 @@ const createDeliveryJob = async () => {
                         <strong>รูปถังที่รับคืน (โปรดดู Serial Number จากรูป):</strong>
                       </p>
                       <img
-                        src={`http://localhost/Backend/uploads/${item.proofImagePath}`}
+                        src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
                         alt="return cylinder"
                         style={styles.proofImage}
                       />
@@ -848,7 +831,7 @@ const createDeliveryJob = async () => {
                 <div style={styles.sectionBox}>
                   <h3>หลักฐานการส่ง</h3>
                   <img
-                    src={`http://localhost/Backend/uploads/${item.proofImagePath}`}
+                    src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
                     alt="proof"
                     style={styles.proofImage}
                   />

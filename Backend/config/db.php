@@ -1,9 +1,9 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=UTF-8");
 
-// แก้ไข CORS ให้ตรงกับ Origin ของ Frontend และรองรับ Credentials
+// CORS Headers
 header("Access-Control-Allow-Origin: http://localhost:5173"); 
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
@@ -14,10 +14,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// ระบุ Port 3307 ในการเชื่อมต่อ MySQL
-$conn = new mysqli("localhost", "root", "", "gas_system", 3307);
+// ==========================================
+// 1. แยก Config ออกจาก Source Code
+// ==========================================
+define('DB_HOST', 'localhost');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_NAME', 'gas_system');
+define('DB_PORT', 3307);
+
+// ==========================================
+// 2. Database Connection
+// ==========================================
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+
 if ($conn->connect_error) {
-    die(json_encode(["success" => false, "message" => "DB connection failed: " . $conn->connect_error]));
+    echo json_encode(["success" => false, "message" => "DB Connection Failed: " . $conn->connect_error]);
+    exit();
 }
-mysqli_set_charset($conn, "utf8mb4");
+
+$conn->set_charset("utf8mb4");
 ?>

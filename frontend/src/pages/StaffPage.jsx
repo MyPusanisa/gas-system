@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 
-const API_BASE = "http://localhost/Backend/models/staff";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost";
+const API_BASE = `${BASE_URL}/Backend/models/staff`;
 
 function StaffPage() {
   const [staffs, setStaffs] = useState([]);
@@ -25,22 +26,33 @@ function StaffPage() {
   });
 
   const [selectedStaff, setSelectedStaff] = useState(1); // staff_id
-const [period, setPeriod] = useState("day"); // 'day' | 'month' | 'year'
-const [history, setHistory] = useState([]);
-const [summary, setSummary] = useState(0);
+  const [period, setPeriod] = useState("day"); // 'day' | 'month' | 'year'
+  const [history, setHistory] = useState([]);
+  const [summary, setSummary] = useState(0);
 
-const fetchHistory = async () => {
-  const res = await fetch(`http://localhost/Backend/models/staff/history.php?staff_id=${selectedStaff}&period=${period}`);
-  const data = await res.json();
-  if (data.success) {
-    setHistory(data.data);
-    setSummary(data.total_completed);
-  }
-};
+  // Fetch History (ครอบด้วย Try-Catch + ป้องกัน Infinite Loop)
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/history.php?staff_id=${selectedStaff}&period=${period}`
+        );
+        if (!res.ok) throw new Error("Network response was not ok");
+        
+        const data = await res.json();
+        if (data.success) {
+          setHistory(data.data);
+          setSummary(data.total_completed);
+        }
+      } catch (err) {
+        console.error("Fetch history error:", err);
+      }
+    };
 
-useEffect(() => {
-  if (selectedStaff) fetchHistory();
-}, [selectedStaff, period]);
+    if (selectedStaff) {
+      fetchHistory();
+    }
+  }, [selectedStaff, period]);
 
   // Clear message after 5 seconds
   useEffect(() => {
@@ -396,18 +408,18 @@ useEffect(() => {
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
-  <tr>
-    <th style={{ ...thStyle, width: "50px" }}>ID</th>
-    <th style={{ ...thStyle, width: "120px" }}>ชื่อ</th>
-    <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
-    <th style={{ ...thStyle, width: "100px" }}>Username</th>
-    <th style={{ ...thStyle, width: "100px" }}>Password</th>
-    <th style={{ ...thStyle, width: "200px" }}>ที่อยู่</th>
-    <th style={{ ...thStyle, width: "90px" }}>สถานะ</th>
-    <th style={{ ...thStyle, width: "80px" }}>จำนวนงาน</th>
-    <th style={{ ...thStyle, width: "140px" }}>จัดการ</th>
-  </tr>
-</thead>
+            <tr>
+              <th style={{ ...thStyle, width: "50px" }}>ID</th>
+              <th style={{ ...thStyle, width: "120px" }}>ชื่อ</th>
+              <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
+              <th style={{ ...thStyle, width: "100px" }}>Username</th>
+              <th style={{ ...thStyle, width: "100px" }}>Password</th>
+              <th style={{ ...thStyle, width: "200px" }}>ที่อยู่</th>
+              <th style={{ ...thStyle, width: "90px" }}>สถานะ</th>
+              <th style={{ ...thStyle, width: "80px" }}>จำนวนงาน</th>
+              <th style={{ ...thStyle, width: "140px" }}>จัดการ</th>
+            </tr>
+          </thead>
         
           <tbody>
             {filteredStaffs.length > 0 ? (
