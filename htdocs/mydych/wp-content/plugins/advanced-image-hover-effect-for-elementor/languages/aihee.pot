@@ -1,0 +1,722 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-10-23 00:03+0530\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: advanced-image-hover-effect-for-elementor.php:89
+msgid "Enjoying our "
+msgstr ""
+
+#: advanced-image-hover-effect-for-elementor.php:89
+msgid "Advanced Image Hover Effect for Elementor?"
+msgstr ""
+
+#: advanced-image-hover-effect-for-elementor.php:89
+msgid ""
+" We hope you liked it! If you feel this plugin helped you, You can give us a "
+"5 star rating!"
+msgstr ""
+
+#: advanced-image-hover-effect-for-elementor.php:89
+msgid "It will motivate us to serve you more !"
+msgstr ""
+
+#: advanced-image-hover-effect-for-elementor.php:91
+msgid "VISIT NOW"
+msgstr ""
+
+#: advanced-image-hover-effect-for-elementor.php:102
+msgid "KAP ASIAs"
+msgstr ""
+
+#: include/aihee-widget.php:28 include/aihee-widget.php:45
+msgid "Advanced Image Hover Effect"
+msgstr ""
+
+#: include/aihee-widget.php:52
+msgid "Layout"
+msgstr ""
+
+#: include/aihee-widget.php:56
+msgid "Layout 1"
+msgstr ""
+
+#: include/aihee-widget.php:57
+msgid "Layout 2"
+msgstr ""
+
+#: include/aihee-widget.php:58
+msgid "Layout 3"
+msgstr ""
+
+#: include/aihee-widget.php:59
+msgid "Layout 4"
+msgstr ""
+
+#: include/aihee-widget.php:60
+msgid "Layout 5"
+msgstr ""
+
+#: include/aihee-widget.php:61
+msgid "Layout 6"
+msgstr ""
+
+#: include/aihee-widget.php:62
+msgid "Layout 7"
+msgstr ""
+
+#: include/aihee-widget.php:63
+msgid "Layout 8"
+msgstr ""
+
+#: include/aihee-widget.php:64
+msgid "Layout 9"
+msgstr ""
+
+#: include/aihee-widget.php:65
+msgid "Layout 10"
+msgstr ""
+
+#: include/aihee-widget.php:66
+msgid "Layout 11"
+msgstr ""
+
+#: include/aihee-widget.php:67
+msgid "Layout 12"
+msgstr ""
+
+#: include/aihee-widget.php:68
+msgid "Layout 13"
+msgstr ""
+
+#: include/aihee-widget.php:69
+msgid "Layout 14"
+msgstr ""
+
+#: include/aihee-widget.php:70
+msgid "Layout 15"
+msgstr ""
+
+#: include/aihee-widget.php:71
+msgid "Layout 16"
+msgstr ""
+
+#: include/aihee-widget.php:72
+msgid "Layout 17"
+msgstr ""
+
+#: include/aihee-widget.php:73
+msgid "Layout 18"
+msgstr ""
+
+#: include/aihee-widget.php:74
+msgid "Layout 19"
+msgstr ""
+
+#: include/aihee-widget.php:75
+msgid "Layout 20"
+msgstr ""
+
+#: include/aihee-widget.php:76
+msgid "Layout 21"
+msgstr ""
+
+#: include/aihee-widget.php:77
+msgid "Layout 22"
+msgstr ""
+
+#: include/aihee-widget.php:78
+msgid "Layout 23"
+msgstr ""
+
+#: include/aihee-widget.php:79
+msgid "Layout 24"
+msgstr ""
+
+#: include/aihee-widget.php:80
+msgid "Layout 25"
+msgstr ""
+
+#: include/aihee-widget.php:81
+msgid "Layout 26"
+msgstr ""
+
+#: include/aihee-widget.php:82
+msgid "Layout 27 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:83
+msgid "Layout 28 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:84
+msgid "Layout 29 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:85
+msgid "Layout 30 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:86
+msgid "Layout 31 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:87
+msgid "Layout 32 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:88
+msgid "Layout 33 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:89
+msgid "Layout 34 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:90
+msgid "Layout 35 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:91
+msgid "Layout 36 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:92
+msgid "Layout 37 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:93
+msgid "Layout 38 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:94
+msgid "Layout 39 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:95
+msgid "Layout 40 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:96
+msgid "Layout 41 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:97
+msgid "Layout 42 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:98
+msgid "Layout 43 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:99
+msgid "Layout 44 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:100
+msgid "Layout 45 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:101
+msgid "Layout 46 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:102
+msgid "Layout 47 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:103
+msgid "Layout 48 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:104
+msgid "Layout 49 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:105
+msgid "Layout 50 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:106
+msgid "Layout 51 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:107
+msgid "Layout 52 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:108
+msgid "Layout 53 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:109
+msgid "Layout 54 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:110
+msgid "Layout 55 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:111
+msgid "Layout 56 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:112
+msgid "Layout 57 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:113
+msgid "Layout 58 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:114
+msgid "Layout 59 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:115
+msgid "Layout 60 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:116
+msgid "Layout 61 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:117
+msgid "Layout 62 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:118
+msgid "Layout 63 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:119
+msgid "Layout 64 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:120
+msgid "Layout 65 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:121
+msgid "Layout 66 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:122
+msgid "Layout 67 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:123
+msgid "Layout 68 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:124
+msgid "Layout 69 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:125
+msgid "Layout 70 (Comming Soon)"
+msgstr ""
+
+#: include/aihee-widget.php:132
+msgid "Image"
+msgstr ""
+
+#: include/aihee-widget.php:151
+msgid "Title"
+msgstr ""
+
+#: include/aihee-widget.php:154
+msgid "Image Hover Effect"
+msgstr ""
+
+#: include/aihee-widget.php:155
+msgid "Enter Title"
+msgstr ""
+
+#: include/aihee-widget.php:162
+msgid "Title Tag"
+msgstr ""
+
+#: include/aihee-widget.php:166
+msgid "H1"
+msgstr ""
+
+#: include/aihee-widget.php:167
+msgid "H2"
+msgstr ""
+
+#: include/aihee-widget.php:168
+msgid "H3"
+msgstr ""
+
+#: include/aihee-widget.php:169
+msgid "H4"
+msgstr ""
+
+#: include/aihee-widget.php:170
+msgid "H5"
+msgstr ""
+
+#: include/aihee-widget.php:171
+msgid "H6"
+msgstr ""
+
+#: include/aihee-widget.php:178
+msgid "Description"
+msgstr ""
+
+#: include/aihee-widget.php:180
+msgid "I am text block."
+msgstr ""
+
+#: include/aihee-widget.php:187
+msgid "Button"
+msgstr ""
+
+#: include/aihee-widget.php:195
+msgid "Type"
+msgstr ""
+
+#: include/aihee-widget.php:199
+msgid "Icon"
+msgstr ""
+
+#: include/aihee-widget.php:200
+msgid "Text"
+msgstr ""
+
+#: include/aihee-widget.php:207
+msgid "First Icon"
+msgstr ""
+
+#: include/aihee-widget.php:221
+msgid "First Text"
+msgstr ""
+
+#: include/aihee-widget.php:224
+msgid "A"
+msgstr ""
+
+#: include/aihee-widget.php:225
+msgid "Enter First Text"
+msgstr ""
+
+#: include/aihee-widget.php:234
+msgid "First Button URL"
+msgstr ""
+
+#: include/aihee-widget.php:236 include/aihee-widget.php:276
+#: include/aihee-widget.php:316
+msgid "https://www.demo-link.com"
+msgstr ""
+
+#: include/aihee-widget.php:245
+msgid "Second Icon"
+msgstr ""
+
+#: include/aihee-widget.php:260
+msgid "Second Text"
+msgstr ""
+
+#: include/aihee-widget.php:263
+msgid "B"
+msgstr ""
+
+#: include/aihee-widget.php:264
+msgid "Enter Second Text"
+msgstr ""
+
+#: include/aihee-widget.php:274
+msgid "Second Button URL"
+msgstr ""
+
+#: include/aihee-widget.php:285
+msgid "Third Icon"
+msgstr ""
+
+#: include/aihee-widget.php:300
+msgid "Third Text"
+msgstr ""
+
+#: include/aihee-widget.php:303
+msgid "C"
+msgstr ""
+
+#: include/aihee-widget.php:304
+msgid "Enter Third Text"
+msgstr ""
+
+#: include/aihee-widget.php:314
+msgid "Third Button URL"
+msgstr ""
+
+#: include/aihee-widget.php:329
+msgid "Title Styling"
+msgstr ""
+
+#: include/aihee-widget.php:336 include/aihee-widget.php:556
+#: include/aihee-widget.php:776 include/aihee-widget.php:1236
+msgid "Padding"
+msgstr ""
+
+#: include/aihee-widget.php:347 include/aihee-widget.php:567
+#: include/aihee-widget.php:787 include/aihee-widget.php:1247
+msgid "Margin"
+msgstr ""
+
+#: include/aihee-widget.php:366 include/aihee-widget.php:586
+#: include/aihee-widget.php:835 include/aihee-widget.php:972
+#: include/aihee-widget.php:1259
+msgid "Normal"
+msgstr ""
+
+#: include/aihee-widget.php:372 include/aihee-widget.php:461
+#: include/aihee-widget.php:592 include/aihee-widget.php:681
+#: include/aihee-widget.php:841 include/aihee-widget.php:892
+msgid "Color"
+msgstr ""
+
+#: include/aihee-widget.php:391 include/aihee-widget.php:480
+#: include/aihee-widget.php:611 include/aihee-widget.php:700
+#: include/aihee-widget.php:860 include/aihee-widget.php:911
+#: include/aihee-widget.php:987 include/aihee-widget.php:1058
+#: include/aihee-widget.php:1274 include/aihee-widget.php:1345
+msgid "Border"
+msgstr ""
+
+#: include/aihee-widget.php:398 include/aihee-widget.php:487
+#: include/aihee-widget.php:618 include/aihee-widget.php:707
+#: include/aihee-widget.php:867 include/aihee-widget.php:918
+#: include/aihee-widget.php:994 include/aihee-widget.php:1065
+#: include/aihee-widget.php:1281 include/aihee-widget.php:1352
+msgid "Border Radius"
+msgstr ""
+
+#: include/aihee-widget.php:417 include/aihee-widget.php:506
+#: include/aihee-widget.php:637 include/aihee-widget.php:726
+msgid "Text Shadow"
+msgstr ""
+
+#: include/aihee-widget.php:424 include/aihee-widget.php:513
+#: include/aihee-widget.php:644 include/aihee-widget.php:733
+#: include/aihee-widget.php:1012 include/aihee-widget.php:1083
+#: include/aihee-widget.php:1299 include/aihee-widget.php:1370
+msgid "Transition css"
+msgstr ""
+
+#: include/aihee-widget.php:426 include/aihee-widget.php:515
+#: include/aihee-widget.php:646 include/aihee-widget.php:735
+#: include/aihee-widget.php:1014 include/aihee-widget.php:1085
+#: include/aihee-widget.php:1301 include/aihee-widget.php:1372
+msgid "all 0.3s linear"
+msgstr ""
+
+#: include/aihee-widget.php:436 include/aihee-widget.php:525
+#: include/aihee-widget.php:656 include/aihee-widget.php:745
+#: include/aihee-widget.php:1024 include/aihee-widget.php:1095
+#: include/aihee-widget.php:1311 include/aihee-widget.php:1382
+msgid "Transform css"
+msgstr ""
+
+#: include/aihee-widget.php:438 include/aihee-widget.php:527
+#: include/aihee-widget.php:658 include/aihee-widget.php:747
+#: include/aihee-widget.php:1026 include/aihee-widget.php:1097
+#: include/aihee-widget.php:1313 include/aihee-widget.php:1384
+msgid "rotate(25deg) scale(1.2)"
+msgstr ""
+
+#: include/aihee-widget.php:455 include/aihee-widget.php:675
+#: include/aihee-widget.php:886 include/aihee-widget.php:1043
+#: include/aihee-widget.php:1330
+msgid "Hover"
+msgstr ""
+
+#: include/aihee-widget.php:549
+msgid "Description Styling"
+msgstr ""
+
+#: include/aihee-widget.php:769
+msgid "Button Icon/Text Styling"
+msgstr ""
+
+#: include/aihee-widget.php:798
+msgid "Size"
+msgstr ""
+
+#: include/aihee-widget.php:942
+msgid "Image Styling"
+msgstr ""
+
+#: include/aihee-widget.php:953
+msgid "Max Width"
+msgstr ""
+
+#: include/aihee-widget.php:1119
+msgid "Background Styling"
+msgstr ""
+
+#: include/aihee-widget.php:1141
+msgid "Background Image Styling"
+msgstr ""
+
+#: include/aihee-widget.php:1152
+msgid "Min. Height"
+msgstr ""
+
+#: include/aihee-widget.php:1170
+msgid "Background Size"
+msgstr ""
+
+#: include/aihee-widget.php:1174 include/aihee-widget.php:1440
+msgid "Auto"
+msgstr ""
+
+#: include/aihee-widget.php:1175
+msgid "Cover"
+msgstr ""
+
+#: include/aihee-widget.php:1176
+msgid "Contain"
+msgstr ""
+
+#: include/aihee-widget.php:1186
+msgid "Background Repeat"
+msgstr ""
+
+#: include/aihee-widget.php:1190
+msgid "No-repeat"
+msgstr ""
+
+#: include/aihee-widget.php:1191
+msgid "Repeat"
+msgstr ""
+
+#: include/aihee-widget.php:1192
+msgid "Repeat-x"
+msgstr ""
+
+#: include/aihee-widget.php:1193
+msgid "Repeat-y"
+msgstr ""
+
+#: include/aihee-widget.php:1203
+msgid "Background Position"
+msgstr ""
+
+#: include/aihee-widget.php:1207
+msgid "Center Center"
+msgstr ""
+
+#: include/aihee-widget.php:1208
+msgid "Center Left"
+msgstr ""
+
+#: include/aihee-widget.php:1209
+msgid "Center Right"
+msgstr ""
+
+#: include/aihee-widget.php:1210
+msgid "Top Center"
+msgstr ""
+
+#: include/aihee-widget.php:1211
+msgid "Top Left"
+msgstr ""
+
+#: include/aihee-widget.php:1212
+msgid "Top Right"
+msgstr ""
+
+#: include/aihee-widget.php:1213
+msgid "Bottom Center"
+msgstr ""
+
+#: include/aihee-widget.php:1214
+msgid "Bottom Left"
+msgstr ""
+
+#: include/aihee-widget.php:1215
+msgid "Bottom Right"
+msgstr ""
+
+#: include/aihee-widget.php:1229
+msgid "Main Wrapper Styling"
+msgstr ""
+
+#: include/aihee-widget.php:1403
+msgid "Z-Index"
+msgstr ""
+
+#: include/aihee-widget.php:1421 include/aihee-widget.php:1432
+msgid "Overflow"
+msgstr ""
+
+#: include/aihee-widget.php:1424
+msgid "Enable"
+msgstr ""
+
+#: include/aihee-widget.php:1425
+msgid "Disable"
+msgstr ""
+
+#: include/aihee-widget.php:1436
+msgid "Unset"
+msgstr ""
+
+#: include/aihee-widget.php:1437
+msgid "Visible"
+msgstr ""
+
+#: include/aihee-widget.php:1438
+msgid "Hidden"
+msgstr ""
+
+#: include/aihee-widget.php:1439
+msgid "Scroll"
+msgstr ""
+
+#: include/aihee-widget.php:1441
+msgid "Initial"
+msgstr ""
+
+#: include/aihee-widget.php:1442
+msgid "Inherit"
+msgstr ""
+
+#: include/aihee-widget.php:1459
+msgid "Extra Styling"
+msgstr ""
+
+#: include/aihee-widget.php:1469
+msgid "Inner Border Color"
+msgstr ""
+
+#: include/aihee-widget.php:1482
+msgid "Content Background Color"
+msgstr ""
+
+#: include/aihee-widget.php:1495
+msgid "Offset"
+msgstr ""
+
+#: include/aihee-widget.php:1517
+msgid "After Effect Color"
+msgstr ""
+
+#: include/aihee-widget.php:1531
+msgid "Rotate"
+msgstr ""

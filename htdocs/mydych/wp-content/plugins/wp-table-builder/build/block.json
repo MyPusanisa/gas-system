@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "version": "2.0.2",
+  "name": "wptb/table-block",
+  "title": "WP Table Builder",
+  "category": "design",
+  "description": "WP Table Builder - Drag and Drop Responsive Table Builder Plugin for WordPress",
+  "keywords": [
+    "table",
+    "wp-table-builder",
+    "wptb",
+    "cell",
+    "row",
+    "column"
+  ],
+  "allowedBlocks": [],
+  "attributes": {
+    "id": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "default": ""
+    }
+  },
+  "supports": {
+    "align": [
+      "wide",
+      "full",
+      "none"
+    ]
+  },
+  "textdomain": "wp-table-builder",
+  "editorStyle": [
+    "wptb-frontend-style",
+    "wptb-editor-style",
+    "wptb-gutenberg-style",
+    "wptb-pro-frontend-style",
+    "wptb-pro-editor-style"
+  ]
+}

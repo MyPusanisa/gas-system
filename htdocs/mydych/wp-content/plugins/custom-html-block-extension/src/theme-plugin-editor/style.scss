@@ -1,0 +1,23 @@
+// Monaco Editor common styles
+@use "../components/monaco-editor/style";
+
+// Monaco Editor
+#monaco-editor {
+	height: calc(100vh - 295px);
+	min-height: 60vh;
+	margin-right: 4em;
+
+	@media screen and (max-width: 782px) {
+		margin-right: 0;
+	}
+}
+
+// Original editor textarea
+#template textarea#newcontent {
+	position: fixed !important;
+	top: -9999px !important;
+	left: -9999px !important;
+	z-index: -1;
+	display: block !important;
+	opacity: 0 !important;
+}

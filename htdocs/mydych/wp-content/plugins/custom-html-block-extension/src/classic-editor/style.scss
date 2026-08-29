@@ -1,0 +1,52 @@
+// WordPress base styles
+@use "@wordpress/base-styles/variables" as variables;
+@use "@wordpress/base-styles/colors" as colors;
+
+// Monaco Editor common styles
+@use "../components/monaco-editor/style";
+
+// Monaco Editor
+#monaco-editor {
+	min-height: 300px;
+}
+
+// Toolbar
+#ed_toolbar { /* stylelint-disable-line selector-id-pattern */
+	z-index: 6;
+}
+
+// Original editor textarea
+#wp-content-editor-container textarea.wp-editor-area {
+	position: fixed !important;
+	top: -9999px !important;
+	left: -9999px !important;
+	z-index: -1;
+	display: block !important;
+	opacity: 0 !important;
+}
+
+// Apply theme color
+$themes: (
+	"light"    : #04a4cc,
+	"modern"   : #3858e9,
+	"blue"     : #e1a948,
+	"coffee"   : #c7a589,
+	"ectoplasm": #a3b745,
+	"midnight" : #e14d43,
+	"ocean"    : #9ebaa0,
+	"sunrise"  : #dd823b,
+);
+
+@each $class, $value in $themes {
+
+	body.admin-color-#{$class} .chbe-dialog {
+
+		.chbe-dialog__setting {
+			border-color: $value;
+		}
+
+		.chbe-dialog__subtitle {
+			background: $value;
+		}
+	}
+}

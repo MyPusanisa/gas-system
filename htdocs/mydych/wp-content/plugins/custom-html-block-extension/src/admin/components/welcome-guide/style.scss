@@ -1,0 +1,9 @@
+@use "~@wordpress/base-styles/variables" as variables;
+
+.chbe-admin-welcome-guide-modal {
+	width: 312px;
+
+	img {
+		margin-bottom: variables.$grid-unit-20;
+	}
+}

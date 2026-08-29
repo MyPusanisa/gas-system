@@ -1,0 +1,712 @@
+<?php
+/**
+ * class-groups-utility.php
+ *
+ * Copyright (c) "kento" Karim Rahimpur www.itthinx.com
+ *
+ * This code is released under the GNU General Public License.
+ * See COPYRIGHT.txt and LICENSE.txt.
+ *
+ * This code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * This header and all notices must be kept intact.
+ *
+ * @author Karim Rahimpur
+ * @package groups
+ * @since groups 1.0.0
+ */
+
+if ( !defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+// phpcs:disable PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+/**
+ * Utility functions.
+ */
+class Groups_Utility {
+
+	/**
+	 * Transient expiration, 1 minute.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @var integer
+	 */
+	const TREE_TRANSIENT_EXPIRATION = 60;
+
+	/**
+	 * Data cache during requests to avoid expensive operations.
+	 *
+	 * @since 3.7.0
+	 *
+	 * @var array
+	 */
+	private static $cache = array();
+
+	/**
+	 * Register action hooks.
+	 */
+	public static function boot() {
+		add_action( 'groups_created_group', array( __CLASS__, 'groups_created_group' ) );
+		add_action( 'groups_updated_group', array( __CLASS__, 'groups_updated_group' ) );
+		add_action( 'groups_deleted_group', array( __CLASS__, 'groups_deleted_group' ) );
+	}
+
+	/**
+	 * Delete tree transient to refresh when new group is created.
+	 *
+	 * @param int $group_id
+	 */
+	public static function groups_created_group( $group_id ) {
+		delete_transient( 'groups_utility_tree' );
+	}
+
+	/**
+	 * Delete tree transient to refresh when a group is updated.
+	 *
+	 * @param int $group_id
+	 */
+	public static function groups_updated_group( $group_id ) {
+		delete_transient( 'groups_utility_tree' );
+	}
+
+	/**
+	 * Delete tree transient to refresh when a group is deleted.
+	 *
+	 * @param int $group_id
+	 */
+	public static function groups_deleted_group( $group_id ) {
+		delete_transient( 'groups_utility_tree' );
+	}
+
+	/**
+	 * Checks an id (0 is accepted => anonymous).
+	 *
+	 * @param string|int $id
+	 * @return int|boolean if validated, the id as an int, otherwise false
+	 */
+	public static function id( $id ) {
+		$result = false;
+		if ( is_numeric( $id ) ) {
+			$id = intval( $id );
+			//if ( $id > 0 ) {
+			if ( $id >= 0 ) { // 0 => anonymous
+				$result = $id;
+			}
+		}
+		return $result;
+	}
+
+	/**
+	 * Returns an array of blog_ids for current blogs.
+	 *
+	 * @return array of int with blog ids
+	 */
+	public static function get_blogs() {
+		global $wpdb;
+		$result = array();
+		if ( is_multisite() ) {
+			$blogs = $wpdb->get_results( $wpdb->prepare(
+				"SELECT blog_id FROM $wpdb->blogs WHERE site_id = %d AND archived = '0' AND spam = '0' AND deleted = '0' ORDER BY registered DESC",
+				$wpdb->siteid
+			) );
+			if ( is_array( $blogs ) ) {
+				foreach ( $blogs as $blog ) {
+					$result[] = $blog->blog_id;
+				}
+			}
+		} else {
+			$result[] = get_current_blog_id();
+		}
+		return $result;
+	}
+
+	/**
+	 * Object sort helper, sort by name property.
+	 *
+	 * @param object $o1
+	 * @param object $o2
+	 *
+	 * @return int
+	 */
+	private static function namesort( $o1, $o2 ) {
+		return strcmp( $o1->name, $o2->name );
+	}
+
+	/**
+	 * Provide the groups tree.
+	 *
+	 * @since 3.7.0
+	 *
+	 * @access private
+	 *
+	 * @return object[]
+	 */
+	public static function get_tree() {
+
+		global $wpdb;
+
+		if ( isset( self::$cache['tree'] ) ) {
+			return self::$cache['tree'];
+		}
+
+		$tree = get_transient( 'groups_utility_tree' );
+		if ( is_array( $tree ) ) {
+			self::$cache['tree'] = $tree;
+			return $tree;
+		}
+
+		$group_table = _groups_get_tablename( 'group' );
+		// Note that ORDER BY name is not necessary as it is done after obtaining the rows during processing below
+		$map = $wpdb->get_results( "SELECT group_id, parent_id, name FROM $group_table" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		$prune = array();
+
+		$objects = array();
+		foreach ( $map as $entry ) {
+			if ( $entry->parent_id !== null ) {
+				if ( !array_key_exists( $entry->parent_id, $objects ) ) {
+					// create parent entry
+					$p = new stdClass();
+					$p->name = null; // completed below
+					$p->group_id = $entry->parent_id;
+					$p->children = array();
+					$objects[$p->group_id] = $p;
+				}
+			}
+
+			if ( !array_key_exists( $entry->group_id, $objects ) ) {
+				$o = new stdClass();
+				$o->name = $entry->name;
+				$o->group_id = $entry->group_id;
+				$o->children = array();
+				$objects[$o->group_id] = $o;
+				if ( $entry->parent_id !== null ) {
+					$objects[$entry->parent_id]->children[$entry->group_id] = $o;
+					uasort( $objects[$entry->parent_id]->children, array( __CLASS__, 'namesort' ) );
+				}
+			} else {
+				// complete name from parent entry created
+				if ( $objects[$entry->group_id]->name === null ) {
+					$objects[$entry->group_id]->name = $entry->name;
+				}
+				if ( $entry->parent_id !== null ) {
+					$objects[$entry->parent_id]->children[$entry->group_id] = $objects[$entry->group_id];
+					uasort( $objects[$entry->parent_id]->children, array( __CLASS__, 'namesort' ) );
+				}
+			}
+
+			if ( $entry->parent_id !== null ) {
+				$prune[] = $entry->group_id;
+			}
+		}
+
+		foreach ( $prune as $group_id ) {
+			unset( $objects[$group_id] );
+		}
+
+		uasort( $objects, array( __CLASS__, 'namesort' ) );
+
+		set_transient( 'groups_utility_tree', $objects, self::TREE_TRANSIENT_EXPIRATION );
+
+		self::$cache['tree'] = $objects;
+
+		return $objects;
+	}
+
+	/**
+	 * Render options from tree for select.
+	 *
+	 * @since 3.7.0
+	 *
+	 * @param array $tree
+	 * @param string $output
+	 * @param int $level
+	 */
+	public static function render_tree_options( &$tree, &$output, $level = 0, $selected = array() ) {
+		foreach ( $tree as $group_id => $object ) {
+			$output .= sprintf(
+				'<option class="node" value="%d" %s>',
+				esc_attr( $group_id ),
+				in_array( $group_id, $selected ) ? 'selected' : ''
+			);
+			// If specific filtering is done on the group data, we might need to pass it through this call and use the name of the $group object instead:
+			// $group = Groups_Group::read( $group_id );
+			if ( $level > 0 ) {
+				$output .= str_repeat( "&nbsp;", $level ) . "&llcorner;";
+			}
+			$output .= $object->name ? stripslashes( wp_filter_nohtml_kses( $object->name ) ) : '';
+			$output .= '</option>';
+			if ( !empty( $object->children ) ) {
+				self::render_tree_options( $object->children, $output, $level + 1, $selected );
+			}
+		}
+	}
+
+	/**
+	 * Render the group tree to the $output parameter passed by reference.
+	 *
+	 * @since 3.7.0
+	 *
+	 * @param array $tree
+	 * @param string $output
+	 */
+	public static function render_tree( &$tree, &$output, $linked = false ) {
+		$output .= '<ul class="groups-tree">';
+		foreach ( $tree as $group_id => $object ) {
+			$output .= '<li class="groups-tree-node">';
+			// If specific filtering is done on the group data, we might need to pass it through this call and use the name of the $group object instead:
+			// $group = Groups_Group::read( $group_id );
+			if ( $linked ) {
+				$edit_url = add_query_arg(
+					array(
+						'group_id' => intval( $object->group_id ),
+						'action' => 'edit'
+					),
+					get_admin_url( null, 'admin.php?page=groups-admin' )
+				);
+				$output .= sprintf( '<a href="%s">', $edit_url );
+			}
+			$output .= $object->name ? stripslashes( wp_filter_nohtml_kses( $object->name ) ) : '';
+			if ( $linked ) {
+				$output .= '</a>';
+			}
+			if ( !empty( $object->children ) ) {
+				self::render_tree( $object->children, $output, $linked );
+			}
+			$output .= '</li>';
+		}
+		$output .= '</ul>';
+	}
+
+	/**
+	 * Get the tree hierarchy of groups.
+	 *
+	 * This method is inefficent. Internal uses replaced by get_tree() as of 3.7.0.
+	 *
+	 * @deprecated since 3.7.0
+	 *
+	 * @param array $tree
+	 *
+	 * @return array
+	 */
+	public static function get_group_tree( &$tree = null, $linked = false ) {
+		global $wpdb;
+		$group_table = _groups_get_tablename( 'group' );
+		if ( $tree === null ) {
+			$tree = array();
+			$root_groups = $wpdb->get_results( "SELECT group_id FROM $group_table WHERE parent_id IS NULL ORDER BY name" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( $root_groups ) {
+				foreach ( $root_groups as $root_group ) {
+					$group_id = Groups_Utility::id( $root_group->group_id );
+					$tree[$group_id] = array();
+				}
+			}
+			self::get_group_tree( $tree );
+			self::$cache['tree'] = $tree;
+		} else {
+			foreach ( $tree as $group_id => $nodes ) {
+				$children = $wpdb->get_results( $wpdb->prepare(
+					"SELECT group_id FROM $group_table WHERE parent_id = %d ORDER BY name", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					Groups_Utility::id( $group_id )
+				) );
+				foreach ( $children as $child ) {
+					$tree[$group_id][$child->group_id] = array();
+				}
+				self::get_group_tree( $tree[$group_id] );
+			}
+		}
+		return $tree;
+	}
+
+	/**
+	 * Render options from tree for select.
+	 *
+	 * @deprecated since 3.7.0. Internal uses replaced by get_tree_options() as of 3.7.0.
+	 *
+	 * @since 2.19.0
+	 *
+	 * @param array $tree
+	 * @param string $output
+	 * @param int $level
+	 */
+	public static function render_group_tree_options( &$tree, &$output, $level = 0, $selected = array() ) {
+		foreach ( $tree as $group_id => $nodes ) {
+			$output .= sprintf(
+				'<option class="node" value="%d" %s>',
+				esc_attr( $group_id ),
+				in_array( $group_id, $selected ) ? 'selected' : ''
+			);
+			$group = Groups_Group::read( $group_id );
+			if ( $group ) {
+				if ( $level > 0 ) {
+					$output .= str_repeat( "&nbsp;", $level ) . "&llcorner;";
+				}
+				$output .= $group->name ? stripslashes( wp_filter_nohtml_kses( $group->name ) ) : '';
+			}
+			$output .= '</option>';
+			if ( !empty( $nodes ) ) {
+				self::render_group_tree_options( $nodes, $output, $level + 1, $selected );
+			}
+		}
+	}
+
+	/**
+	 * Render the group tree to the $output parameter passed by reference.
+	 *
+	 * @deprecated since 3.7.0. Internal uses replaced by render_tree() as of 3.7.0.
+	 *
+	 * @param array $tree
+	 * @param string $output
+	 */
+	public static function render_group_tree( &$tree, &$output, $linked = false ) {
+		$output .= '<ul class="groups-tree">';
+		foreach ( $tree as $group_id => $nodes ) {
+			$output .= '<li class="groups-tree-node">';
+			$group = Groups_Group::read( $group_id );
+			if ( $group ) {
+				if ( $linked ) {
+					$edit_url = add_query_arg(
+						array(
+							'group_id' => intval( $group->group_id ),
+							'action' => 'edit'
+						),
+						get_admin_url( null, 'admin.php?page=groups-admin' )
+					);
+					$output .= sprintf( '<a href="%s">', $edit_url );
+				}
+				$output .= $group->name ? stripslashes( wp_filter_nohtml_kses( $group->name ) ) : '';
+				if ( $linked ) {
+					$output .= '</a>';
+				}
+			}
+			if ( !empty( $nodes ) ) {
+				self::render_group_tree( $nodes, $output, $linked );
+			}
+			$output .= '</li>';
+		}
+		$output .= '</ul>';
+	}
+
+	/**
+	 * Compares the two object's names, used for groups and
+	 * capabilities, i.e. Groups_Group and Groups_Capability can be compared
+	 * if both are of the same class. Otherwise this will return 0.
+	 *
+	 * @param Groups_Group|Groups_Capability $o1
+	 * @param Groups_Group|Groups_Capability $o2 must match the class of $o1
+	 *
+	 * @return number
+	 */
+	public static function cmp( $o1, $o2 ) {
+		$result = 0;
+		if ( $o1 instanceof Groups_Group && $o2 instanceof Groups_Group ) {
+			$result = strcmp( $o1->get_name(), $o2->get_name() );
+		} else if ( $o1 instanceof Groups_Capability && $o2 instanceof Groups_Capability ) {
+			$result = strcmp( $o1->get_capability(), $o2->get_capability() );
+		}
+		return $result;
+	}
+
+	/**
+	 * Unslash, sanitize and verify nonce.
+	 *
+	 * @since 3.11.0
+	 *
+	 * @see wp_unslash()
+	 * @see sanitize_text_field()
+	 * @see wp_verify_nonce()
+	 *
+	 * @param string $nonce nonce value
+	 * @param string|number $action
+	 *
+	 * @return int|boolean
+	 */
+	public static function verify_nonce( $nonce, $action = -1 ) {
+		return wp_verify_nonce( sanitize_text_field( wp_unslash( $nonce ) ), $action );
+	}
+
+	/**
+	 * Unslash, sanitize and verify named nonce provided via $_POST.
+	 *
+	 * @param string $name nonce name
+	 * @param string|number $action
+	 *
+	 * @return int|boolean
+	 */
+	public static function verify_post_nonce( $name, $action = -1 ) {
+		$result = false;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_POST[$name] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+			$result = self::verify_nonce( $_POST[$name], $action );
+		}
+		return $result;
+	}
+
+	/**
+	 * Unslash, sanitize and verify named nonce provided via $_GET.
+	 *
+	 * @param string $name nonce name
+	 * @param string|number $action
+	 *
+	 * @return int|boolean
+	 */
+	public static function verify_get_nonce( $name, $action = -1 ) {
+		$result = false;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET[$name] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+			$result = self::verify_nonce( $_GET[$name], $action );
+		}
+		return $result;
+	}
+
+	/**
+	 * Unslash, sanitize and verify named nonce provided via $_REQUEST.
+	 *
+	 * @param string $name nonce name
+	 * @param string|number $action
+	 *
+	 * @return int|boolean
+	 */
+	public static function verify_request_nonce( $name, $action = -1 ) {
+		$result = false;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_REQUEST[$name] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+			$result = self::verify_nonce( $_REQUEST[$name], $action );
+		}
+		return $result;
+	}
+
+	/**
+	 * Sanitize the given input value, applies wp_unslash() and then sanitize_text_field() while
+	 * preserving the original type of the value.
+	 *
+	 * @since 3.11.0
+	 *
+	 * @param string|number|boolean|array $value
+	 *
+	 * @return null|string|boolean|array
+	 */
+	public static function sanitize_input( $value ) {
+		$result = null;
+		if ( is_numeric( $value ) || is_string( $value ) ) {
+			$original_value = $value;
+			$result = sanitize_text_field( wp_unslash( $value ) );
+			if ( is_int( $original_value ) ) {
+				$result = intval( $result );
+			} else if ( is_float( $original_value ) ) {
+				$result = floatval( $result );
+			} else if ( is_bool( $original_value ) ) {
+				$result = boolval( $result );
+			}
+		} else if ( is_array( $value ) ) {
+			$result = array_map( array( __CLASS__, 'sanitize_input' ), $value );
+		}
+		return $result;
+	}
+
+	/**
+	 * Sanitized form data from $_POST.
+	 *
+	 * @since 3.11.0
+	 *
+	 * @param string $name
+	 *
+	 * @return null|string
+	 */
+	public static function sanitize_post( $name ) {
+		$result = null;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing,  WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_POST[$name] ) && ( is_numeric( $_POST[$name] ) || is_string( $_POST[$name] ) || is_array( $_POST[$name] ) ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Recommended
+			$result = self::sanitize_input( $_POST[$name] );
+		}
+		return $result;
+	}
+
+	/**
+	 * Sanitized form data from $_GET.
+	 *
+	 * @since 3.11.0
+	 *
+	 * @param string $name
+	 *
+	 * @return null|string
+	 */
+	public static function sanitize_get( $name ) {
+		$result = null;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing,  WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET[$name] ) && ( is_numeric( $_GET[$name] ) || is_string( $_GET[$name] ) || is_array( $_GET[$name] ) ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Recommended
+			$result = self::sanitize_input( $_GET[$name] );
+		}
+		return $result;
+	}
+
+	/**
+	 * Sanitized form data from $_REQUEST.
+	 *
+	 * @since 3.11.0
+	 *
+	 * @param string $name
+	 *
+	 * @return null|string
+	 */
+	public static function sanitize_request( $name ) {
+		$result = null;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing,  WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_REQUEST[$name] ) && ( is_numeric( $_REQUEST[$name] ) || is_string( $_REQUEST[$name] ) || is_array( $_REQUEST[$name] ) ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Recommended
+			$result = self::sanitize_input( $_REQUEST[$name] );
+		}
+		return $result;
+	}
+
+	/**
+	 * Provide the current URL, sanitized.
+	 *
+	 * @since 3.11.0
+	 *
+	 * @return string
+	 */
+	public static function get_current_url() {
+		$host = wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$uri  = wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		return sanitize_url( ( is_ssl() ? 'https://' : 'http://' ) . $host . $uri );
+	}
+}
+
+/**
+ * Unslash, sanitize and verify nonce.
+ *
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::verify_nonce()
+ *
+ * @param string $nonce
+ * @param string|number $action
+ *
+ * @return int|boolean
+ */
+function groups_verify_nonce( $nonce, $action = -1 ) {
+	return Groups_Utility::verify_nonce( $nonce, $action );
+}
+
+/**
+ * Unslash, sanitize and verify named nonce provided via $_POST.
+ *
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::verify_nonce()
+ *
+ * @param string $name nonce name
+ * @param string|number $action
+ *
+ * @return int|boolean
+ */
+function groups_verify_post_nonce( $name, $action = -1 ) {
+	return Groups_Utility::verify_post_nonce( $name, $action );
+}
+
+/**
+ * Unslash, sanitize and verify named nonce provided via $_GET.
+ *
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::verify_nonce()
+ *
+ * @param string $name nonce name
+ * @param string|number $action
+ *
+ * @return int|boolean
+ */
+function groups_verify_get_nonce( $name, $action = -1 ) {
+	return Groups_Utility::verify_get_nonce( $name, $action );
+}
+
+/**
+ * Unslash, sanitize and verify named nonce provided via $_GET.
+ *
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::verify_nonce()
+ *
+ * @param string $name nonce name
+ * @param string|number $action
+ *
+ * @return int|boolean
+ */
+function groups_verify_request_nonce( $name, $action = -1 ) {
+	return Groups_Utility::verify_request_nonce( $name, $action );
+}
+
+/**
+ * @see Groups_Utility::sanitize_input()
+ *
+ * @param string|number|boolean|array $value
+ *
+ * @return null|string|boolean|array
+ */
+function groups_sanitize_input( $value ) {
+	return Groups_Utility::sanitize_input( $value );
+}
+
+/**
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::sanitize_post()
+ *
+ * @param string $name
+ *
+ * @return null|string
+ */
+function groups_sanitize_post( $name ) {
+	return Groups_Utility::sanitize_post( $name );
+}
+
+/**
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::sanitize_get()
+ *
+ * @param string $name
+ *
+ * @return null|string
+ */
+function groups_sanitize_get( $name ) {
+	return Groups_Utility::sanitize_get( $name );
+}
+
+/**
+ * @since 3.11.0
+ *
+ * @see Groups_Utility::sanitize_request()
+ *
+ * @param string $name
+ *
+ * @return null|string
+ */
+function groups_sanitize_request( $name ) {
+	return Groups_Utility::sanitize_request( $name );
+}
+
+/**
+ * Provide the current URL, sanitized.
+ *
+ * @since 3.11.0
+ *
+ * @return string
+ */
+function groups_get_current_url() {
+	return Groups_Utility::get_current_url();
+}
+
+Groups_Utility::boot();

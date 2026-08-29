@@ -1,0 +1,21 @@
+{
+  "name": "dotcamp/wp-table-builder",
+  "autoload": {
+    "psr-4": {
+      "WPTableBuilder\\": "inc/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Saad",
+      "email": "sakib.saad.khan@gmail.com"
+    }
+  ],
+  "require-dev": {
+    "php-stubs/wordpress-stubs": "^6.7"
+  },
+  "require": {
+    "freemius/wordpress-sdk": "^2.13",
+    "ezyang/htmlpurifier": "^4.19"
+  }
+}

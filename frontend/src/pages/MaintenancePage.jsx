@@ -11,6 +11,9 @@ function MaintenancePage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // --- Bulk Selection State ---
+  const [selectedSerialNumbers, setSelectedSerialNumbers] = useState([]);
+
   // --- Dynamic Option Lists ---
   const [typeOptions, setTypeOptions] = useState(["ตรวจสภาพ", "บำรุงรักษา", "ซ่อมแซม"]);
   const [resultOptions, setResultOptions] = useState(["ผ่าน", "ไม่ผ่าน", "รอผลตรวจ"]);
@@ -214,35 +217,56 @@ function MaintenancePage({
     });
   }, [maintenances, historySearchTerm]);
 
+  const handleToggleSelect = (serialNumber) => {
+    setSelectedSerialNumbers((prev) =>
+      prev.includes(serialNumber)
+        ? prev.filter((sn) => sn !== serialNumber)
+        : [...prev, serialNumber]
+    );
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allFilteredSerials = filteredDueCylinders.map((c) => c.serial_number);
+      setSelectedSerialNumbers(allFilteredSerials);
+    } else {
+      setSelectedSerialNumbers([]);
+    }
+  };
+
   const saveMaintenance = async () => {
-    if (!selectedSerialNumber || !maintenanceType || !result) {
-      alert("กรุณาเลือกถัง ประเภทการตรวจ และผลการตรวจให้ครบถ้วน");
+    const targets = selectedSerialNumbers.length > 0 
+      ? selectedSerialNumbers 
+      : (selectedSerialNumber ? [selectedSerialNumber] : []);
+
+    if (targets.length === 0 || !maintenanceType || !result) {
+      alert("กรุณาเลือกถังอย่างน้อย 1 รายการ รวมถึงเลือกประเภทการตรวจ และผลการตรวจให้ครบถ้วน");
       return;
     }
 
     setSaving(true);
     const fullDescription = [selectedNote, description].filter(Boolean).join(" | ");
 
-    const payload = {
-      serial_number: selectedSerialNumber,
-      maintenance_type: maintenanceType,
-      result: result,
-      next_action: nextAction,
-      description: fullDescription,
-    };
-
     try {
       const res = await fetch(`${API_BASE_URL}/save_maintenance.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          serial_numbers: targets,
+          maintenance_type: maintenanceType,
+          result: result,
+          next_action: nextAction,
+          description: fullDescription,
+        }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        alert("บันทึกผลตรวจเรียบร้อยแล้ว");
+        alert(data.message || `บันทึกผลตรวจเรียบร้อยแล้ว (${targets.length} รายการ)`);
+        
         setSelectedSerialNumber("");
+        setSelectedSerialNumbers([]);
         setMaintenanceType("");
         setResult("");
         setNextAction("");
@@ -333,26 +357,41 @@ function MaintenancePage({
       </div>
 
       <div style={formCardStyle}>
-        <h2 style={{ marginTop: 0, color: "white" }}>บันทึกผลตรวจ</h2>
+        <h2 style={{ marginTop: 0, color: "white" }}>
+          บันทึกผลตรวจ {selectedSerialNumbers.length > 0 && `(เลือกอยู่ ${selectedSerialNumbers.length} รายการ)`}
+        </h2>
         <div style={formGridStyle}>
+          {/* ช่องที่ 1 */}
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>เลือกถังที่ตรวจ (ถึงกำหนดตรวจ) *</label>
-            <select
-              value={selectedSerialNumber}
-              onChange={(e) => setSelectedSerialNumber(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">-- เลือกถังที่ถึงกำหนดตรวจ --</option>
-              {dueCylinders.map((cyl) => (
-                <option key={cyl.serial_number} value={cyl.serial_number}>
-                  {cyl.serial_number} - {cyl.brand || "LPG"} ({cyl.size}) [กำหนดตรวจ: {cyl.next_check_date}]
-                </option>
-              ))}
-            </select>
+            <label style={labelStyle}>
+              เลือกถังแบบเดี่ยว<br />(หรือติ๊กเลือกหลายรายการจากตารางด้านล่าง)
+            </label>
+            <div style={inputWithBtnStyle}>
+              <select
+                value={selectedSerialNumber}
+                onChange={(e) => {
+                  setSelectedSerialNumber(e.target.value);
+                  if (e.target.value) setSelectedSerialNumbers([]);
+                }}
+                disabled={selectedSerialNumbers.length > 0}
+                style={inputStyle}
+              >
+                <option value="">-- เลือกถังที่ถึงกำหนดตรวจ --</option>
+                {dueCylinders.map((cyl) => (
+                  <option key={cyl.serial_number} value={cyl.serial_number}>
+                    {cyl.serial_number} - {cyl.brand || "LPG"} ({cyl.size}) [กำหนดตรวจ: {cyl.next_check_date}]
+                  </option>
+                ))}
+              </select>
+              <div style={spacerStyle} />
+            </div>
           </div>
 
+          {/* ช่องที่ 2 */}
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>ประเภทการตรวจ/บำรุง *</label>
+            <label style={labelStyle}>
+              ประเภทการตรวจ/บำรุง *
+            </label>
             <div style={inputWithBtnStyle}>
               <select
                 value={maintenanceType}
@@ -375,8 +414,11 @@ function MaintenancePage({
             </div>
           </div>
 
+          {/* ช่องที่ 3 */}
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>ผลการตรวจ *</label>
+            <label style={labelStyle}>
+              ผลการตรวจ *
+            </label>
             <div style={inputWithBtnStyle}>
               <select
                 value={result}
@@ -399,8 +441,11 @@ function MaintenancePage({
             </div>
           </div>
 
+          {/* ช่องที่ 4 */}
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>สิ่งที่ต้องทำต่อ 🔄</label>
+            <label style={labelStyle}>
+              สิ่งที่ต้องทำต่อ 🔄
+            </label>
             <div style={inputWithBtnStyle}>
               <select
                 value={nextAction}
@@ -459,7 +504,10 @@ function MaintenancePage({
           </div>
         </div>
         <button onClick={saveMaintenance} style={primaryButtonStyle} disabled={saving}>
-          {saving ? "กำลังบันทึก..." : "💾 บันทึกผลตรวจ"}
+          {saving 
+            ? "กำลังบันทึก..." 
+            : `💾 บันทึกผลตรวจ ${selectedSerialNumbers.length > 0 ? `(${selectedSerialNumbers.length} รายการ)` : ""}`
+          }
         </button>
       </div>
 
@@ -477,6 +525,16 @@ function MaintenancePage({
         <table style={tableStyle}>
           <thead>
             <tr>
+              <th style={thStyle}>
+                <input
+                  type="checkbox"
+                  onChange={handleSelectAll}
+                  checked={
+                    filteredDueCylinders.length > 0 &&
+                    selectedSerialNumbers.length === filteredDueCylinders.length
+                  }
+                />
+              </th>
               <th style={thStyle}>Serial Number</th>
               <th style={thStyle}>ยี่ห้อ</th>
               <th style={thStyle}>ขนาด</th>
@@ -489,6 +547,13 @@ function MaintenancePage({
             {filteredDueCylinders.length > 0 ? (
               filteredDueCylinders.map((item) => (
                 <tr key={item.serial_number}>
+                  <td style={tdStyle}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSerialNumbers.includes(item.serial_number)}
+                      onChange={() => handleToggleSelect(item.serial_number)}
+                    />
+                  </td>
                   <td style={tdStyle}><strong>{item.serial_number}</strong></td>
                   <td style={tdStyle}>{item.brand || "-"}</td>
                   <td style={tdStyle}>{item.size || "-"}</td>
@@ -506,7 +571,7 @@ function MaintenancePage({
                 </tr>
               ))
             ) : (
-              <tr><td style={tdStyle} colSpan="6" align="center">ไม่พบข้อมูลที่ค้นหาในถังที่ถึงกำหนดตรวจ</td></tr>
+              <tr><td style={tdStyle} colSpan="7" align="center">ไม่พบข้อมูลที่ค้นหาในถังที่ถึงกำหนดตรวจ</td></tr>
             )}
           </tbody>
         </table>
@@ -573,15 +638,15 @@ function MaintenancePage({
               <button onClick={() => setActiveModal(null)} style={closeModalIconStyle}>✕</button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", alignItems: "stretch" }}>
               <input
                 type="text"
                 placeholder="กรอกตัวเลือกใหม่..."
                 value={newItemInput}
                 onChange={(e) => setNewItemInput(e.target.value)}
-                style={darkInputStyle}
+                style={{ ...darkInputStyle, height: "42px" }}
               />
-              <button onClick={handleAddItem} style={blueAddButtonStyle}>+ เพิ่ม</button>
+              <button onClick={handleAddItem} style={{ ...blueAddButtonStyle, height: "42px" }}>+ เพิ่ม</button>
             </div>
 
             <div style={itemListContainerStyle}>
@@ -676,22 +741,77 @@ const summaryRowStyle = { display: "flex", gap: "16px", flexWrap: "wrap", margin
 const summaryCardStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", minWidth: "220px", flex: "1" };
 const summaryNumberStyle = { fontSize: "28px", fontWeight: "bold", marginTop: "10px" };
 const formCardStyle = { background: "#111827", padding: "20px", borderRadius: "12px", marginBottom: "20px" };
-const formGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px", marginBottom: "16px" };
-const fieldGroupStyle = { display: "flex", flexDirection: "column", gap: "6px" };
+
+const formGridStyle = { 
+  display: "grid", 
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", 
+  gap: "16px", 
+  marginBottom: "16px"
+};
+
+// ดันองค์ประกอบให้ชิดขอบล่างเสมอ เพื่อให้ช่อง Input อยู่ระนาบเดียวกันเป๊ะ
+const fieldGroupStyle = { 
+  display: "flex", 
+  flexDirection: "column", 
+  justifyContent: "flex-end",
+  gap: "6px", 
+  width: "100%", 
+  boxSizing: "border-box" 
+};
+
 const fieldGroupStyleFull = { display: "flex", flexDirection: "column", gap: "6px", gridColumn: "1 / -1" };
-const labelStyle = { fontSize: "13px", fontWeight: "bold", color: "#e5e7eb" };
-const inputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box", backgroundColor: "#fff", color: "#000" };
-const inputWithBtnStyle = { display: "flex", gap: "6px", alignItems: "center" };
-const iconButtonStyle = { padding: "8px 12px", background: "#374151", border: "1px solid #4b5563", borderRadius: "8px", cursor: "pointer", fontSize: "14px", color: "#fff" };
-const textAreaStyle = { minHeight: "80px", padding: "10px", borderRadius: "8px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", backgroundColor: "#fff", color: "#000" };
-const searchInputStyle = { padding: "10px 14px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", width: "100%", boxSizing: "border-box" };
+
+const labelStyle = { 
+  fontSize: "13px", 
+  fontWeight: "bold", 
+  color: "#e5e7eb",
+  lineHeight: "1.3"
+};
+
+const inputStyle = { 
+  height: "42px", 
+  padding: "0 10px", 
+  borderRadius: "8px", 
+  border: "1px solid #4b5563", 
+  width: "100%", 
+  boxSizing: "border-box", 
+  backgroundColor: "#1f2937", 
+  color: "#fff",
+  flex: 1
+};
+
+const inputWithBtnStyle = { display: "flex", gap: "6px", alignItems: "center", width: "100%" };
+
+const iconButtonStyle = { 
+  width: "42px",
+  height: "42px", 
+  background: "#374151", 
+  border: "1px solid #4b5563", 
+  borderRadius: "8px", 
+  cursor: "pointer", 
+  fontSize: "14px", 
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0
+};
+
+const spacerStyle = {
+  width: "42px",
+  height: "42px",
+  flexShrink: 0
+};
+
+const textAreaStyle = { minHeight: "80px", padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", backgroundColor: "#1f2937", color: "#fff" };
+const searchInputStyle = { height: "42px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", width: "100%", boxSizing: "border-box" };
 
 const tableStyle = { width: "100%", borderCollapse: "collapse", background: "#1f2937", color: "white", borderRadius: "12px", overflow: "hidden" };
 const thStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", whiteSpace: "nowrap" };
 const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px" };
 
-const primaryButtonStyle = { padding: "10px 16px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
-const cancelButtonStyle = { padding: "10px 16px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
+const primaryButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
+const cancelButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
 const editButtonStyle = { padding: "6px 10px", border: "none", borderRadius: "6px", background: "#f59e0b", color: "white", cursor: "pointer" };
 
 const badgeStyle = { padding: "4px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold" };
@@ -705,8 +825,8 @@ const modalStyle = { background: "#1f2937", color: "white", padding: "24px", bor
 const darkModalStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", width: "90%", maxWidth: "400px", border: "1px solid #374151" };
 const modalHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" };
 const closeModalIconStyle = { background: "none", border: "none", color: "#9ca3af", fontSize: "18px", cursor: "pointer" };
-const darkInputStyle = { padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", flex: 1 };
-const blueAddButtonStyle = { padding: "10px 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" };
+const darkInputStyle = { height: "42px", padding: "0 10px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", flex: 1, boxSizing: "border-box" };
+const blueAddButtonStyle = { height: "42px", padding: "0 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" };
 const itemListContainerStyle = { maxHeight: "250px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" };
 const itemCardStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#111827", borderRadius: "8px" };
 const redDeleteButtonStyle = { padding: "4px 8px", border: "none", borderRadius: "6px", background: "#dc2626", color: "white", cursor: "pointer", fontSize: "12px" };

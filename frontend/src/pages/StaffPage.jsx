@@ -11,11 +11,9 @@ function StaffPage() {
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  // State สำหรับระบบค้นหาและกรองข้อมูล
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Form state
   const [formData, setFormData] = useState({
     staff_name: "",
     staff_phone: "",
@@ -25,12 +23,11 @@ function StaffPage() {
     status: "active",
   });
 
-  const [selectedStaff, setSelectedStaff] = useState(1); // staff_id
-  const [period, setPeriod] = useState("day"); // 'day' | 'month' | 'year'
+  const [selectedStaff, setSelectedStaff] = useState(1);
+  const [period, setPeriod] = useState("day");
   const [history, setHistory] = useState([]);
   const [summary, setSummary] = useState(0);
 
-  // Fetch History (ครอบด้วย Try-Catch + ป้องกัน Infinite Loop)
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -54,7 +51,6 @@ function StaffPage() {
     }
   }, [selectedStaff, period]);
 
-  // Clear message after 5 seconds
   useEffect(() => {
     if (message.text) {
       const timer = setTimeout(() => setMessage({ type: "", text: "" }), 5000);
@@ -62,13 +58,11 @@ function StaffPage() {
     }
   }, [message]);
 
-  // Phone validation
   const validatePhone = (phone) => {
     const phoneRegex = /^[0-9]{9,10}$/;
     return phoneRegex.test(phone.replace(/[-\s]/g, ""));
   };
 
-  // Fetch staff list
   const fetchStaffs = async () => {
     try {
       setLoading(true);
@@ -91,7 +85,6 @@ function StaffPage() {
     fetchStaffs();
   }, []);
 
-  // Validate form
   const validateForm = () => {
     if (!formData.staff_name.trim()) {
       setMessage({ type: "error", text: "กรุณากรอกชื่อพนักงาน" });
@@ -120,7 +113,6 @@ function StaffPage() {
     return true;
   };
 
-  // Clear form
   const clearForm = () => {
     setFormData({
       staff_name: "",
@@ -134,8 +126,8 @@ function StaffPage() {
     setMessage({ type: "", text: "" });
   };
 
-  // Save staff
-  const saveStaff = async () => {
+  const saveStaff = async (e) => {
+    if (e) e.preventDefault(); // ป้องกัน Submit หน้าเว็บเมื่อกดปุ่ม Enter ในฟอร์ม
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -194,7 +186,6 @@ function StaffPage() {
     }
   };
 
-  // Edit staff
   const editStaff = (staff) => {
     setFormData({
       staff_name: staff.staff_name || "",
@@ -208,7 +199,6 @@ function StaffPage() {
     setMessage({ type: "", text: "" });
   };
 
-  // Delete staff
   const deleteStaff = async (staffId, staffName) => {
     if (!window.confirm(`ยืนยันลบพนักงาน "${staffName}"?`)) return;
 
@@ -233,7 +223,6 @@ function StaffPage() {
     }
   };
 
-  // 🔍 ฟังก์ชันกรองพนักงาน
   const filteredStaffs = staffs.filter((staff) => {
     const term = searchTerm.toLowerCase().trim();
     const matchesSearch =
@@ -285,7 +274,6 @@ function StaffPage() {
     <Layout>
       <h1 style={{ marginBottom: "20px", color: "white" }}>👨‍💼 จัดการพนักงานส่ง</h1>
 
-      {/* Message Alert */}
       {message.text && (
         <div
           style={{
@@ -301,11 +289,12 @@ function StaffPage() {
         </div>
       )}
 
-      {/* Form */}
-      <div style={formCardStyle}>
+      {/* Form Card */}
+      <form onSubmit={saveStaff} style={formCardStyle}>
         <h2 style={{ marginTop: 0, color: "white" }}>
           {editingStaffId ? "✏️ แก้ไขพนักงาน" : "➕ เพิ่มพนักงานใหม่"}
         </h2>
+        
         <div style={formGridStyle}>
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>ชื่อพนักงาน *</label>
@@ -316,6 +305,7 @@ function StaffPage() {
               placeholder="ชื่อ-นามสกุล"
             />
           </div>
+
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>เบอร์โทร *</label>
             <input
@@ -325,6 +315,7 @@ function StaffPage() {
               placeholder="0812345678"
             />
           </div>
+
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>Username *</label>
             <input
@@ -335,6 +326,7 @@ function StaffPage() {
               disabled={!!editingStaffId}
             />
           </div>
+
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
               {editingStaffId ? "รหัสผ่าน (เว้นว่างไว้ไม่เปลี่ยน)" : "รหัสผ่าน *"}
@@ -347,6 +339,7 @@ function StaffPage() {
               placeholder={editingStaffId ? "รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)" : "รหัสผ่าน (อย่างน้อย 4 ตัว)"}
             />
           </div>
+
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>ที่อยู่</label>
             <input
@@ -356,6 +349,7 @@ function StaffPage() {
               placeholder="ที่อยู่"
             />
           </div>
+
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>สถานะ</label>
             <select
@@ -368,19 +362,20 @@ function StaffPage() {
             </select>
           </div>
         </div>
+
         <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-          <button onClick={saveStaff} style={primaryButtonStyle} disabled={isSubmitting}>
+          <button type="submit" style={primaryButtonStyle} disabled={isSubmitting}>
             {isSubmitting ? "กำลังบันทึก..." : editingStaffId ? "💾 บันทึก" : "➕ เพิ่ม"}
           </button>
           {editingStaffId && (
-            <button onClick={clearForm} style={secondaryButtonStyle}>
+            <button type="button" onClick={clearForm} style={secondaryButtonStyle}>
               ยกเลิก
             </button>
           )}
         </div>
-      </div>
+      </form>
 
-      {/* 🔍 ส่วนค้นหาและตัวกรอง */}
+      {/* Filter Container */}
       <div style={filterContainerStyle}>
         <div style={{ flex: 1, minWidth: "220px" }}>
           <input
@@ -438,10 +433,11 @@ function StaffPage() {
                   </td>
                   <td style={tdStyle}>{item.delivery_count || 0}</td>
                   <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                    <button onClick={() => editStaff(item)} style={editButtonStyle}>
+                    <button type="button" onClick={() => editStaff(item)} style={editButtonStyle}>
                       ✏️ แก้ไข
                     </button>
                     <button
+                      type="button"
                       onClick={() => deleteStaff(item.staff_id, item.staff_name)}
                       style={deleteButtonStyle}
                     >

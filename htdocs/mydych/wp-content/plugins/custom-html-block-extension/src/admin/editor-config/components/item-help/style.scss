@@ -1,0 +1,56 @@
+@use "~@wordpress/base-styles/variables" as variables;
+
+// Toggle button
+.chbe-admin-editor-config-item-help-toggle {
+	margin-top: -2px;
+}
+
+// Modal component
+.chbe-admin-editor-config-item-help-modal {
+	max-width: 800px;
+
+	img {
+		display: block;
+		max-width: 100%;
+	}
+
+	.chbe-admin-editor-config-item-help-modal__decription {
+
+		ul {
+			padding-left: 1.5em;
+			margin-left: 0;
+			list-style: disc outside;
+		}
+	}
+
+	.chbe-admin-editor-config-item-help-modal__items {
+		display: flex;
+		flex-wrap: wrap;
+		gap: variables.$grid-unit-30;
+
+		@media screen and (max-width: 782px) {
+			flex-flow: column;
+		}
+
+		&.is-col-2 > * {
+			width: calc(50% - 12px);
+		}
+
+		&.is-col-3 > * {
+			width: calc(33.33% - 16px);
+		}
+
+		&.is-col-4 > * {
+			width: calc(25% - 18px);
+		}
+
+		&.is-col-5 > * {
+			width: calc(20% - 20px);
+		}
+	}
+
+	.chbe-admin-editor-config-item-help-modal__item-button {
+		height: auto;
+		padding: variables.$grid-unit-05;
+	}
+}

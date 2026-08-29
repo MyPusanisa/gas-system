@@ -1,0 +1,7 @@
+.chbe-admin-editor-config-editor-preview {
+	height: calc(100vh - 400px);
+
+	@media screen and (max-width: 782px) {
+		height: 50vh;
+	}
+}

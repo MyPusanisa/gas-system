@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Aug 25, 2026 at 02:21 PM
+-- Generation Time: Aug 29, 2026 at 07:55 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -291,16 +291,16 @@ INSERT INTO `gas_cylinder` (`cylinder_id`, `serial_number`, `status`, `size`, `m
 ('102', 'SN-3002', 'ใช้งานอยู่', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2027-08-11', NULL, 'ร้านค้าสาขา 1', '2026-08-10 14:16:06', '2026-08-11 05:35:44'),
 ('103', 'SN-3003', 'ในคลัง', '11.5kg', NULL, NULL, NULL, 'Siam Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า B', '2026-08-10 14:16:06', '2026-08-10 14:29:29'),
 ('104', 'SN-3004', 'ในคลัง', '4kg', NULL, NULL, NULL, 'Unique Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า A', '2026-08-10 14:16:06', '2026-08-10 14:29:29'),
-('asd', 'asd', 'ในคลัง', '11.5 กก.', '2026-05-04', '2036-05-04', 'https://yourdomain.com/cylinder/asd', 'World Gas', 'LPG', '2026-05-17', '2026-08-01', '2026-05-19', 'คลัง', '2026-05-17 08:14:26', '2026-08-10 14:29:29'),
+('asd', 'asd', 'ในคลัง', '11.5 กก.', '2026-05-04', '2036-05-04', 'https://yourdomain.com/cylinder/asd', 'World Gas', 'LPG', '2026-05-17', '2027-08-29', '2026-05-19', 'คลัง', '2026-05-17 08:14:26', '2026-08-29 16:45:03'),
 ('CY001', 'SN-1001', 'กำลังจัดส่ง', '15kg', '2022-01-10', '2032-01-10', 'QR001', 'PTT', 'LPG', '2025-05-01', '2026-08-01', '2025-01-15', 'รอจัดส่ง', '2026-05-08 20:24:47', '2026-08-10 14:29:29'),
 ('CY002', 'SN-1002', 'ในคลัง', '48kg', '2021-03-12', '2031-03-12', 'QR002', 'WorldGas', 'LPG', '2025-04-15', '2026-08-01', '2025-02-10', 'คลัง B', '2026-05-08 20:24:47', '2026-08-10 14:29:29'),
 ('CYL-8001', 'SN-8001', 'ในคลัง', '15kg', NULL, NULL, NULL, 'PTT', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า A', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
 ('CYL-8002', 'SN-8002', 'ใช้งานอยู่', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2026-08-01', NULL, 'ร้านค้าสาขา 1', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
 ('CYL-8003', 'SN-8003', 'ในคลัง', '11.5kg', NULL, NULL, NULL, 'Siam Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า B', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
 ('CYL-8004', 'SN-8004', 'ในคลัง', '4kg', NULL, NULL, NULL, 'Unique Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า A', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
-('dsdhywrt', 'dsdhywrt', 'ในคลัง', '99 kg', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/dsdhywrt', 'วันพฤ', 'NA', '2026-08-08', '2026-08-01', NULL, 'เชียงราย', '2026-08-08 17:49:14', '2026-08-10 14:29:29'),
-('etyketk', 'etyketk', 'ปกติ', '36 กก.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/etyketk', 'วันอังคาร', 'N2O', '2026-08-08', '2026-08-01', NULL, 'พะเยา', '2026-08-08 17:50:42', '2026-08-10 14:29:29'),
-('serhths', 'serhths', 'ในคลัง', '36 kg.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/serhths', 'วันจันทร์', 'LPG', '2026-08-08', '2026-08-01', NULL, 'พะเยา', '2026-08-08 16:19:18', '2026-08-10 14:29:29');
+('dsdhywrt', 'dsdhywrt', 'ในคลัง', '99 kg', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/dsdhywrt', 'วันพฤ', 'NA', '2026-08-08', '2027-08-29', NULL, 'เชียงราย', '2026-08-08 17:49:14', '2026-08-29 16:45:03'),
+('etyketk', 'etyketk', 'ปกติ', '36 กก.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/etyketk', 'วันอังคาร', 'N2O', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 17:50:42', '2026-08-29 16:45:03'),
+('serhths', 'serhths', 'ในคลัง', '36 kg.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/serhths', 'วันจันทร์', 'LPG', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 16:19:18', '2026-08-29 16:45:03');
 
 -- --------------------------------------------------------
 
@@ -403,6 +403,16 @@ CREATE TABLE `maintenance` (
   `admin_id` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `maintenance`
+--
+
+INSERT INTO `maintenance` (`maintenance_id`, `serial_number`, `maintenance_date`, `description`, `maintenance_type`, `result`, `next_action`, `next_maintenance_date`, `cylinder_id`, `admin_id`, `created_at`) VALUES
+(30, 'dsdhywrt', '2026-08-29', 'สภาพสมบูรณ์ พร้อมใช้งาน', 'ตรวจสภาพ', 'ผ่าน', 'ใช้งานต่อได้ (ปกติ)', NULL, NULL, NULL, '2026-08-29 23:45:03'),
+(31, 'serhths', '2026-08-29', 'สภาพสมบูรณ์ พร้อมใช้งาน', 'ตรวจสภาพ', 'ผ่าน', 'ใช้งานต่อได้ (ปกติ)', NULL, NULL, NULL, '2026-08-29 23:45:03'),
+(32, 'etyketk', '2026-08-29', 'สภาพสมบูรณ์ พร้อมใช้งาน', 'ตรวจสภาพ', 'ผ่าน', 'ใช้งานต่อได้ (ปกติ)', NULL, NULL, NULL, '2026-08-29 23:45:03'),
+(33, 'asd', '2026-08-29', 'สภาพสมบูรณ์ พร้อมใช้งาน', 'ตรวจสภาพ', 'ผ่าน', 'ใช้งานต่อได้ (ปกติ)', NULL, NULL, NULL, '2026-08-29 23:45:03');
 
 -- --------------------------------------------------------
 
@@ -553,7 +563,7 @@ ALTER TABLE `maintenance`
   ADD PRIMARY KEY (`maintenance_id`),
   ADD KEY `cylinder_id` (`cylinder_id`),
   ADD KEY `admin_id` (`admin_id`),
-  ADD KEY `fk_maint_cyl_ref` (`serial_number`);
+  ADD KEY `fk_maint_gas_cylinder` (`serial_number`);
 
 --
 -- Indexes for table `maintenance_options`
@@ -642,7 +652,7 @@ ALTER TABLE `gas_types`
 -- AUTO_INCREMENT for table `maintenance`
 --
 ALTER TABLE `maintenance`
-  MODIFY `maintenance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `maintenance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `maintenance_options`
@@ -680,8 +690,7 @@ ALTER TABLE `delivery_orders`
 -- Constraints for table `maintenance`
 --
 ALTER TABLE `maintenance`
-  ADD CONSTRAINT `fk_maint_cyl_ref` FOREIGN KEY (`serial_number`) REFERENCES `cylinders` (`serial_number`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_maint_cylinder` FOREIGN KEY (`serial_number`) REFERENCES `cylinders` (`serial_number`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_maint_gas_cylinder` FOREIGN KEY (`serial_number`) REFERENCES `gas_cylinder` (`serial_number`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `maintenance_ibfk_2` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`admin_id`);
 COMMIT;
 
