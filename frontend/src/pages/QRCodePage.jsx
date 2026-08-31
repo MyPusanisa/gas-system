@@ -141,7 +141,7 @@ function QRCodePage() {
             onClick={() => setShowQR(true)}
             style={{ ...phoneButtonStyle, backgroundColor: "#059669", cursor: "pointer" }}
           >
-            📱 แสดง QR Code ถังนี้
+          แสดง QR Code ถังนี้
           </button>
           
           <a href="tel:024643519" style={phoneButtonStyle}>
@@ -161,7 +161,7 @@ function QRCodePage() {
             
             <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: "10px" }}>
               <button onClick={() => window.print()} style={{ ...phoneButtonStyle, backgroundColor: "#10b981", cursor: "pointer" }}>
-                🖨️ สั่งพิมพ์
+                สั่งพิมพ์
               </button>
               <button onClick={() => setShowQR(false)} style={{ ...phoneButtonStyle, backgroundColor: "#4b5563", cursor: "pointer" }}>
                 ปิด

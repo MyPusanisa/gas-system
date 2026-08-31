@@ -71,7 +71,7 @@ function Layout({ children }) {
 
       <div style={{ display: "flex", minHeight: "calc(100vh - 73px)" }}>
         <aside style={asideStyle}>
-          <h2 style={{ marginTop: 0, fontSize: "24px" }}>🚀 GAS SYS</h2>
+          <h2 style={{ marginTop: 0, fontSize: "24px" }}>GAS SYS</h2>
           <p style={{ opacity: 0.85, fontSize: "16px", marginBottom: "24px" }}>
             {role} : {username}
           </p>

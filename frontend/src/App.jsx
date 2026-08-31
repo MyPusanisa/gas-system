@@ -7,7 +7,7 @@ import DeliveryPage from "./pages/DeliveryPage"
 import QRCodePage from "./pages/QRCodePage"
 import MaintenancePage from "./pages/MaintenancePage"
 import CylinderPage from "./pages/CylinderPage"
-import StaffPage from "./pages/StaffPage" // 👈 เพิ่มบรรทัดนี้เพื่อ import StaffPage
+import StaffPage from "./pages/StaffPage"
 import ProtectedRoute from "./components/ProtectedRoute"
 
 function App() {

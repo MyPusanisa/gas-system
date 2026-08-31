@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import API_BASE_URL from "../config"; // 👈 Import API_BASE_URL จาก config กลาง
+import API_BASE_URL from "../config"; 
 
 // สร้าง UPLOADS_BASE_URL อ้างอิงจากโฟลเดอร์ root ของ Backend
 const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
@@ -268,11 +268,11 @@ function DeliveryPage() {
 
     const cylinder = cylinders.find((c) => c.serial_number === serialNumber);
     if (!cylinder) {
-      alert(`❌ ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
+      alert(`ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
       return;
     }
     if (cylinder.status !== "ในคลัง") {
-      alert(`❌ ถังแก๊ส "${serialNumber}" ไม่อยู่ในคลัง (สถานะปัจจุบัน: ${cylinder.status})`);
+      alert(`ถังแก๊ส "${serialNumber}" ไม่อยู่ในคลัง (สถานะปัจจุบัน: ${cylinder.status})`);
       return;
     }
 
@@ -290,7 +290,7 @@ function DeliveryPage() {
       cylSize !== targetSize
     ) {
       alert(
-        `❌ สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
+        `สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
         `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
         `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
       );
@@ -424,30 +424,40 @@ function DeliveryPage() {
     sendApproveRequest(pendingApproveId, dataToSend.serial_number, dataToSend);
   };
 
-  const handleDeleteDelivery = async (deliveryId) => {
-    if (!deliveryId) {
-      alert("ไม่พบรหัสงานที่จะลบ");
+  const handleDelete = async (deliveryId) => {
+  if (!window.confirm("คุณต้องการลบงานนี้ใช่หรือไม่?")) return;
+
+  try {
+    const res = await fetch("http://localhost/Backend/models/cylinder/delete_delivery.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ delivery_id: deliveryId }),
+    });
+
+    // อ่านค่า Response เป็นข้อความก่อน เพื่อป้องกันการ Crash ของ JSON.parse
+    const textData = await res.text();
+    let data;
+
+    try {
+      data = JSON.parse(textData);
+    } catch (e) {
+      console.error("PHP Response ไม่ใช่ JSON:", textData);
+      alert("เซิร์ฟเวอร์ตอบกลับมาไม่ถูกต้อง: " + textData.substring(0, 100));
       return;
     }
 
-    if (!window.confirm("คุณแน่ใจที่จะลบงานนี้? การดำเนินการนี้ไม่สามารถกู้คืนได้")) return;
-    try {
-      const res = await apiFetch(`${API_BASE_URL}/delivery/delete_delivery.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delivery_id: deliveryId }),
-      });
-      if (res.success) {
-        alert("ลบงานเรียบร้อย");
-        await loadData();
-      } else {
-        alert(res.message || "ลบไม่สำเร็จ");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    alert(data.message);
+
+    if (data.success) {
+      fetchDeliveries(); // โหลดรายการใหม่หลังจากลบสำเร็จ
     }
-  };
+  } catch (err) {
+    console.error("Delete Error:", err);
+    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+  }
+};
 
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
@@ -549,7 +559,7 @@ function DeliveryPage() {
       deliverySuccessItems={deliverySuccessItems}
       newAssignedJobItems={newAssignedJobItems}
     >
-      <h1 style={{ marginBottom: "20px" }}>🚚 Delivery Management</h1>
+      <h1 style={{ marginBottom: "20px" }}>Delivery Management</h1>
 
       {role === "admin" && (
         <div style={styles.formCard}>
@@ -653,11 +663,11 @@ function DeliveryPage() {
                   </span>
                   {role === "admin" && (item.status === "pending" || item.status === "delivering") && (
                     <button
-                      onClick={() => handleDeleteDelivery(item.delivery_id || item.id)}
-                      style={styles.deleteBtn}
-                    >
-                      🗑️ ลบ
-                    </button>
+  onClick={() => handleDelete(item)}
+  className="bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-6 py-2 rounded-full transition-all duration-200 shadow-md active:scale-95 cursor-pointer"
+>
+  ลบ
+</button>
                   )}
                 </div>
               </div>

@@ -4,6 +4,17 @@ import Layout from "../components/Layout";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost";
 const API_BASE = `${BASE_URL}/Backend/models/staff`;
 
+// ฟังก์ชันสำหรับลบอิโมจิและสัญลักษณ์พิเศษออกจากข้อความ
+const removeEmojis = (text) => {
+  if (!text) return "";
+  return String(text)
+    .replace(
+      /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g,
+      ""
+    )
+    .trim();
+};
+
 function StaffPage() {
   const [staffs, setStaffs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +138,7 @@ function StaffPage() {
   };
 
   const saveStaff = async (e) => {
-    if (e) e.preventDefault(); // ป้องกัน Submit หน้าเว็บเมื่อกดปุ่ม Enter ในฟอร์ม
+    if (e) e.preventDefault();
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -272,7 +283,7 @@ function StaffPage() {
 
   return (
     <Layout>
-      <h1 style={{ marginBottom: "20px", color: "white" }}>👨‍💼 จัดการพนักงานส่ง</h1>
+      <h1 style={{ marginBottom: "20px", color: "white" }}>จัดการพนักงานส่ง</h1>
 
       {message.text && (
         <div
@@ -292,7 +303,7 @@ function StaffPage() {
       {/* Form Card */}
       <form onSubmit={saveStaff} style={formCardStyle}>
         <h2 style={{ marginTop: 0, color: "white" }}>
-          {editingStaffId ? "✏️ แก้ไขพนักงาน" : "➕ เพิ่มพนักงานใหม่"}
+          {editingStaffId ? "แก้ไขพนักงาน" : "เพิ่มพนักงานใหม่"}
         </h2>
         
         <div style={formGridStyle}>
@@ -365,7 +376,7 @@ function StaffPage() {
 
         <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
           <button type="submit" style={primaryButtonStyle} disabled={isSubmitting}>
-            {isSubmitting ? "กำลังบันทึก..." : editingStaffId ? "💾 บันทึก" : "➕ เพิ่ม"}
+            {isSubmitting ? "กำลังบันทึก..." : editingStaffId ? "บันทึก" : "เพิ่ม"}
           </button>
           {editingStaffId && (
             <button type="button" onClick={clearForm} style={secondaryButtonStyle}>
@@ -380,7 +391,7 @@ function StaffPage() {
         <div style={{ flex: 1, minWidth: "220px" }}>
           <input
             type="text"
-            placeholder="🔍 ค้นหา (ชื่อ, เบอร์โทร, Username, Password, ที่อยู่)..."
+            placeholder="ค้นหา (ชื่อ, เบอร์โทร, Username, Password, ที่อยู่)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={inputStyle}
@@ -421,11 +432,13 @@ function StaffPage() {
               filteredStaffs.map((item) => (
                 <tr key={item.staff_id}>
                   <td style={tdStyle}>{item.staff_id}</td>
-                  <td style={tdStyle}><strong>{item.staff_name}</strong></td>
-                  <td style={tdStyle}>{item.staff_phone || "-"}</td>
-                  <td style={tdStyle}>{item.username}</td>
-                  <td style={tdStyle}>{item.password || "-"}</td>
-                  <td style={tdStyle}>{item.address || "-"}</td>
+                  <td style={tdStyle}>
+                    <strong>{removeEmojis(item.staff_name)}</strong>
+                  </td>
+                  <td style={tdStyle}>{removeEmojis(item.staff_phone) || "-"}</td>
+                  <td style={tdStyle}>{removeEmojis(item.username)}</td>
+                  <td style={tdStyle}>{removeEmojis(item.password) || "-"}</td>
+                  <td style={tdStyle}>{removeEmojis(item.address) || "-"}</td>
                   <td style={tdStyle}>
                     <span style={{ ...badgeStyle, ...getStatusStyle(item.status) }}>
                       {getStatusText(item.status)}
@@ -434,14 +447,14 @@ function StaffPage() {
                   <td style={tdStyle}>{item.delivery_count || 0}</td>
                   <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                     <button type="button" onClick={() => editStaff(item)} style={editButtonStyle}>
-                      ✏️ แก้ไข
+                      แก้ไข
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteStaff(item.staff_id, item.staff_name)}
                       style={deleteButtonStyle}
                     >
-                      ❌ ลบ
+                      ลบ
                     </button>
                   </td>
                 </tr>

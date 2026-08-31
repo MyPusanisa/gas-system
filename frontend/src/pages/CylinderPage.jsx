@@ -36,7 +36,6 @@ function CylinderPage() {
         setLoading(true)
         setError(null)
         
-        // แก้ไข endpoint จาก login.php เป็นการดึงข้อมูลถังตาม serial_number
         const res = await fetch(`${API_BASE}/get_cylinder.php?serial_number=${encodeURIComponent(id)}`)
         
         if (!res.ok) {

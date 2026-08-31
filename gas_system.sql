@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Aug 29, 2026 at 07:55 PM
+-- Generation Time: Aug 31, 2026 at 03:34 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -142,63 +142,15 @@ CREATE TABLE `deliveries` (
 --
 
 INSERT INTO `deliveries` (`delivery_id`, `customer_name`, `phone`, `address`, `map_pin`, `brand`, `gas_type`, `size`, `staff_id`, `status`, `created_at`) VALUES
-(1, 'พำะำพะ', '0855225545', 'หฟำพั', '', 'วันอังคาร', 'N2O', '36 กก.', 1, 'pending', '2026-08-10 09:52:52');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `delivery`
---
-
-CREATE TABLE `delivery` (
-  `delivery_id` int(11) NOT NULL,
-  `cylinder_id` varchar(50) DEFAULT NULL,
-  `received_cylinder_id` varchar(50) DEFAULT NULL,
-  `customer_id` int(11) NOT NULL,
-  `req_brand` varchar(50) DEFAULT NULL,
-  `req_gas_type` varchar(50) DEFAULT NULL,
-  `req_size` varchar(50) DEFAULT NULL,
-  `admin_id` int(11) NOT NULL,
-  `staff_id` int(11) NOT NULL,
-  `delivery_date` date DEFAULT NULL,
-  `return_date` date DEFAULT NULL,
-  `status` enum('pending','accepted','delivering','success','cancelled','pending_approval') DEFAULT 'pending',
-  `accepted_at` datetime DEFAULT NULL,
-  `started_at` datetime DEFAULT NULL,
-  `completed_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `delivered_map_pin` varchar(255) DEFAULT NULL,
-  `proof_image_path` varchar(255) DEFAULT NULL,
-  `delivered_at` datetime DEFAULT NULL,
-  `gas_type` varchar(50) DEFAULT NULL,
-  `brand` varchar(100) DEFAULT NULL,
-  `size` varchar(50) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `delivery`
---
-
-INSERT INTO `delivery` (`delivery_id`, `cylinder_id`, `received_cylinder_id`, `customer_id`, `req_brand`, `req_gas_type`, `req_size`, `admin_id`, `staff_id`, `delivery_date`, `return_date`, `status`, `accepted_at`, `started_at`, `completed_at`, `created_at`, `delivered_map_pin`, `proof_image_path`, `delivered_at`, `gas_type`, `brand`, `size`) VALUES
-(33, 'CY001', NULL, 30, NULL, NULL, NULL, 1, 1, '2026-05-19', NULL, 'pending', NULL, NULL, NULL, '2026-05-19 09:10:12', NULL, NULL, NULL, 'LPG', 'PTT', '15kg'),
-(37, NULL, NULL, 34, 'วันพฤ', 'NA', '99 kg', 1, 1, '2026-08-10', NULL, 'pending', NULL, NULL, NULL, '2026-08-10 08:03:59', NULL, NULL, NULL, 'NA', 'วันพฤ', '99 kg'),
-(38, NULL, NULL, 35, 'วันพฤ', 'NA', '99 kg', 1, 1, '2026-08-10', NULL, 'pending', NULL, NULL, NULL, '2026-08-10 08:05:35', NULL, NULL, NULL, 'NA', 'วันพฤ', '99 kg'),
-(39, NULL, NULL, 36, 'วันพฤ', 'NA', '99 kg', 1, 1, '2026-08-10', NULL, 'pending', NULL, NULL, NULL, '2026-08-10 09:22:26', NULL, NULL, NULL, 'NA', 'วันพฤ', '99 kg');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `delivery_orders`
---
-
-CREATE TABLE `delivery_orders` (
-  `id` int(11) NOT NULL,
-  `serial_number` varchar(50) NOT NULL,
-  `staff_id` int(11) NOT NULL,
-  `customer_name` varchar(100) DEFAULT NULL,
-  `delivery_status` enum('รอดำเนินการ','กำลังจัดส่ง','ส่งสำเร็จ','ยกเลิก') DEFAULT 'รอดำเนินการ',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+(2, 'สมชาย การค้า', '0812345678', '123/45 ถ.สุขุมวิท กรุงเทพฯ', '13.7563,100.5018', 'PTT', 'LPG', '15 กก.', 1, 'pending', '2026-08-31 12:38:44'),
+(3, 'ร้านอาหารแม่ยอม', '0898765432', '88 หมู่ 3 ต.ในเมือง อ.เมือง', '-', 'World Gas', 'LPG', '48 กก.', 2, 'pending', '2026-08-31 12:38:44'),
+(4, 'บริษัท ไทยกลาส จำกัด', '029998888', '555 อุตสาหกรรมบางปู สมุทรปราการ', '13.5412,100.6234', 'Unique Gas', 'N2O', '36 กก.', 4, 'pending', '2026-08-31 12:38:44'),
+(5, 'วิชัย บริการ', '0861112233', '12/1 หมู่บ้านสวนหลวง กรุงเทพฯ', '-', 'PTT', 'LPG', '15 กก.', 1, 'pending', '2026-08-31 12:38:44'),
+(6, 'โรงงานแก้วพัฒนา', '023456789', '99/1 บางพลี สมุทรปราการ', '13.6123,100.7123', 'World Gas', 'O2', '48 กก.', 2, 'pending', '2026-08-31 12:38:44'),
+(7, 'คุณนภา ลิขิต', '0845556677', '432 ซอยลาดพร้าว 101 กรุงเทพฯ', '-', 'Unique Gas', 'LPG', '7 กก.', 4, 'pending', '2026-08-31 12:38:44'),
+(8, 'ร้านเบเกอรี่โฮมเมด', '0839991122', '77 ถนนสีลม กรุงเทพฯ', '13.7234,100.5289', 'PTT', 'LPG', '15 กก.', 1, 'pending', '2026-08-31 12:38:44'),
+(9, 'คลินิกทันตกรรมสมบูรณ์', '028887766', '50/2 ถ.พหลโยธิน กรุงเทพฯ', '-', 'Siam Gas', 'N2O', '15 กก.', 2, 'pending', '2026-08-31 12:38:44'),
+(10, 'ร้านหมูกระทะ ชาบูชิ', '0874445566', '101/5 ถ.พระราม 2 กรุงเทพฯ', '13.6512,100.4321', 'PTT', 'LPG', '48 กก.', 1, 'pending', '2026-08-31 12:38:44');
 
 -- --------------------------------------------------------
 
@@ -223,7 +175,7 @@ CREATE TABLE `delivery_staff` (
 
 INSERT INTO `delivery_staff` (`staff_id`, `staff_name`, `staff_phone`, `address`, `username`, `password`, `status`, `delivery_count`) VALUES
 (1, 'สมชาย ใจดี', '0812345678', 'เชียงใหม่', 'somchai', '12345', 'active', 0),
-(2, 'สมหญิง พูนสุข', '0898765432', 'ลำปาง', 'somying', '11111', 'active', 0),
+(2, 'สมหญิง พูนสุข', '0898765435', 'ลำปาง', 'somying', '5555525', 'active', 0),
 (3, 'วีระชัย ทองคำ', '0821112233', 'กรุงเทพ', 'weerachai', '9999', 'inactive', 0),
 (4, 'ภูษณิศา จันทร์นวล', '0822153045', '26/39 ม.9 เพชรหงษ์ 2 ต.ทรงคนอง', 'pimlypire', '9632', 'active', 0),
 (5, 'ยย', '0822222222', 'รจบรสนร้ส', 'ยนวีนยว', '9652', 'active', 0),
@@ -298,9 +250,9 @@ INSERT INTO `gas_cylinder` (`cylinder_id`, `serial_number`, `status`, `size`, `m
 ('CYL-8002', 'SN-8002', 'ใช้งานอยู่', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2026-08-01', NULL, 'ร้านค้าสาขา 1', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
 ('CYL-8003', 'SN-8003', 'ในคลัง', '11.5kg', NULL, NULL, NULL, 'Siam Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า B', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
 ('CYL-8004', 'SN-8004', 'ในคลัง', '4kg', NULL, NULL, NULL, 'Unique Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า A', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
-('dsdhywrt', 'dsdhywrt', 'ในคลัง', '99 kg', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/dsdhywrt', 'วันพฤ', 'NA', '2026-08-08', '2027-08-29', NULL, 'เชียงราย', '2026-08-08 17:49:14', '2026-08-29 16:45:03'),
-('etyketk', 'etyketk', 'ปกติ', '36 กก.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/etyketk', 'วันอังคาร', 'N2O', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 17:50:42', '2026-08-29 16:45:03'),
-('serhths', 'serhths', 'ในคลัง', '36 kg.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/serhths', 'วันจันทร์', 'LPG', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 16:19:18', '2026-08-29 16:45:03');
+('dsdhywrt', 'dsdhywrt', 'ในคลัง', '36 กก.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/dsdhywrt', 'สยามแก๊ส', 'LPG', '2026-08-08', '2027-08-29', NULL, 'เชียงราย', '2026-08-08 17:49:14', '2026-08-31 09:52:11'),
+('etyketk', 'etyketk', 'ปกติ', '36 กก.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/etyketk', 'ยูนิคแก๊ส', 'LPG', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 17:50:42', '2026-08-31 09:52:44'),
+('serhths', 'serhths', 'ในคลัง', '36 kg.', '2026-08-01', '2036-08-01', 'http://192.168.1.176:5173/cylinder/serhths', 'สยามแก๊ส', 'LPG', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 16:19:18', '2026-08-31 09:52:59');
 
 -- --------------------------------------------------------
 
@@ -320,6 +272,44 @@ CREATE TABLE `gas_locations` (
 INSERT INTO `gas_locations` (`id`, `location_name`) VALUES
 (1, 'พะเยา'),
 (2, 'เชียงราย');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `gas_sensor_logs`
+--
+
+CREATE TABLE `gas_sensor_logs` (
+  `id` int(11) NOT NULL,
+  `gas_value` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `gas_sensor_logs`
+--
+
+INSERT INTO `gas_sensor_logs` (`id`, `gas_value`, `created_at`) VALUES
+(1, 450, '2026-08-31 11:22:32'),
+(2, 480, '2026-08-31 11:22:32'),
+(3, 510, '2026-08-31 11:22:32'),
+(4, 530, '2026-08-31 11:22:32'),
+(5, 490, '2026-08-31 11:22:32'),
+(6, 500, '2026-08-31 11:22:32'),
+(7, 520, '2026-08-31 11:22:32'),
+(8, 470, '2026-08-31 11:22:32'),
+(9, 515, '2026-08-31 11:22:32'),
+(10, 505, '2026-08-31 11:22:32'),
+(11, 450, '2026-08-31 11:26:32'),
+(12, 480, '2026-08-31 11:26:32'),
+(13, 510, '2026-08-31 11:26:32'),
+(14, 530, '2026-08-31 11:26:32'),
+(15, 490, '2026-08-31 11:26:32'),
+(16, 500, '2026-08-31 11:26:32'),
+(17, 520, '2026-08-31 11:26:32'),
+(18, 470, '2026-08-31 11:26:32'),
+(19, 515, '2026-08-31 11:26:32'),
+(20, 505, '2026-08-31 11:26:32');
 
 -- --------------------------------------------------------
 
@@ -491,25 +481,6 @@ ALTER TABLE `deliveries`
   ADD PRIMARY KEY (`delivery_id`);
 
 --
--- Indexes for table `delivery`
---
-ALTER TABLE `delivery`
-  ADD PRIMARY KEY (`delivery_id`),
-  ADD KEY `fk_delivery_staff` (`staff_id`),
-  ADD KEY `fk_delivery_customer` (`customer_id`),
-  ADD KEY `fk_delivery_admin` (`admin_id`),
-  ADD KEY `fk_delivery_cylinder` (`cylinder_id`),
-  ADD KEY `fk_delivery_received_cylinder` (`received_cylinder_id`);
-
---
--- Indexes for table `delivery_orders`
---
-ALTER TABLE `delivery_orders`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_del_orders_cylinder` (`serial_number`),
-  ADD KEY `fk_del_orders_staff` (`staff_id`);
-
---
 -- Indexes for table `delivery_staff`
 --
 ALTER TABLE `delivery_staff`
@@ -534,6 +505,12 @@ ALTER TABLE `gas_cylinder`
 -- Indexes for table `gas_locations`
 --
 ALTER TABLE `gas_locations`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `gas_sensor_logs`
+--
+ALTER TABLE `gas_sensor_logs`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -598,19 +575,7 @@ ALTER TABLE `customers`
 -- AUTO_INCREMENT for table `deliveries`
 --
 ALTER TABLE `deliveries`
-  MODIFY `delivery_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT for table `delivery`
---
-ALTER TABLE `delivery`
-  MODIFY `delivery_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
-
---
--- AUTO_INCREMENT for table `delivery_orders`
---
-ALTER TABLE `delivery_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `delivery_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `delivery_staff`
@@ -629,6 +594,12 @@ ALTER TABLE `gas_brands`
 --
 ALTER TABLE `gas_locations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `gas_sensor_logs`
+--
+ALTER TABLE `gas_sensor_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `gas_sizes`
@@ -669,22 +640,6 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
-
---
--- Constraints for table `delivery`
---
-ALTER TABLE `delivery`
-  ADD CONSTRAINT `fk_delivery_admin` FOREIGN KEY (`admin_id`) REFERENCES `admin` (`admin_id`),
-  ADD CONSTRAINT `fk_delivery_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`),
-  ADD CONSTRAINT `fk_delivery_received_cylinder` FOREIGN KEY (`received_cylinder_id`) REFERENCES `gas_cylinder` (`cylinder_id`),
-  ADD CONSTRAINT `fk_delivery_staff` FOREIGN KEY (`staff_id`) REFERENCES `delivery_staff` (`staff_id`);
-
---
--- Constraints for table `delivery_orders`
---
-ALTER TABLE `delivery_orders`
-  ADD CONSTRAINT `fk_del_orders_cylinder` FOREIGN KEY (`serial_number`) REFERENCES `cylinders` (`serial_number`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_del_orders_staff` FOREIGN KEY (`staff_id`) REFERENCES `users` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints for table `maintenance`
