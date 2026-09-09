@@ -1,106 +1,48 @@
 <?php
-session_start();
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Content-Type: application/json; charset=UTF-8");
 
-
-require_once "../config/db.php";  // ให้ $conn เป็น MySQLi object
-
-$method = $_SERVER['REQUEST_METHOD'];
-
-// =====================================
-// 1. POST: LOGIN (admin หรือ staff)
-// =====================================
-if ($method === 'POST') {
-    $data = json_decode(file_get_contents("php://input"), true);
-    $username = $data['username'] ?? '';
-    $password = $data['password'] ?? '';
-
-    // --- ตรวจสอบ admin ---
-    $sql = "SELECT * FROM admin WHERE username = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-        if ($password == $row['password']) {
-            $_SESSION['user_id'] = $row['admin_id'];
-            $_SESSION['role'] = 'admin';
-            $_SESSION['username'] = $row['username'];
-            $_SESSION['name'] = $row['name'];
-            // ไม่จำเป็นต้องเก็บ staff_id สำหรับ admin
-
-            echo json_encode([
-                "success" => true,
-                "role" => "admin",
-                "admin_id" => $row["admin_id"],
-                "username" => $row["username"],
-                "name" => $row["name"]
-            ]);
-            exit;
-        }
-    }
-
-    // --- ตรวจสอบ staff ---
-    $sql = "SELECT * FROM delivery_staff WHERE username = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($row = $result->fetch_assoc()) {
-        if ($password == $row['password']) {
-            $_SESSION['user_id'] = $row['staff_id'];
-            $_SESSION['role'] = 'staff';
-            $_SESSION['username'] = $row['username'];
-            $_SESSION['name'] = $row['staff_name'];
-            $_SESSION['staff_id'] = $row['staff_id'];   // เพิ่มบรรทัดนี้
-
-            echo json_encode([
-                "success" => true,
-                "role" => "staff",
-                "staff_id" => $row["staff_id"],
-                "username" => $row["username"],
-                "name" => $row["staff_name"]
-            ]);
-            exit;
-        }
-    }
-
-    // login ล้มเหลว
-    echo json_encode(["success" => false, "message" => "Invalid username or password"]);
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
 
-// =====================================
-// 2. GET: ดึงจำนวนงานของ staff ที่ login อยู่
-// =====================================
-if ($method === 'GET') {
-    // ตรวจสอบว่าเป็น staff และมี session
-    if (!isset($_SESSION['staff_id'])) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Unauthorized', 'count' => 0]);
-        exit;
-    }
+include_once "../config/db.php";
 
-    $staffId = $_SESSION['staff_id'];
+// ดึงข้อมูลโดยตรงจากตาราง deliveries โดยไม่ต้อง JOIN ตาราง customers
+$query = "
+    SELECT 
+        delivery_id,
+        customer_name,
+        phone,
+        address,
+        map_pin,
+        brand AS req_brand,
+        gas_type AS req_gas_type,
+        size AS req_size,
+        staff_id,
+        status,
+        created_at
+    FROM deliveries 
+    WHERE status = 'pending'
+    ORDER BY delivery_id DESC
+";
 
-    // นับงานที่ staff คนนี้รับผิดชอบ และยังไม่เสร็จ (ปรับเงื่อนไขตามต้องการ)
-    $sql = "SELECT COUNT(*) as job_count 
-            FROM delivery 
-            WHERE staff_id = ? 
-              AND status NOT IN ('completed', 'cancelled', 'rejected')";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $staffId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $count = (int)($row['job_count'] ?? 0);
+$result = mysqli_query($conn, $query);
 
-    echo json_encode(['count' => $count]);
+if (!$result) {
+    http_response_code(500);
+    echo json_encode(["error" => mysqli_error($conn)]);
     exit;
 }
 
-// ถ้าใช้ method อื่น
-http_response_code(405);
-echo json_encode(['error' => 'Method not allowed']);
+$data = array();
+while ($row = mysqli_fetch_assoc($result)) {
+    $data[] = $row;
+}
+
+echo json_encode($data);
 ?>

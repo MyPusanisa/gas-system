@@ -81,6 +81,20 @@ function MaintenancePage({
       setMaintenances([]);
     }
   };
+  // ฟังก์ชันคำนวณวันตรวจครั้งถัดไป (เพิ่ม 1 ปีจากวันที่ตรวจ)
+const calculateNextCheckDate = (item) => {
+  if (item.next_check_date) return item.next_check_date;
+  if (item.next_maintenance_date) return item.next_maintenance_date;
+
+  if (item.maintenance_date) {
+    const d = new Date(item.maintenance_date);
+    if (!isNaN(d.getTime())) {
+      d.setFullYear(d.getFullYear() + 1); // บวกเพิ่ม 1 ปี
+      return d.toISOString().split("T")[0];
+    }
+  }
+  return "-";
+};
 
   const fetchCylinders = async () => {
     try {
@@ -342,7 +356,7 @@ function MaintenancePage({
   return (
     <Layout>
       <h1 style={{ marginBottom: "20px", color: "white" }}>
-        ตรวจสภาพและบำรุงรักษา 🔧
+        ตรวจสภาพและบำรุงรักษา
       </h1>
 
       <div style={summaryRowStyle}>
@@ -444,7 +458,7 @@ function MaintenancePage({
           {/* ช่องที่ 4 */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
-              สิ่งที่ต้องทำต่อ 🔄
+              สิ่งที่ต้องทำต่อ
             </label>
             <div style={inputWithBtnStyle}>
               <select
@@ -469,7 +483,7 @@ function MaintenancePage({
           </div>
 
           <div style={{ ...fieldGroupStyle, gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>เลือกหมายเหตุสำเร็จรูป 🏷️</label>
+            <label style={labelStyle}>เลือกหมายเหตุสำเร็จรูป</label>
             <div style={inputWithBtnStyle}>
               <select
                 value={selectedNote}
@@ -506,7 +520,7 @@ function MaintenancePage({
         <button onClick={saveMaintenance} style={primaryButtonStyle} disabled={saving}>
           {saving 
             ? "กำลังบันทึก..." 
-            : `💾 บันทึกผลตรวจ ${selectedSerialNumbers.length > 0 ? `(${selectedSerialNumbers.length} รายการ)` : ""}`
+            : `บันทึกผลตรวจ ${selectedSerialNumbers.length > 0 ? `(${selectedSerialNumbers.length} รายการ)` : ""}`
           }
         </button>
       </div>
@@ -614,11 +628,11 @@ function MaintenancePage({
                   <td style={tdStyle}>{item.maintenance_type || "-"}</td>
                   <td style={tdStyle}>{item.result || "-"}</td>
                   <td style={tdStyle}><span style={actionBadgeStyle}>{item.next_action || "-"}</span></td>
-                  <td style={tdStyle}>{item.next_check_date || item.next_maintenance_date || "-"}</td>
+                  <td style={tdStyle}>{calculateNextCheckDate(item)}</td>
                   <td style={tdStyle}>{item.description || "-"}</td>
                   <td style={tdStyle}>
                     <button onClick={() => handleEditClick(item)} style={editButtonStyle}>
-                      ✏️ แก้ไข
+                      แก้ไข
                     </button>
                   </td>
                 </tr>

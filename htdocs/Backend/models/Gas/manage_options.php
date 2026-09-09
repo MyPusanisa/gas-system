@@ -1,96 +1,65 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=UTF-8");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit;
+    exit();
 }
 
-include_once "../../config/db.php";
+require_once "../../config/db.php";
 
-$method = $_SERVER['REQUEST_METHOD'];
+mysqli_set_charset($conn, "utf8mb4");
 
-// 1. ดึงรายการตัวเลือกทั้งหมด (GET Request)
-if ($method === 'GET') {
-    $brands = $conn->query("SELECT id, brand_name FROM gas_brands ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
-    $types = $conn->query("SELECT id, type_name FROM gas_types ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
-    $sizes = $conn->query("SELECT id, size_name FROM gas_sizes ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
-    $locations = $conn->query("SELECT id, location_name FROM gas_locations ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
-    $statuses = $conn->query("SELECT id, status_name FROM gas_statuses ORDER BY id DESC")->fetch_all(MYSQLI_ASSOC);
+$data = json_decode(file_get_contents("php://input"), true);
 
-    echo json_encode([
-        "success" => true,
-        "data" => [
-            "brands" => $brands,
-            "types" => $types,
-            "sizes" => $sizes,
-            "locations" => $locations,
-            "statuses" => $statuses
-        ]
-    ]);
-    exit;
+if (!$data || empty($data['action']) || empty($data['target'])) {
+    echo json_encode(["success" => false, "message" => "ข้อมูลไม่ครบถ้วน"], JSON_UNESCAPED_UNICODE);
+    exit();
 }
 
-// 2. จัดการ เพิ่ม/ลบ ตัวเลือก (POST Request)
-if ($method === 'POST') {
-    $data = json_decode(file_get_contents("php://input"), true);
+$action = $data['action'];
+$target = $data['target'];
 
-    $action = $data['action'] ?? '';
-    $target = $data['target'] ?? '';
+$targetMap = [
+    'brand'    => ['table' => 'gas_brands', 'column' => 'brand_name'],
+    'gas_type' => ['table' => 'gas_types',  'column' => 'type_name'],
+    'gasType'  => ['table' => 'gas_types',  'column' => 'type_name'],
+    'size'     => ['table' => 'gas_sizes',  'column' => 'size_name'],
+    'location' => ['table' => 'gas_locations', 'column' => 'location_name'],
+];
 
-    $tableMap = [
-        'brand'    => ['table' => 'gas_brands',    'column' => 'brand_name',    'id' => 'id'],
-        'type'     => ['table' => 'gas_types',     'column' => 'type_name',     'id' => 'id'],
-        'size'     => ['table' => 'gas_sizes',     'column' => 'size_name',     'id' => 'id'],
-        'location' => ['table' => 'gas_locations', 'column' => 'location_name', 'id' => 'id'],
-        'status'   => ['table' => 'gas_statuses',  'column' => 'status_name',   'id' => 'id']
-    ];
+if (!isset($targetMap[$target])) {
+    echo json_encode(["success" => false, "message" => "ประเภทข้อมูลไม่ถูกต้อง"], JSON_UNESCAPED_UNICODE);
+    exit();
+}
 
-    if (!isset($tableMap[$target])) {
-        echo json_encode(["success" => false, "message" => "Target ไม่ถูกต้อง"]);
-        exit;
-    }
+$tableName = $targetMap[$target]['table'];
+$columnName = $targetMap[$target]['column'];
 
-    $config = $tableMap[$target];
-    $table = $config['table'];
-    $colName = $config['column'];
-    $idCol = $config['id'];
-
-    if ($action === 'add') {
-        $value = trim($data['value'] ?? '');
-        if (empty($value)) {
-            echo json_encode(["success" => false, "message" => "กรุณากรอกข้อมูล"]);
-            exit;
-        }
-
-        $stmt = $conn->prepare("INSERT INTO $table ($colName) VALUES (?)");
-        $stmt->bind_param("s", $value);
-        if ($stmt->execute()) {
-            echo json_encode(["success" => true, "message" => "เพิ่มข้อมูลเรียบร้อย"]);
-        } else {
-            echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาดในการเพิ่ม"]);
-        }
-
-    } elseif ($action === 'delete') {
-        $id = $data['id'] ?? 0;
-        if (!$id) {
-            echo json_encode(["success" => false, "message" => "ID ไม่ถูกต้อง"]);
-            exit;
-        }
-
-        $stmt = $conn->prepare("DELETE FROM $table WHERE $idCol = ?");
-        $stmt->bind_param("i", $id);
-        if ($stmt->execute()) {
-            echo json_encode(["success" => true, "message" => "ลบข้อมูลเรียบร้อย"]);
-        } else {
-            echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาดในการลบ"]);
-        }
+if ($action === 'add' && !empty($data['value'])) {
+    $val = mysqli_real_escape_string($conn, trim($data['value']));
+    $sql = "INSERT INTO {$tableName} ({$columnName}) VALUES ('{$val}')";
+    
+    if (mysqli_query($conn, $sql)) {
+        echo json_encode(["success" => true, "message" => "เพิ่มรายการสำเร็จ"], JSON_UNESCAPED_UNICODE);
     } else {
-        echo json_encode(["success" => false, "message" => "Action ไม่ถูกต้อง"]);
+        echo json_encode(["success" => false, "message" => mysqli_error($conn)], JSON_UNESCAPED_UNICODE);
     }
-    exit;
+} elseif ($action === 'delete' && !empty($data['id'])) {
+    $id = intval($data['id']);
+    $sql = "DELETE FROM {$tableName} WHERE id = {$id}";
+    
+    if (mysqli_query($conn, $sql)) {
+        echo json_encode(["success" => true, "message" => "ลบรายการสำเร็จ"], JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode(["success" => false, "message" => mysqli_error($conn)], JSON_UNESCAPED_UNICODE);
+    }
+} else {
+    echo json_encode(["success" => false, "message" => "คำสั่งไม่ถูกต้อง"], JSON_UNESCAPED_UNICODE);
 }
+
+mysqli_close($conn);
 ?>

@@ -8,10 +8,10 @@ import QRCodePage from "./pages/QRCodePage"
 import MaintenancePage from "./pages/MaintenancePage"
 import CylinderPage from "./pages/CylinderPage"
 import StaffPage from "./pages/StaffPage"
+import AdminApprovalPage from "./pages/AdminApprovalPage"
 import ProtectedRoute from "./components/ProtectedRoute"
 
 function App() {
-  // สร้าง State สำหรับเก็บข้อมูลและส่งต่อไปยังแต่ละหน้า
   const [customers, setCustomers] = useState([]);
   const [staffs, setStaffs] = useState([])
   const [cylinders, setCylinders] = useState([])
@@ -31,12 +31,20 @@ function App() {
         }
       />
 
-      {/* หน้ารายชื่อพนักงานส่ง (คุมสิทธิ์เฉพาะ admin) */}
       <Route
         path="/staff"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/approval"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminApprovalPage />
           </ProtectedRoute>
         }
       />
@@ -86,9 +94,7 @@ function App() {
         }
       />
 
-      {/* หน้าสำหรับฝั่งลูกค้าสแกนตรวจสอบข้อมูล */}
       <Route path="/cylinder/:id" element={<QRCodePage cylinders={cylinders} />} />
-
     </Routes>
   )
 }

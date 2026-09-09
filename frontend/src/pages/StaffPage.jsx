@@ -249,28 +249,6 @@ function StaffPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case "active":
-        return { background: "#22c55e", color: "white" };
-      case "inactive":
-        return { background: "#ef4444", color: "white" };
-      default:
-        return { background: "#6b7280", color: "white" };
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case "active":
-        return "ใช้งาน";
-      case "inactive":
-        return "ไม่ใช้งาน";
-      default:
-        return status;
-    }
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -420,45 +398,65 @@ function StaffPage() {
               <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
               <th style={{ ...thStyle, width: "100px" }}>Username</th>
               <th style={{ ...thStyle, width: "100px" }}>Password</th>
-              <th style={{ ...thStyle, width: "200px" }}>ที่อยู่</th>
-              <th style={{ ...thStyle, width: "90px" }}>สถานะ</th>
-              <th style={{ ...thStyle, width: "80px" }}>จำนวนงาน</th>
+              <th style={{ ...thStyle, width: "180px" }}>ที่อยู่</th>
+              <th style={{ ...thStyle, width: "100px" }}>สถานะงาน</th>
+              <th style={{ ...thStyle, width: "90px" }}>จำนวนงาน</th>
               <th style={{ ...thStyle, width: "140px" }}>จัดการ</th>
             </tr>
           </thead>
         
           <tbody>
             {filteredStaffs.length > 0 ? (
-              filteredStaffs.map((item) => (
-                <tr key={item.staff_id}>
-                  <td style={tdStyle}>{item.staff_id}</td>
-                  <td style={tdStyle}>
-                    <strong>{removeEmojis(item.staff_name)}</strong>
-                  </td>
-                  <td style={tdStyle}>{removeEmojis(item.staff_phone) || "-"}</td>
-                  <td style={tdStyle}>{removeEmojis(item.username)}</td>
-                  <td style={tdStyle}>{removeEmojis(item.password) || "-"}</td>
-                  <td style={tdStyle}>{removeEmojis(item.address) || "-"}</td>
-                  <td style={tdStyle}>
-                    <span style={{ ...badgeStyle, ...getStatusStyle(item.status) }}>
-                      {getStatusText(item.status)}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>{item.delivery_count || 0}</td>
-                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                    <button type="button" onClick={() => editStaff(item)} style={editButtonStyle}>
-                      แก้ไข
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteStaff(item.staff_id, item.staff_name)}
-                      style={deleteButtonStyle}
-                    >
-                      ลบ
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filteredStaffs.map((item) => {
+                const pendingCount = Number(item.pending_jobs || 0);
+                const isWorking = pendingCount > 0;
+
+                return (
+                  <tr key={item.staff_id}>
+                    <td style={tdStyle}>{item.staff_id}</td>
+                    <td style={tdStyle}>
+                      <strong>{removeEmojis(item.staff_name)}</strong>
+                    </td>
+                    <td style={tdStyle}>{removeEmojis(item.staff_phone) || "-"}</td>
+                    <td style={tdStyle}>{removeEmojis(item.username)}</td>
+                    <td style={tdStyle}>{removeEmojis(item.password) || "-"}</td>
+                    <td style={tdStyle}>{removeEmojis(item.address) || "-"}</td>
+                    
+                    {/* แสดงสถานะงาน: กำลังส่ง / ว่าง */}
+                    <td style={tdStyle}>
+                      <span
+                        style={{
+                          ...badgeStyle,
+                          backgroundColor: isWorking ? "#f59e0b" : "#10b981",
+                          color: "white",
+                        }}
+                      >
+                        {isWorking ? "กำลังส่ง" : "ว่าง"}
+                      </span>
+                    </td>
+
+                    {/* แสดงจำนวนงานที่รอส่ง */}
+                    <td style={tdStyle}>
+                      <span style={{ fontWeight: "bold", color: isWorking ? "#f59e0b" : "#9ca3af" }}>
+                        {pendingCount} งาน
+                      </span>
+                    </td>
+
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                      <button type="button" onClick={() => editStaff(item)} style={editButtonStyle}>
+                        แก้ไข
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteStaff(item.staff_id, item.staff_name)}
+                        style={deleteButtonStyle}
+                      >
+                        ลบ
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td style={{ ...tdStyle, textAlign: "center" }} colSpan="9">
@@ -590,7 +588,7 @@ const badgeStyle = {
   padding: "4px 10px",
   borderRadius: "999px",
   fontSize: "12px",
-  fontWeight: "500",
+  fontWeight: "bold",
   whiteSpace: "nowrap",
   display: "inline-block",
   textAlign: "center",

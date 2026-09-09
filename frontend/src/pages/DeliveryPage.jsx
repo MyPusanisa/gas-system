@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import API_BASE_URL from "../config"; 
+import API_BASE_URL from "../config";
 
 // สร้าง UPLOADS_BASE_URL อ้างอิงจากโฟลเดอร์ root ของ Backend
 const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
 
 function DeliveryPage() {
-  // อ่านค่าจาก localStorage ให้แน่ใจว่าได้ค่าล่าสุดเสมอ
+  // อ่านค่าจาก localStorage
   const [role, setRole] = useState(() => localStorage.getItem("role") || "");
   const [username, setUsername] = useState(() => localStorage.getItem("username") || "");
   const [staffId, setStaffId] = useState(() => localStorage.getItem("staff_id") || "");
@@ -16,6 +16,7 @@ function DeliveryPage() {
   const [cylinders, setCylinders] = useState([]);
   const [staffs, setStaffs] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [gasLevel, setGasLevel] = useState(0); // ค่าแก๊สในคลังดึงจาก gas_sensor_logs
   const [loading, setLoading] = useState(true);
 
   const [selectedProofId, setSelectedProofId] = useState(null);
@@ -46,15 +47,36 @@ function DeliveryPage() {
   const [newAddress, setNewAddress] = useState("");
   const [newMapPin, setNewMapPin] = useState("");
   
-  // ปรับสำหรับ Admin: ระบุสเปกแก๊สแทนการเลือก Serial Number ถัง
+  // สำหรับ Admin: ระบุสเปกแก๊ส
   const [newBrand, setNewBrand] = useState("");
   const [newGasType, setNewGasType] = useState("LPG");
   const [newSize, setNewSize] = useState("");
   const [newStaffId, setNewStaffId] = useState("");
 
   const apiFetch = async (url, options = {}) => {
-    const res = await fetch(url, { ...options, credentials: "include" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const token = localStorage.getItem("token") || "";
+
+    const defaultHeaders = {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    };
+
+    const res = await fetch(url, {
+      ...options,
+      credentials: "include",
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
+
     const text = await res.text();
     try {
       return JSON.parse(text);
@@ -64,7 +86,7 @@ function DeliveryPage() {
     }
   };
 
-  // ดึงตัวเลือก ยี่ห้อ/ชนิดแก๊ส/ขนาดถัง จากตารางถังแก๊สในฐานข้อมูลแบบ Dynamic
+  // ดึงตัวเลือก ยี่ห้อ/ชนิดแก๊ส/ขนาดถัง
   const brandOptions = useMemo(() => {
     if (!Array.isArray(cylinders)) return [];
     const brands = cylinders.map((c) => c.brand || c.brand_name).filter(Boolean);
@@ -98,10 +120,20 @@ function DeliveryPage() {
     return d.toISOString().split("T")[0];
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) setLoading(true);
 
+      // 1. ดึงค่าแก๊สล่าสุดจาก gas_sensor_logs
+      apiFetch(`${API_BASE_URL.replace(/\/models\/?$/, "")}/gas/latest.php`)
+        .then((res) => {
+          if (res && res.success && res.data) {
+            setGasLevel(Number(res.data.gas_value));
+          }
+        })
+        .catch(() => {});
+
+      // 2. ดึงข้อมูลระบบทั้งหมดพร้อมกัน
       const [deliveriesRes, cylindersRes, staffsRes, customersRes] = await Promise.allSettled([
         apiFetch(`${API_BASE_URL}/delivery/list.php`),
         apiFetch(`${API_BASE_URL}/cylinder/list.php`),
@@ -109,60 +141,77 @@ function DeliveryPage() {
         apiFetch(`${API_BASE_URL}/customer/list.php`),
       ]);
 
+      const staffList = staffsRes.status === "fulfilled" && staffsRes.value.success ? staffsRes.value.data : [];
+      if (staffsRes.status === "fulfilled" && staffsRes.value.success) {
+        setStaffs(staffList);
+      }
+
       if (deliveriesRes.status === "fulfilled" && deliveriesRes.value.success) {
         const rawData = deliveriesRes.value.data || [];
-        
-        const formattedDeliveries = rawData.map((d) => ({
-          ...d,
-          id: d.id || d.delivery_id,
-          customerName: d.customerName || d.customer_name || d.name || "ไม่ระบุชื่อลูกค้า",
-          phone: d.phone || d.customer_phone || "-",
-          address: d.address || d.customer_address || "-",
-          mapPin: d.mapPin || d.map_pin || "-",
-          brand: d.brand || d.req_brand || "-",
-          gasType: d.gasType || d.gas_type || d.req_gas_type || "LPG",
-          size: d.size || d.req_size || "-",
-          staff_id: String(d.staff_id ?? d.staffId ?? ""),
-          status: d.status || "pending",
-        }));
+
+        const formattedDeliveries = rawData.map((d) => {
+          const realId = d.delivery_id || d.id;
+          const currentStaffId = String(d.staff_id ?? d.staffId ?? "").trim();
+          
+          const matchedStaff = staffList.find(
+            (s) =>
+              (currentStaffId && String(s.staff_id) === currentStaffId) ||
+              (d.staff_name && String(s.staff_name).includes(d.staff_name)) ||
+              (d.assignedStaff && String(s.staff_name).includes(d.assignedStaff))
+          );
+
+          const staffName =
+            d.assignedStaff ||
+            d.staff_name ||
+            (matchedStaff ? matchedStaff.staff_name : "") ||
+            "ไม่ระบุชื่อ";
+
+          return {
+            ...d,
+            id: realId,
+            customerName: d.customerName || d.customer_name || d.name || "ไม่ระบุชื่อลูกค้า",
+            phone: d.phone || d.customer_phone || "-",
+            address: d.address || d.customer_address || "-",
+            mapPin: d.mapPin || d.map_pin || "-",
+            brand: d.brand || d.req_brand || "-",
+            gasType: d.gasType || d.gas_type || d.req_gas_type || "LPG",
+            size: d.size || d.req_size || "-",
+            staff_id: currentStaffId || (matchedStaff ? String(matchedStaff.staff_id) : ""),
+            assignedStaff: staffName,
+            status: d.status || "pending",
+            proofImagePath: d.proofImagePath || d.proof_image_path || "",
+          };
+        });
 
         setDeliveries(formattedDeliveries);
       }
 
       if (cylindersRes.status === "fulfilled" && cylindersRes.value.success) {
         setCylinders(cylindersRes.value.data);
-      } else {
-        console.error("โหลด cylinders ล้มเหลว", cylindersRes);
-      }
-
-      if (staffsRes.status === "fulfilled" && staffsRes.value.success) {
-        setStaffs(staffsRes.value.data);
-      } else {
-        console.error("โหลด staffs ล้มเหลว", staffsRes);
       }
 
       if (customersRes.status === "fulfilled" && customersRes.value.success) {
         setCustomers(customersRes.value.data);
-      } else {
-        console.error("โหลด customers ล้มเหลว", customersRes);
       }
 
-      if (deliveriesRes.status === "rejected" && cylindersRes.status === "rejected") {
-        alert("ไม่สามารถโหลดข้อมูลหลักได้ กรุณาตรวจสอบเครือข่ายหรือติดต่อผู้ดูแล");
-      }
     } catch (error) {
-      console.error("โหลดข้อมูลล้มเหลวขั้นรุนแรง", error);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์ กรุณารีเฟรชหน้าเว็บ");
+      console.error("โหลดข้อมูลล้มเหลว", error);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadData();
   }, []);
 
-  // 📷 useEffect สำหรับสแกน QR Code
+  // โหลดข้อมูลครั้งแรก + ตั้งระบบ Real-time Auto-polling ทุก 10 วินาที
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  // useEffect สำหรับสแกน QR Code
   useEffect(() => {
     let scanner = null;
     if (scanningJobId) {
@@ -261,7 +310,6 @@ function DeliveryPage() {
     }
   };
 
-  // พนักงานสแกน QR ยืนยันการรับงาน
   const confirmReceiveJob = async (jobItem) => {
     const serialNumber = confirmCylinderInputs[jobItem.id]?.trim();
     if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
@@ -310,6 +358,13 @@ function DeliveryPage() {
 
       if (res.success) {
         alert("ตรวจสอบสเปกถูกต้อง! รับงานและผูกถังแก๊สเรียบร้อยแล้ว");
+        
+        setDeliveries((prev) =>
+          prev.map((d) =>
+            d.id === jobItem.id ? { ...d, status: "delivering", serial_number: serialNumber } : d
+          )
+        );
+
         await loadData();
         setConfirmCylinderInputs((prev) => ({ ...prev, [jobItem.id]: "" }));
       } else {
@@ -333,29 +388,48 @@ function DeliveryPage() {
         body: formData,
       });
       const data = await res.json();
+
       if (data.success) {
+        const uploadedPath = data.filePath || data.filename || data.path || "";
+
         const completeRes = await apiFetch(`${API_BASE_URL}/delivery/update.php`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             delivery_id: id,
             action: "complete_by_staff",
+            proof_image_path: uploadedPath,
           }),
         });
+
         if (completeRes.success) {
-          alert("ส่งรูปและจบงานสำเร็จ");
-          await loadData();
+          alert("ส่งรูปหลักฐานและส่งงานเรียบร้อยแล้ว (รอแอดมินอนุมัติ)");
           setSelectedProofId(null);
-        } else {
-          alert(completeRes.message || "จบงานไม่สำเร็จ แต่รูปถูกบันทึกแล้ว");
+
+          setDeliveries((prevDeliveries) =>
+            prevDeliveries.map((d) => {
+              if (String(d.id) === String(id) || String(d.delivery_id) === String(id)) {
+                return {
+                  ...d,
+                  status: "pending_approval",
+                  proofImagePath: uploadedPath,
+                  proof_image_path: uploadedPath,
+                };
+              }
+              return d;
+            })
+          );
+
           await loadData();
+        } else {
+          alert(completeRes.message || "อัปเดตสถานะงานไม่สำเร็จ");
         }
       } else {
-        alert(data.message || "อัปโหลดรูปไม่สำเร็จ");
+        alert(data.message || "อัปโหลดรูปภาพไม่สำเร็จ");
       }
     } catch (error) {
-      console.error(error);
-      alert("เกิดข้อผิดพลาดในการอัปโหลดรูป");
+      console.error("Upload error:", error);
+      alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ");
     }
   };
 
@@ -424,40 +498,45 @@ function DeliveryPage() {
     sendApproveRequest(pendingApproveId, dataToSend.serial_number, dataToSend);
   };
 
-  const handleDelete = async (deliveryId) => {
-  if (!window.confirm("คุณต้องการลบงานนี้ใช่หรือไม่?")) return;
-
-  try {
-    const res = await fetch("http://localhost/Backend/models/cylinder/delete_delivery.php", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ delivery_id: deliveryId }),
-    });
-
-    // อ่านค่า Response เป็นข้อความก่อน เพื่อป้องกันการ Crash ของ JSON.parse
-    const textData = await res.text();
-    let data;
-
-    try {
-      data = JSON.parse(textData);
-    } catch (e) {
-      console.error("PHP Response ไม่ใช่ JSON:", textData);
-      alert("เซิร์ฟเวอร์ตอบกลับมาไม่ถูกต้อง: " + textData.substring(0, 100));
+  const handleDelete = async (item) => {
+    const deliveryId = item.id || item.delivery_id;
+    if (!deliveryId) {
+      alert("ไม่พบรหัสงานจัดส่ง");
       return;
     }
 
-    alert(data.message);
+    if (!window.confirm(`คุณต้องการลบงานรหัส ${deliveryId} ใช่หรือไม่?`)) return;
 
-    if (data.success) {
-      fetchDeliveries(); // โหลดรายการใหม่หลังจากลบสำเร็จ
+    try {
+      const res = await fetch(`${API_BASE_URL}/cylinder/delete_delivery.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ delivery_id: deliveryId }),
+      });
+
+      const textData = await res.text();
+      let data;
+
+      try {
+        data = JSON.parse(textData);
+      } catch (e) {
+        console.error("PHP Response ไม่ใช่ JSON:", textData);
+        alert("เซิร์ฟเวอร์ตอบกลับมาไม่ถูกต้อง: " + textData.substring(0, 100));
+        return;
+      }
+
+      alert(data.message || (data.success ? "ลบข้อมูลสำเร็จ" : "ลบข้อมูลไม่สำเร็จ"));
+
+      if (data.success) {
+        setDeliveries((prev) => prev.filter((d) => (d.id || d.delivery_id) !== deliveryId));
+      }
+    } catch (err) {
+      console.error("Delete Error:", err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     }
-  } catch (err) {
-    console.error("Delete Error:", err);
-    alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-  }
-};
+  };
 
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
@@ -466,11 +545,15 @@ function DeliveryPage() {
     const currentStaffId = localStorage.getItem("staff_id") || staffId;
     const currentUsername = localStorage.getItem("username") || username;
 
+    const activeDeliveries = deliveries.filter((d) => d.status !== "success");
+
     if (currentRole === "admin" || currentRole === "ผู้ดูแลระบบ") {
-      return deliveries;
+      return activeDeliveries;
     }
 
-    return deliveries.filter((d) => {
+    return activeDeliveries.filter((d) => {
+      if (d.status === "pending_approval") return false;
+
       const dStaffId = String(d.staff_id ?? d.staffId ?? "");
       const myStaffId = String(currentStaffId ?? "");
       const dStaffName = String(d.assignedStaff ?? d.staff_name ?? "").toLowerCase();
@@ -497,21 +580,6 @@ function DeliveryPage() {
   });
 
   const deliverySuccessItems = deliveries.filter((d) => d.status === "success");
-
-  const currentRole = localStorage.getItem("role") || role;
-  const currentUsername = localStorage.getItem("username") || username;
-  const currentStaffId = localStorage.getItem("staff_id") || staffId;
-
-  const newAssignedJobItems =
-    currentRole === "staff"
-      ? deliveries.filter((d) => {
-          const isMyJob =
-            String(d.staff_id) === String(currentStaffId) ||
-            d.assignedStaff === currentUsername ||
-            d.staffUsername === currentUsername;
-          return isMyJob && d.status === "pending";
-        })
-      : [];
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -546,18 +614,18 @@ function DeliveryPage() {
   if (loading) {
     return (
       <Layout>
-        <div style={{ color: "white" }}>กำลังโหลดข้อมูล...</div>
+        <div style={{ color: "white", textAlign: "center", padding: "40px" }}>⏳ กำลังโหลดข้อมูล...</div>
       </Layout>
     );
   }
 
   return (
     <Layout
-      gasLevel={610}
+      gasLevel={gasLevel}
       maintenanceDueItems={maintenanceDueItems}
       expiredCylinderItems={[]}
       deliverySuccessItems={deliverySuccessItems}
-      newAssignedJobItems={newAssignedJobItems}
+      newAssignedJobItems={[]}
     >
       <h1 style={{ marginBottom: "20px" }}>Delivery Management</h1>
 
@@ -651,7 +719,7 @@ function DeliveryPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {visibleDeliveries.length > 0 ? (
           visibleDeliveries.map((item) => (
-            <div key={item.id} style={styles.card}>
+            <div key={item.id} id={`job-card-${item.id}`} style={styles.card}>
               <div style={styles.headerBar}>
                 <div>
                   <h2 style={{ margin: 0 }}>ข้อมูลงานจัดส่ง</h2>
@@ -663,11 +731,11 @@ function DeliveryPage() {
                   </span>
                   {role === "admin" && (item.status === "pending" || item.status === "delivering") && (
                     <button
-  onClick={() => handleDelete(item)}
-  className="bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-6 py-2 rounded-full transition-all duration-200 shadow-md active:scale-95 cursor-pointer"
->
-  ลบ
-</button>
+                      onClick={() => handleDelete(item)}
+                      style={styles.deleteBtn}
+                    >
+                      ลบ
+                    </button>
                   )}
                 </div>
               </div>
@@ -1099,14 +1167,14 @@ const styles = {
     borderRadius: "12px",
   },
   deleteBtn: {
-    padding: "6px 12px",
+    padding: "8px 16px",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "999px",
     background: "#dc2626",
     color: "white",
     cursor: "pointer",
     fontWeight: "bold",
-    fontSize: "12px",
+    fontSize: "14px",
   },
   modalOverlay: {
     position: "fixed",

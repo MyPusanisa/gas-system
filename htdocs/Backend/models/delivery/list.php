@@ -1,9 +1,15 @@
 <?php
-// 1. เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล (ถอย 2 โฟลเดอร์ไปหา config/db.php)
+// 1. เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
 require_once __DIR__ . '/../../config/db.php';
 
-// 2. ดึงข้อมูลงานจัดส่งทั้งหมดเรียงจากใหม่ไปเก่า
-$sql = "SELECT * FROM deliveries ORDER BY delivery_id DESC";
+// 2. ดึงข้อมูลงานจัดส่งทั้งหมดพร้อม JOIN เอาชื่อพนักงานจากตาราง delivery_staff
+$sql = "SELECT 
+            d.*, 
+            s.staff_name AS assignedStaff 
+        FROM deliveries d 
+        LEFT JOIN delivery_staff s ON d.staff_id = s.staff_id 
+        ORDER BY d.delivery_id DESC";
+
 $result = $conn->query($sql);
 
 $deliveries = [];

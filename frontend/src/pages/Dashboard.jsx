@@ -1,7 +1,6 @@
-import { API_BASE } from "../config"; // 👈 เพิ่มบรรทัดนี้ไว้ด้านบนสุดของ Dashboard.jsx
+import { API_BASE } from "../config";
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import API_BASE_URL from "../config";
 import {
   LineChart,
   Line,
@@ -21,6 +20,14 @@ function Dashboard() {
     in_stock: 0,
     ready: 0,
     expired: 0,
+  });
+
+  // State สำหรับเก็บข้อมูลแจ้งเตือน TopBar
+  const [topbarStats, setTopbarStats] = useState({
+    gasLevel: 0,
+    maintenanceCount: 0,
+    expiredCount: 0,
+    successCount: 0,
   });
 
   const [staffRounds, setStaffRounds] = useState([]);
@@ -45,6 +52,19 @@ function Dashboard() {
     } catch (err) {
       console.error(`Fetch error at [${url}]:`, err);
       return null;
+    }
+  };
+
+  // ดึงข้อมูลสำหรับ TopBar Notifications
+  const fetchTopbarStats = async () => {
+    const data = await safeFetchJson(`${API_BASE}/get_topbar_stats.php`);
+    if (data && data.success) {
+      setTopbarStats({
+        gasLevel: data.gasLevel || 0,
+        maintenanceCount: data.maintenanceCount || 0,
+        expiredCount: data.expiredCount || 0,
+        successCount: data.successCount || 0,
+      });
     }
   };
 
@@ -74,15 +94,25 @@ function Dashboard() {
   };
 
   useEffect(() => {
+    fetchTopbarStats();
     fetchSummary();
     fetchStaffRounds();
     fetchNearDueCylinders();
     fetchGasTypeChart();
     fetchDeliveryChart();
+
+    // ดึงข้อมูลอัปเดตแจ้งเตือนทุก 5 วินาที
+    const interval = setInterval(fetchTopbarStats, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <Layout>
+    <Layout
+      gasLevel={topbarStats.gasLevel}
+      maintenanceDueItems={new Array(topbarStats.maintenanceCount).fill(0)}
+      expiredCylinderItems={new Array(topbarStats.expiredCount).fill(0)}
+      deliverySuccessItems={new Array(topbarStats.successCount).fill(0)}
+    >
       <div style={pageStyle}>
         <h1 style={titleStyle}>Dashboard</h1>
 
@@ -95,18 +125,27 @@ function Dashboard() {
         </div>
 
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>📊 จำนวนถังแยกตามประเภทแก๊ส</h2>
+          <h2 style={panelTitleStyle}>จำนวนถังแยกตามประเภทแก๊ส</h2>
           {gasTypeData.length === 0 ? (
             <div style={emptyTextStyle}>ไม่มีข้อมูล</div>
           ) : (
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={200}>
               <BarChart data={gasTypeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="gas_type" />
-                <YAxis />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: "#9ca3af", fontSize: 12 }} 
+                />
+                
+                <XAxis 
+                  dataKey="gas_type" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: "#9ca3af", fontSize: 12 }} 
+                />
+                
                 <Tooltip />
-                <Legend />
-                <Bar dataKey="total" fill="#3b82f6" name="จำนวนถัง" />
+                <Bar dataKey="total" fill="#2563eb" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -114,15 +153,15 @@ function Dashboard() {
 
         {/* ========== GRAPH 2: ออเดอร์รายวัน ========== */}
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>📈 จำนวนออเดอร์ส่งมอบรายวัน</h2>
+          <h2 style={panelTitleStyle}>จำนวนออเดอร์ส่งมอบรายวัน</h2>
           {deliveryChartData.length === 0 ? (
             <div style={emptyTextStyle}>ไม่มีข้อมูล</div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={deliveryChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="delivery_day" />
-                <YAxis />
+                <XAxis dataKey="delivery_day" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} />
                 <Tooltip />
                 <Legend />
                 <Line
@@ -139,7 +178,7 @@ function Dashboard() {
 
         {/* ========== STAFF DELIVERY ROUNDS ========== */}
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>🚚 รอบส่งพนักงาน</h2>
+          <h2 style={panelTitleStyle}>รอบส่งพนักงาน</h2>
           {staffRounds.length === 0 ? (
             <div style={emptyTextStyle}>ยังไม่มีข้อมูลการส่ง</div>
           ) : (
@@ -156,7 +195,7 @@ function Dashboard() {
 
         {/* ========== NEAR DUE CYLINDERS ========== */}
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>⚠️ ถังใกล้ถึงกำหนดตรวจ (30 วัน)</h2>
+          <h2 style={panelTitleStyle}>ถังใกล้ถึงกำหนดตรวจ (30 วัน)</h2>
           <table style={tableStyle}>
             <thead>
               <tr>

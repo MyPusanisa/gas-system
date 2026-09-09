@@ -1,34 +1,53 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=UTF-8");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 require_once "../../config/db.php";
 
-try {
-    $brandsQuery = $conn->query("SELECT id, brand_name FROM gas_brands ORDER BY id ASC");
-    $brands = $brandsQuery ? $brandsQuery->fetch_all(MYSQLI_ASSOC) : [];
+mysqli_set_charset($conn, "utf8mb4");
 
-    $typesQuery = $conn->query("SELECT id, type_name FROM gas_types ORDER BY id ASC");
-    $types = $typesQuery ? $typesQuery->fetch_all(MYSQLI_ASSOC) : [];
-
-    $sizesQuery = $conn->query("SELECT id, size_name FROM gas_sizes ORDER BY id ASC");
-    $sizes = $sizesQuery ? $sizesQuery->fetch_all(MYSQLI_ASSOC) : [];
-
-    // ตัวอย่างใน get_options.php
-    $locationsResult = $conn->query("SELECT * FROM gas_locations ORDER BY id DESC");
-    $locations = $locationsResult ? $locationsResult->fetch_all(MYSQLI_ASSOC) : [];
-
-    echo json_encode([
-        "success" => true,
-        "brands" => $brands,
-        "types" => $types,
-        "sizes" => $sizes,
-        "locations" => $locations
-        "statuses"  => $statuses
-    ]);
-
-} catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => $e->getMessage()]);
+// 1. ดึงยี่ห้อ
+$resBrands = mysqli_query($conn, "SELECT * FROM gas_brands ORDER BY id DESC");
+$brands = array();
+if ($resBrands) {
+    while ($row = mysqli_fetch_assoc($resBrands)) { $brands[] = $row; }
 }
+
+// 2. ดึงชนิด
+$resTypes = mysqli_query($conn, "SELECT * FROM gas_types ORDER BY id DESC");
+$types = array();
+if ($resTypes) {
+    while ($row = mysqli_fetch_assoc($resTypes)) { $types[] = $row; }
+}
+
+// 3. ดึงขนาด
+$resSizes = mysqli_query($conn, "SELECT * FROM gas_sizes ORDER BY id DESC");
+$sizes = array();
+if ($resSizes) {
+    while ($row = mysqli_fetch_assoc($resSizes)) { $sizes[] = $row; }
+}
+
+// 4. ดึงสถานที่
+$resLocations = mysqli_query($conn, "SELECT * FROM gas_locations ORDER BY id DESC");
+$locations = array();
+if ($resLocations) {
+    while ($row = mysqli_fetch_assoc($resLocations)) { $locations[] = $row; }
+}
+
+echo json_encode([
+    "success" => true,
+    "brands" => $brands,
+    "types" => $types,
+    "sizes" => $sizes,
+    "locations" => $locations
+], JSON_UNESCAPED_UNICODE);
+
+mysqli_close($conn);
 ?>

@@ -4,17 +4,20 @@ header("Access-Control-Allow-Origin: *");
 
 require_once "../../config/db.php";
 
-// เพิ่ม password ใน SELECT
+// ดึงข้อมูลพนักงาน พร้อมนับจำนวนงาน pending (งานที่กำลังจัดส่ง)
 $sql = "SELECT 
-            staff_id,
-            staff_name,
-            staff_phone,
-            address,
-            username,
-            password,
-            status
-        FROM delivery_staff
-        ORDER BY staff_id ASC";
+            s.staff_id,
+            s.staff_name,
+            s.staff_phone,
+            s.address,
+            s.username,
+            s.password,
+            s.status,
+            COUNT(CASE WHEN d.status = 'pending' THEN 1 END) AS pending_jobs
+        FROM delivery_staff s
+        LEFT JOIN deliveries d ON s.staff_id = d.staff_id
+        GROUP BY s.staff_id
+        ORDER BY s.staff_id ASC";
 
 $result = $conn->query($sql);
 

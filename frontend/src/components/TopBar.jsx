@@ -1,18 +1,23 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function TopBar({
-  role,
-  username,
-  gasLevel,
-  maintenanceDueItems = [],
-  expiredCylinderItems = [],
+  role: propsRole,
+  username: propsUsername,
+  gasLevel = 0,
   deliverySuccessItems = [],
-  newAssignedJobItems = [],
 }) {
-  // State สำหรับควบคุมการซ่อน/แสดงรายละเอียดค่าแก๊ส
+  const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(true);
 
-  // คำนวณสถานะแก๊ส
+  const localRole = (localStorage.getItem("role") || propsRole || "").toLowerCase();
+  const localUsername = localStorage.getItem("username") || propsUsername || "ไม่ระบุชื่อ";
+  const isAdmin = localRole === "admin" || localRole === "ผู้ดูแลระบบ";
+
+  const count = Array.isArray(deliverySuccessItems) 
+    ? deliverySuccessItems.length 
+    : (Number(deliverySuccessItems) || 0);
+
   const getStatusText = (level) => {
     if (level <= 520) return "ปกติ";
     if (level <= 720) return "เฝ้าระวัง";
@@ -26,10 +31,10 @@ function TopBar({
   };
 
   return (
-    <div style={{ background: "#0b1329", padding: "16px 24px", color: "white" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", items: "center" }}>
+    <div style={{ background: "#0b1329", padding: "16px 24px", color: "white", position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         
-        {/* 1. ปุ่มแก๊สในคลัง (กดปุ่มนี้เพื่อสลับการซ่อน/แสดงค่า) */}
+        {/* แสดงค่าแก๊สในคลัง */}
         <button
           onClick={() => setShowDetails(!showDetails)}
           style={{
@@ -41,14 +46,21 @@ function TopBar({
             borderRadius: "20px",
             background: "#1f2937",
             color: "white",
-            cursor: "pointer",
-            transition: "all 0.2s"
+            cursor: "pointer"
           }}
         >
-          <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: getStatusColor(gasLevel) }}></span>
+          {/* แก้ไขวงกลมบอกสถานะที่นี่ */}
+          <span 
+            style={{ 
+              display: "inline-block",
+              width: "10px", 
+              height: "10px", 
+              borderRadius: "50%", 
+              backgroundColor: getStatusColor(gasLevel),
+              flexShrink: 0
+            }} 
+          />
           <span style={{ fontSize: "14px", color: "#d1d5db" }}>แก๊สในคลัง</span>
-          
-          {/* แสดงค่าเฉพาะตอนที่ showDetails เป็น true */}
           {showDetails && (
             <strong style={{ fontSize: "14px", color: getStatusColor(gasLevel), marginLeft: "4px" }}>
               {gasLevel} ({getStatusText(gasLevel)})
@@ -56,61 +68,37 @@ function TopBar({
           )}
         </button>
 
-        {/* 2. เมนูฝั่งขวาบน (แยกตาม Role) */}
-        {role === "admin" ? (
-          /* --- แถบฝั่ง ADMIN --- */
+        {/* แสดงผลรายการรออนุมัติส่ง */}
+        {isAdmin ? (
           <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "14px" }}>
-            <span style={{ background: "#1f2937", padding: "6px 12px", borderRadius: "6px" }}>
-              ตรวจสภาพ <strong style={{ color: "#facc15" }}>{maintenanceDueItems.length}</strong>
-            </span>
-            <span style={{ background: "#1f2937", padding: "6px 12px", borderRadius: "6px" }}>
-              หมดอายุ <strong style={{ color: "#ef4444" }}>{expiredCylinderItems.length}</strong>
-            </span>
-            <span style={{ background: "#1f2937", padding: "6px 12px", borderRadius: "6px" }}>
-              ส่งสำเร็จ <strong style={{ color: "#22c55e" }}>{deliverySuccessItems.length}</strong>
-            </span>
+            <button
+              onClick={() => navigate("/approval")}
+              style={{
+                background: "#1f2937",
+                border: "1px solid #374151",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                color: "white",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              <span>รออนุมัติส่ง</span>
+              <strong style={{ color: count > 0 ? "#facc15" : "#22c55e", fontSize: "15px" }}>{count}</strong>
+            </button>
             <span style={{ color: "#9ca3af", marginLeft: "8px" }}>
-              ผู้ใช้: <strong style={{ color: "white" }}>{username || "ผู้ดูแลระบบ"}</strong>
+              ผู้ใช้: <strong style={{ color: "white" }}>{localUsername}</strong>
             </span>
           </div>
         ) : (
-          /* --- แถบฝั่ง พนักงาน (Staff / Delivery) --- */
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "#1e293b",
-                border: "1px solid #334155",
-                padding: "6px 16px",
-                borderRadius: "20px",
-                color: "white",
-                cursor: "pointer",
-                fontSize: "14px",
-              }}
-            >
-              <span>🔔 แจ้งเตือนงานเข้า</span>
-              <span
-                style={{
-                  background: "#ef4444",
-                  color: "white",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  padding: "2px 8px",
-                  borderRadius: "10px",
-                }}
-              >
-                {newAssignedJobItems.length}
-              </span>
-            </button>
-            
             <span style={{ color: "#9ca3af", fontSize: "14px" }}>
-              พนักงาน: <strong style={{ color: "white" }}>{username}</strong>
+              พนักงาน: <strong style={{ color: "white" }}>{localUsername}</strong>
             </span>
           </div>
         )}
-
       </div>
     </div>
   );

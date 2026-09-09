@@ -11,7 +11,7 @@ const formatDate = (date) => {
 const calculateExpiryDate = (manufactureDate) => {
   if (!manufactureDate) return "-"
   const date = new Date(manufactureDate)
-  date.setFullYear(date.getFullYear() + 5) // มาตรฐานถังแก๊สมีอายุตรวจสภาพทุกๆ 5 ปี
+  date.setFullYear(date.getFullYear() + 5)
   return date.toISOString().split("T")[0]
 }
 
@@ -24,7 +24,6 @@ const getInspectionStatus = (statusFromDb) => {
 }
 
 function CylinderPage() {
-  // รับค่า id ซึ่งหมายถึง serial_number จาก URL (เช่น /cylinder/SN-1001)
   const { id } = useParams() 
   const [cylinder, setCylinder] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -87,7 +86,6 @@ function CylinderPage() {
   }
 
   const inspectionStatus = getInspectionStatus(cylinder.status)
-  // คำนวณวันหมดอายุจากฟิลด์วันที่ผลิต (manufacture_date)
   const expiryDate = cylinder.expiry_date || calculateExpiryDate(cylinder.manufacture_date)
 
   return (

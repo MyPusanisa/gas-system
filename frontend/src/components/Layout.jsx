@@ -8,47 +8,37 @@ function Layout({ children }) {
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("username");
 
-  // State สำหรับข้อมูลที่จะโชว์ใน TopBar
   const [gasLevel, setGasLevel] = useState(0);
-  const [maintenanceDueItems, setMaintenanceDueItems] = useState([]);
-  const [expiredCylinderItems, setExpiredCylinderItems] = useState([]);
   const [deliverySuccessItems, setDeliverySuccessItems] = useState([]);
-  const [newAssignedJobItems, setNewAssignedJobItems] = useState([]);
+
+  const fetchTopbarStats = async () => {
+    try {
+      const res = await fetch("http://localhost/Backend/models/get_topbar_stats.php");
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (data && data.success) {
+          setGasLevel(data.gasLevel || 0);
+          // สร้าง Array ตามจำนวนที่นับได้จาก DB เพื่อส่งให้ TopBar
+          const count = data.successCount || 0;
+          setDeliverySuccessItems(new Array(count).fill(1));
+        }
+      } catch (jsonErr) {
+        console.warn("JSON parse error at get_topbar_stats.php:", text);
+      }
+    } catch (err) {
+      console.error("Fetch error at get_topbar_stats.php:", err);
+    }
+  };
 
   useEffect(() => {
-     const fetchAllData = async () => {
-       const endpoints = [
-         { url: "http://localhost/Backend/models/get_gas_level.php", setter: (data) => data.success && setGasLevel(data.gasLevel) },
-         { url: "http://localhost/Backend/models/get_maintenance_due.php", setter: (data) => data.success && setMaintenanceDueItems(data.items || []) },
-         { url: "http://localhost/Backend/models/get_expired_cylinders.php", setter: (data) => data.success && setExpiredCylinderItems(data.items || []) },
-         { url: "http://localhost/Backend/models/get_delivery_success.php", setter: (data) => data.success && setDeliverySuccessItems(data.items || []) },
-         { url: "http://localhost/Backend/models/get_new_jobs.php", setter: (data) => data.success && setNewAssignedJobItems(data.items || []) },
-       ];
- 
-       for (const api of endpoints) {
-         try {
-           const res = await fetch(api.url);
-           const text = await res.text();
-           try {
-             const data = JSON.parse(text);
-             api.setter(data);
-           } catch (jsonErr) {
-             console.warn(`JSON parse error at ${api.url}:`, text);
-           }
-         } catch (err) {
-           console.error(`Fetch error at ${api.url}:`, err);
-         }
-       }
-     };
-
-    fetchAllData();
+    fetchTopbarStats();
+    const interval = setInterval(fetchTopbarStats, 3000); // ดึงข้อมูลใหม่ทุก 3 วินาที
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("role");
-    localStorage.removeItem("username");
-    localStorage.removeItem("name");
+    localStorage.clear();
     navigate("/");
   };
 
@@ -63,10 +53,7 @@ function Layout({ children }) {
         role={role}
         username={username}
         gasLevel={gasLevel}
-        maintenanceDueItems={maintenanceDueItems}
-        expiredCylinderItems={expiredCylinderItems}
         deliverySuccessItems={deliverySuccessItems}
-        newAssignedJobItems={newAssignedJobItems}
       />
 
       <div style={{ display: "flex", minHeight: "calc(100vh - 73px)" }}>
@@ -79,42 +66,24 @@ function Layout({ children }) {
           <div style={{ marginTop: "10px" }}>
             {role === "admin" && (
               <>
-                <button
-                  type="button"
-                  style={getMenuButtonStyle("/dashboard")}
-                  onClick={() => navigate("/dashboard")}
-                >
+                <button type="button" style={getMenuButtonStyle("/dashboard")} onClick={() => navigate("/dashboard")}>
                   Dashboard
                 </button>
-                <button
-                  type="button"
-                  style={getMenuButtonStyle("/gas")}
-                  onClick={() => navigate("/gas")}
-                >
+                <button type="button" style={getMenuButtonStyle("/gas")} onClick={() => navigate("/gas")}>
                   ถังแก๊ส
                 </button>
-                <button
-                  type="button"
-                  style={getMenuButtonStyle("/maintenance")}
-                  onClick={() => navigate("/maintenance")}
-                >
+                <button type="button" style={getMenuButtonStyle("/maintenance")} onClick={() => navigate("/maintenance")}>
                   Maintenance
                 </button>
-                {/* 👈 เพิ่มปุ่มเมนูพนักงานส่งตรงนี้ */}
-                <button
-                  type="button"
-                  style={getMenuButtonStyle("/staff")}
-                  onClick={() => navigate("/staff")}
-                >
+                <button type="button" style={getMenuButtonStyle("/staff")} onClick={() => navigate("/staff")}>
                   พนักงานส่ง
+                </button>
+                <button type="button" style={getMenuButtonStyle("/approval")} onClick={() => navigate("/approval")}>
+                  อนุมัติการจัดส่ง
                 </button>
               </>
             )}
-            <button
-              type="button"
-              style={getMenuButtonStyle("/delivery")}
-              onClick={() => navigate("/delivery")}
-            >
+            <button type="button" style={getMenuButtonStyle("/delivery")} onClick={() => navigate("/delivery")}>
               Delivery
             </button>
           </div>
@@ -130,54 +99,9 @@ function Layout({ children }) {
   );
 }
 
-const asideStyle = {
-  width: "240px",
-  background: "#0b1324",
-  color: "white",
-  padding: "20px",
-  position: "relative",
-  zIndex: 50,
-  flexShrink: 0,
-  boxSizing: "border-box",
-};
-
-const mainStyle = {
-  flex: 1,
-  padding: "30px",
-  color: "white",
-  position: "relative",
-  zIndex: 1,
-  boxSizing: "border-box",
-};
-
-const menuButtonStyle = {
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  cursor: "pointer",
-  marginBottom: "16px",
-  padding: "14px 16px",
-  borderRadius: "12px",
-  background: "#1f2937",
-  color: "white",
-  border: "none",
-  fontSize: "18px",
-  fontWeight: "500",
-  textAlign: "left",
-};
-
-const logoutButtonStyle = {
-  marginTop: "30px",
-  padding: "12px 14px",
-  border: "none",
-  borderRadius: "10px",
-  background: "#ef4444",
-  color: "white",
-  cursor: "pointer",
-  width: "100%",
-  fontSize: "16px",
-  fontWeight: "500",
-};
+const asideStyle = { width: "240px", background: "#0b1324", color: "white", padding: "20px", flexShrink: 0, boxSizing: "border-box" };
+const mainStyle = { flex: 1, padding: "30px", color: "white", boxSizing: "border-box" };
+const menuButtonStyle = { width: "100%", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", marginBottom: "16px", padding: "14px 16px", borderRadius: "12px", background: "#1f2937", color: "white", border: "none", fontSize: "18px", fontWeight: "500", textAlign: "left" };
+const logoutButtonStyle = { marginTop: "30px", padding: "12px 14px", border: "none", borderRadius: "10px", background: "#ef4444", color: "white", cursor: "pointer", width: "100%", fontSize: "16px", fontWeight: "500" };
 
 export default Layout;

@@ -4,10 +4,12 @@ header("Access-Control-Allow-Origin: *");
 
 include_once "../config/db.php";
 
+// ❌ ของเดิม: FROM delivery d
+// ✅ แก้ไขเป็น: FROM deliveries d (เติม s)
 $sql = "SELECT 
             ds.staff_name,
             COUNT(d.delivery_id) AS delivery_count
-        FROM delivery d
+        FROM deliveries d
         JOIN delivery_staff ds 
             ON d.staff_id = ds.staff_id
         GROUP BY d.staff_id
