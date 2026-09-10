@@ -25,43 +25,43 @@ function MaintenancePage({
   };
 
   const fetchMaintenances = async () => {
-    try {
-      const res = await fetch("http://localhost/Backend/models/get_maintenance.php");
-      const data = await res.json();
-      if (data.success) {
-        const sorted = data.data.sort((a, b) => 
-          new Date(b.maintenance_date) - new Date(a.maintenance_date)
-        );
-        setMaintenances(sorted);
-      }
-    } catch (err) {
-      console.error(err);
+  try {
+    const res = await fetch("http://localhost:8080/Backend/models/get_maintenance.php");
+    const data = await res.json();
+    if (data.success) {
+      const sorted = data.data.sort((a, b) => 
+        new Date(b.maintenance_date) - new Date(a.maintenance_date)
+      );
+      setMaintenances(sorted);
     }
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const fetchCylinders = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("http://localhost/Backend/models/get_due_cylinders.php");
-      const data = await res.json();
-      if (data.success) {
-        const enrichedData = data.data.map(item => ({
-          ...item,
-          serial_number: item.serial_number || item.cylinder_id || "-",
-          gas_type: item.gas_type || "LPG",
-          current_location: item.current_location || "คลัง",
-          next_check_date: item.next_check_date || null,
-          status: item.status || "ปกติ"
-        }));
-        setAllCylinders(enrichedData);
-        if (propSetCylinders) propSetCylinders(enrichedData);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const res = await fetch("http://localhost:8080/Backend/models/get_due_cylinders.php");
+    const data = await res.json();
+    if (data.success) {
+      const enrichedData = data.data.map(item => ({
+        ...item,
+        serial_number: item.serial_number || item.cylinder_id || "-",
+        gas_type: item.gas_type || "LPG",
+        current_location: item.current_location || "คลัง",
+        next_check_date: item.next_check_date || null,
+        status: item.status || "ปกติ"
+      }));
+      setAllCylinders(enrichedData);
+      if (propSetCylinders) propSetCylinders(enrichedData);
     }
-  };
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchCylinders();
@@ -93,11 +93,11 @@ function MaintenancePage({
     return "ใกล้ถึงกำหนด";
   };
 
-  const saveMaintenance = async () => {
-    if (!selectedSerialNumber || !maintenanceType || !result) {
-      alert("กรุณากรอกข้อมูลให้ครบ");
-      return;
-    }
+  const res = await fetch("http://localhost:8080/Backend/models/save_maintenance.php", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload),
+});
 
     const adminId = localStorage.getItem("admin_id") || "1";
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import { QRCodeSVG } from "qrcode.react";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost";
 const API_BASE = "/Backend/models";
 
 function GasPage() {
@@ -302,9 +302,9 @@ function GasPage() {
     }
     const cleanPath = proofImg.replace(/^\/+/, "");
     if (cleanPath.startsWith("Backend/")) {
-      return `${BASE_URL}/${cleanPath}`;
+      return `/${cleanPath}`;
     }
-    return `${BASE_URL}/Backend/${cleanPath}`;
+    return `/Backend/uploads/${cleanPath}`;
   };
 
   const handleShowImage = (rawPath, serialOrId) => {
@@ -313,6 +313,13 @@ function GasPage() {
     setImageModal({ open: true, imgSrc: fullImgUrl, rawPath, serial: serialOrId });
   };
 
+  // Dynamic URL Helper สำหรับ QR Code
+  const getQrUrl = (cylinder) => {
+    if (!cylinder) return "";
+    const rawId = cylinder.cylinder_id || cylinder.id || cylinder.cylinder_no || "";
+    const cleanId = String(rawId).trim().replace(/\s+/g, "");
+    return `http://${window.location.hostname}:5173/cylinder/${cleanId}`;
+  };
 
   const filteredCylinders = cylinders.filter((item) => {
     const term = searchTerm.toLowerCase();
@@ -321,10 +328,8 @@ function GasPage() {
     const location = (item.current_location || item.location_name || "").toLowerCase();
     const status = (item.status || "").trim();
 
-    // 1. เงื่อนไขบังคับ: ต้องมีสถานะเป็น "ในคลัง" เท่านั้น
     const isInStock = status === "ในคลัง";
 
-    // 2. เงื่อนไขค้นหาผ่านช่อง Search
     const matchesSearch =
       serial.includes(term) ||
       brand.includes(term) ||
@@ -334,7 +339,6 @@ function GasPage() {
     return isInStock && matchesSearch;
   });
 
-  // กรองรายการจัดส่ง
   const filteredDeliveries = deliveries.filter((item) => {
     const term = searchTerm.toLowerCase();
     const deliveryId = (item.delivery_id || "").toString().toLowerCase();
@@ -653,19 +657,17 @@ function GasPage() {
             </p>
 
             <div style={{ background: "white", padding: "15px", borderRadius: "8px", display: "inline-block" }}>
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                  JSON.stringify({
-                    cylinder_id: qrModal.cylinder.cylinder_id || qrModal.cylinder.id,
-                    serial_number: qrModal.cylinder.serial_number || qrModal.cylinder.serial,
-                  })
-                )}`}
-                alt="QR Code"
-                style={{ width: "180px", height: "180px", display: "block" }}
+              <QRCodeSVG
+                value={getQrUrl(qrModal.cylinder)}
+                size={180}
               />
             </div>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "20px" }}>
+            <p style={{ color: "#9ca3af", fontSize: "11px", marginTop: "10px", wordBreak: "break-all" }}>
+              {getQrUrl(qrModal.cylinder)}
+            </p>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "15px" }}>
               <button type="button" onClick={() => window.print()} style={primaryButtonStyle}>
                 🖨️ พิมพ์
               </button>
@@ -681,7 +683,7 @@ function GasPage() {
         </div>
       )}
 
-      {/* Modal รูปภาพหลักฐาน (พร้อม Fallback URL) */}
+      {/* Modal รูปภาพหลักฐาน */}
       {imageModal.open && (
         <div 
           style={modalOverlayStyle} 
@@ -703,7 +705,7 @@ function GasPage() {
                 e.target.onerror = null; 
                 const fileName = imageModal.rawPath ? imageModal.rawPath.split('/').pop() : "";
                 if (fileName) {
-                  e.target.src = `${BASE_URL}/Backend/uploads/${fileName}`;
+                  e.target.src = `/Backend/uploads/${fileName}`;
                 }
               }}
             />
@@ -833,7 +835,6 @@ function GasPage() {
                       #{item.delivery_id || "-"}
                     </td>
 
-                    {/* Cylinder ID (ตรวจสอบความถูกต้องเพื่อไม่ให้ขึ้นข้อความแปลกๆ) */}
                     <td style={tdStyle}>
                       {(() => {
                         const rawCylinderId = item.cylinder_id || item.cylinder_no || item.id_cylinder;
@@ -881,7 +882,6 @@ function GasPage() {
                       {item.created_at || item.delivered_date || "-"}
                     </td>
 
-                    {/* ปุ่มดูรูปภาพหลักฐาน */}
                     <td style={{ ...tdStyle, textAlign: "center" }}>
                       {proofImg ? (
                         <button

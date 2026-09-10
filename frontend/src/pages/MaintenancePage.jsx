@@ -81,43 +81,40 @@ function MaintenancePage({
       setMaintenances([]);
     }
   };
-  // ฟังก์ชันคำนวณวันตรวจครั้งถัดไป (เพิ่ม 1 ปีจากวันที่ตรวจ)
-const calculateNextCheckDate = (item) => {
-  if (item.next_check_date) return item.next_check_date;
-  if (item.next_maintenance_date) return item.next_maintenance_date;
 
-  if (item.maintenance_date) {
-    const d = new Date(item.maintenance_date);
-    if (!isNaN(d.getTime())) {
-      d.setFullYear(d.getFullYear() + 1); // บวกเพิ่ม 1 ปี
-      return d.toISOString().split("T")[0];
+  const calculateNextCheckDate = (item) => {
+    if (item.next_check_date) return item.next_check_date;
+    if (item.next_maintenance_date) return item.next_maintenance_date;
+
+    if (item.maintenance_date) {
+      const d = new Date(item.maintenance_date);
+      if (!isNaN(d.getTime())) {
+        d.setFullYear(d.getFullYear() + 1);
+        return d.toISOString().split("T")[0];
+      }
     }
-  }
-  return "-";
-};
+    return "-";
+  };
 
   const fetchCylinders = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE_URL}/get_due_cylinders.php`);
       const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        const enrichedData = data.data.map((item) => ({
+      if (data.success) {
+        const enrichedData = data.data.map(item => ({
           ...item,
           serial_number: item.serial_number || item.cylinder_id || "-",
           gas_type: item.gas_type || "LPG",
           current_location: item.current_location || "คลัง",
           next_check_date: item.next_check_date || null,
-          status: item.status || "ปกติ",
+          status: item.status || "ปกติ"
         }));
         setAllCylinders(enrichedData);
         if (propSetCylinders) propSetCylinders(enrichedData);
-      } else {
-        setAllCylinders([]);
       }
     } catch (err) {
-      console.error("fetchCylinders Error:", err);
-      setAllCylinders([]);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -249,36 +246,44 @@ const calculateNextCheckDate = (item) => {
   };
 
   const saveMaintenance = async () => {
-    const targets = selectedSerialNumbers.length > 0 
+    const targetSerials = selectedSerialNumbers.length > 0 
       ? selectedSerialNumbers 
       : (selectedSerialNumber ? [selectedSerialNumber] : []);
 
-    if (targets.length === 0 || !maintenanceType || !result) {
-      alert("กรุณาเลือกถังอย่างน้อย 1 รายการ รวมถึงเลือกประเภทการตรวจ และผลการตรวจให้ครบถ้วน");
+    if (targetSerials.length === 0) {
+      alert("กรุณาเลือกถังแก๊สอย่างน้อย 1 รายการ");
       return;
     }
 
-    setSaving(true);
-    const fullDescription = [selectedNote, description].filter(Boolean).join(" | ");
+    if (!maintenanceType || !result) {
+      alert("กรุณาเลือกประเภทการตรวจ และผลการตรวจ");
+      return;
+    }
 
+    const fullDescription = [
+      nextAction ? `[สิ่งที่ต้องทำต่อ: ${nextAction}]` : "",
+      selectedNote ? `[หมายเหตุ: ${selectedNote}]` : "",
+      description
+    ].filter(Boolean).join(" ");
+
+    const payload = {
+      serial_numbers: targetSerials,
+      maintenance_type: maintenanceType,
+      result: result,
+      description: fullDescription,
+    };
+
+    setSaving(true);
     try {
       const res = await fetch(`${API_BASE_URL}/save_maintenance.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          serial_numbers: targets,
-          maintenance_type: maintenanceType,
-          result: result,
-          next_action: nextAction,
-          description: fullDescription,
-        }),
+        body: JSON.stringify(payload),
       });
-
       const data = await res.json();
 
       if (data.success) {
-        alert(data.message || `บันทึกผลตรวจเรียบร้อยแล้ว (${targets.length} รายการ)`);
-        
+        alert(data.message || "บันทึกสำเร็จ");
         setSelectedSerialNumber("");
         setSelectedSerialNumbers([]);
         setMaintenanceType("");
@@ -286,14 +291,13 @@ const calculateNextCheckDate = (item) => {
         setNextAction("");
         setSelectedNote("");
         setDescription("");
-
         await fetchCylinders();
         await fetchMaintenances();
       } else {
-        alert("บันทึกไม่สำเร็จ: " + data.message);
+        alert(data.message || "บันทึกไม่สำเร็จ");
       }
     } catch (err) {
-      console.error("Save Error:", err);
+      console.error(err);
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     } finally {
       setSaving(false);
@@ -375,7 +379,6 @@ const calculateNextCheckDate = (item) => {
           บันทึกผลตรวจ {selectedSerialNumbers.length > 0 && `(เลือกอยู่ ${selectedSerialNumbers.length} รายการ)`}
         </h2>
         <div style={formGridStyle}>
-          {/* ช่องที่ 1 */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
               เลือกถังแบบเดี่ยว<br />(หรือติ๊กเลือกหลายรายการจากตารางด้านล่าง)
@@ -401,7 +404,6 @@ const calculateNextCheckDate = (item) => {
             </div>
           </div>
 
-          {/* ช่องที่ 2 */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
               ประเภทการตรวจ/บำรุง *
@@ -428,7 +430,6 @@ const calculateNextCheckDate = (item) => {
             </div>
           </div>
 
-          {/* ช่องที่ 3 */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
               ผลการตรวจ *
@@ -455,7 +456,6 @@ const calculateNextCheckDate = (item) => {
             </div>
           </div>
 
-          {/* ช่องที่ 4 */}
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
               สิ่งที่ต้องทำต่อ
@@ -763,7 +763,6 @@ const formGridStyle = {
   marginBottom: "16px"
 };
 
-// ดันองค์ประกอบให้ชิดขอบล่างเสมอ เพื่อให้ช่อง Input อยู่ระนาบเดียวกันเป๊ะ
 const fieldGroupStyle = { 
   display: "flex", 
   flexDirection: "column", 

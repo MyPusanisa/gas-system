@@ -3,27 +3,48 @@ import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import API_BASE_URL from "../config";
 
-// สร้าง UPLOADS_BASE_URL อ้างอิงจากโฟลเดอร์ root ของ Backend
 const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
 
+// ฟังก์ชันดึงข้อมูลผู้ใช้จาก LocalStorage แบบรองรับหลายคีย์
+const getInitialUserData = () => {
+  const storedRole = localStorage.getItem("role") || "";
+  const storedUsername =
+    localStorage.getItem("username") ||
+    localStorage.getItem("userName") ||
+    localStorage.getItem("name") ||
+    "";
+
+  let storedStaffId = localStorage.getItem("staff_id") || "";
+  if (!storedStaffId) {
+    try {
+      const userJson = JSON.parse(localStorage.getItem("user") || "{}");
+      storedStaffId = userJson.id || userJson.staff_id || "";
+    } catch (e) {
+      storedStaffId = "";
+    }
+  }
+
+  return { storedRole, storedUsername, storedStaffId };
+};
+
 function DeliveryPage() {
-  // อ่านค่าจาก localStorage
-  const [role, setRole] = useState(() => localStorage.getItem("role") || "");
-  const [username, setUsername] = useState(() => localStorage.getItem("username") || "");
-  const [staffId, setStaffId] = useState(() => localStorage.getItem("staff_id") || "");
+  const { storedRole, storedUsername, storedStaffId } = getInitialUserData();
+
+  const [role, setRole] = useState(storedRole);
+  const [username, setUsername] = useState(storedUsername);
+  const [staffId, setStaffId] = useState(storedStaffId);
 
   const [deliveries, setDeliveries] = useState([]);
   const [cylinders, setCylinders] = useState([]);
   const [staffs, setStaffs] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [gasLevel, setGasLevel] = useState(0); // ค่าแก๊สในคลังดึงจาก gas_sensor_logs
+  const [gasLevel, setGasLevel] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const [selectedProofId, setSelectedProofId] = useState(null);
   const [confirmCylinderInputs, setConfirmCylinderInputs] = useState({});
   const [adminApproveInputs, setAdminApproveInputs] = useState({});
 
-  // State สำหรับควบคุมกล้องสแกน QR Code
   const [scanningJobId, setScanningJobId] = useState(null);
 
   const [showCylinderModal, setShowCylinderModal] = useState(false);
@@ -46,8 +67,17 @@ function DeliveryPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [newMapPin, setNewMapPin] = useState("");
-  
-  // สำหรับ Admin: ระบุสเปกแก๊ส
+
+  const [isCustomerFound, setIsCustomerFound] = useState(false);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [editCustomerData, setEditCustomerData] = useState({
+    old_phone: "",
+    new_phone: "",
+    name: "",
+    address: "",
+    map_pin: "",
+  });
+
   const [newBrand, setNewBrand] = useState("");
   const [newGasType, setNewGasType] = useState("LPG");
   const [newSize, setNewSize] = useState("");
@@ -58,7 +88,7 @@ function DeliveryPage() {
 
     const defaultHeaders = {
       "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
     const res = await fetch(url, {
@@ -86,7 +116,6 @@ function DeliveryPage() {
     }
   };
 
-  // ดึงตัวเลือก ยี่ห้อ/ชนิดแก๊ส/ขนาดถัง
   const brandOptions = useMemo(() => {
     if (!Array.isArray(cylinders)) return [];
     const brands = cylinders.map((c) => c.brand || c.brand_name).filter(Boolean);
@@ -106,12 +135,7 @@ function DeliveryPage() {
   }, [cylinders]);
 
   const findCustomerByPhone = (phone) =>
-    customers.find((c) => c.phone?.trim() === phone.trim());
-
-  const findCustomerByAddress = (address) =>
-    customers.find(
-      (c) => c.address?.trim().toLowerCase() === address.trim().toLowerCase()
-    );
+    customers.find((c) => (c.phone || c.customer_phone || "").trim() === phone.trim());
 
   const calculateExpiry = (manuDate) => {
     if (!manuDate) return "";
@@ -124,8 +148,7 @@ function DeliveryPage() {
     try {
       if (!isBackground) setLoading(true);
 
-      // 1. ดึงค่าแก๊สล่าสุดจาก gas_sensor_logs
-      apiFetch(`${API_BASE_URL.replace(/\/models\/?$/, "")}/gas/latest.php`)
+      apiFetch(`${API_BASE_URL}/gas/latest.php`)
         .then((res) => {
           if (res && res.success && res.data) {
             setGasLevel(Number(res.data.gas_value));
@@ -133,7 +156,6 @@ function DeliveryPage() {
         })
         .catch(() => {});
 
-      // 2. ดึงข้อมูลระบบทั้งหมดพร้อมกัน
       const [deliveriesRes, cylindersRes, staffsRes, customersRes] = await Promise.allSettled([
         apiFetch(`${API_BASE_URL}/delivery/list.php`),
         apiFetch(`${API_BASE_URL}/cylinder/list.php`),
@@ -147,12 +169,12 @@ function DeliveryPage() {
       }
 
       if (deliveriesRes.status === "fulfilled" && deliveriesRes.value.success) {
-        const rawData = deliveriesRes.value.data || [];
+        const rawData = deliveriesRes.value.data || deliveriesRes.value.items || [];
 
         const formattedDeliveries = rawData.map((d) => {
           const realId = d.delivery_id || d.id;
           const currentStaffId = String(d.staff_id ?? d.staffId ?? "").trim();
-          
+
           const matchedStaff = staffList.find(
             (s) =>
               (currentStaffId && String(s.staff_id) === currentStaffId) ||
@@ -193,7 +215,6 @@ function DeliveryPage() {
       if (customersRes.status === "fulfilled" && customersRes.value.success) {
         setCustomers(customersRes.value.data);
       }
-
     } catch (error) {
       console.error("โหลดข้อมูลล้มเหลว", error);
     } finally {
@@ -201,7 +222,6 @@ function DeliveryPage() {
     }
   }, []);
 
-  // โหลดข้อมูลครั้งแรก + ตั้งระบบ Real-time Auto-polling ทุก 10 วินาที
   useEffect(() => {
     loadData();
     const interval = setInterval(() => {
@@ -211,7 +231,6 @@ function DeliveryPage() {
     return () => clearInterval(interval);
   }, [loadData]);
 
-  // useEffect สำหรับสแกน QR Code
   useEffect(() => {
     let scanner = null;
     if (scanningJobId) {
@@ -223,8 +242,15 @@ function DeliveryPage() {
 
       scanner.render(
         (decodedText) => {
-          const extractedSerial = decodedText.split("/").pop().trim();
-          
+          let extractedSerial = decodedText.split("/").pop().trim();
+
+          try {
+            const parsed = JSON.parse(extractedSerial);
+            if (parsed && parsed.serial_number) {
+              extractedSerial = String(parsed.serial_number).trim();
+            }
+          } catch (e) {}
+
           setConfirmCylinderInputs((prev) => ({
             ...prev,
             [scanningJobId]: extractedSerial,
@@ -233,7 +259,7 @@ function DeliveryPage() {
           scanner.clear().catch((err) => console.error(err));
           setScanningJobId(null);
         },
-        (error) => {}
+        () => {}
       );
     }
 
@@ -244,21 +270,85 @@ function DeliveryPage() {
     };
   }, [scanningJobId]);
 
-  useEffect(() => {
-    if (!newPhone.trim()) return;
+  const handleSearchCustomer = async () => {
+    if (!newPhone.trim()) {
+      alert("กรุณากรอกเบอร์โทรศัพท์เพื่อค้นหา");
+      return;
+    }
+
     const exist = findCustomerByPhone(newPhone);
     if (exist) {
-      setNewCustomerName(exist.name || "");
-      setNewAddress(exist.address || "");
-      setNewMapPin(exist.mapPin || "");
+      setNewCustomerName(exist.name || exist.customer_name || "");
+      setNewAddress(exist.address || exist.customer_address || "");
+      setNewMapPin(exist.mapPin || exist.map_pin || "");
+      setIsCustomerFound(true);
+      alert("พบข้อมูลลูกค้า");
+    } else {
+      try {
+        const res = await apiFetch(`${API_BASE_URL}/customer/get.php?phone=${encodeURIComponent(newPhone.trim())}`);
+        if (res && res.success && res.data) {
+          setNewCustomerName(res.data.name || res.data.customer_name || "");
+          setNewAddress(res.data.address || res.data.customer_address || "");
+          setNewMapPin(res.data.map_pin || res.data.mapPin || "");
+          setIsCustomerFound(true);
+          alert("พบข้อมูลลูกค้า");
+        } else {
+          setIsCustomerFound(false);
+          alert("ไม่พบข้อมูลลูกค้า เบอร์นี้สามารถกรอกข้อมูลลูกค้าใหม่ได้ทันที");
+        }
+      } catch (err) {
+        console.error("Search customer error:", err);
+        setIsCustomerFound(false);
+        alert("ไม่พบข้อมูลลูกค้าในระบบ สามารถกรอกข้อมูลใหม่ได้ทันที");
+      }
     }
-  }, [newPhone, customers]);
+  };
 
-  useEffect(() => {
-    if (!newAddress.trim()) return;
-    const exist = findCustomerByAddress(newAddress);
-    if (exist && exist.mapPin) setNewMapPin(exist.mapPin);
-  }, [newAddress, customers]);
+  const handleOpenEditCustomer = () => {
+    setEditCustomerData({
+      old_phone: newPhone,
+      new_phone: newPhone,
+      name: newCustomerName,
+      address: newAddress,
+      map_pin: newMapPin,
+    });
+    setIsEditingCustomer(true);
+  };
+
+  const handleSaveCustomerEdit = async () => {
+    if (!editCustomerData.new_phone.trim()) {
+      alert("กรุณากรอกเบอร์โทรศัพท์ใหม่");
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/customer/update.php`, {
+        method: "PUT",
+        body: JSON.stringify({
+          old_phone: editCustomerData.old_phone,
+          new_phone: editCustomerData.new_phone,
+          name: editCustomerData.name,
+          address: editCustomerData.address,
+          map_pin: editCustomerData.map_pin,
+        }),
+      });
+
+      if (res.success) {
+        alert("อัปเดตข้อมูลลูกค้าเรียบร้อยแล้ว");
+        setNewPhone(editCustomerData.new_phone);
+        setNewCustomerName(editCustomerData.name);
+        setNewAddress(editCustomerData.address);
+        setNewMapPin(editCustomerData.map_pin);
+        setIsEditingCustomer(false);
+        await loadData();
+      } else {
+        alert(res.message || "แก้ไขข้อมูลไม่สำเร็จ");
+      }
+    } catch (error) {
+      console.error("Update Customer Error:", error);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    }
+  };
 
   const createDeliveryJob = async () => {
     if (!newCustomerName || !newPhone || !newAddress || !newStaffId) {
@@ -279,7 +369,7 @@ function DeliveryPage() {
       gas_type: newGasType,
       size: newSize,
       staff_id: newStaffId,
-      status: "pending"
+      status: "pending",
     };
 
     try {
@@ -291,7 +381,7 @@ function DeliveryPage() {
 
       if (res && (res.success || res.status === "success" || res.delivery_id)) {
         alert("สร้างงานจัดส่งเรียบร้อยแล้ว");
-        
+
         setNewCustomerName("");
         setNewPhone("");
         setNewAddress("");
@@ -299,10 +389,11 @@ function DeliveryPage() {
         setNewBrand("");
         setNewSize("");
         setNewStaffId("");
+        setIsCustomerFound(false);
 
         await loadData();
       } else {
-        alert(res.message || "สร้างงานไม่สำเร็จ กรุณาตรวจสอบไฟล์ create.php");
+        alert(res.message || "สร้างงานไม่สำเร็จ");
       }
     } catch (error) {
       console.error("Create Delivery Error:", error);
@@ -339,8 +430,8 @@ function DeliveryPage() {
     ) {
       alert(
         `สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
-        `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
-        `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
+          `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
+          `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
       );
       return;
     }
@@ -358,7 +449,7 @@ function DeliveryPage() {
 
       if (res.success) {
         alert("ตรวจสอบสเปกถูกต้อง! รับงานและผูกถังแก๊สเรียบร้อยแล้ว");
-        
+
         setDeliveries((prev) =>
           prev.map((d) =>
             d.id === jobItem.id ? { ...d, status: "delivering", serial_number: serialNumber } : d
@@ -510,9 +601,7 @@ function DeliveryPage() {
     try {
       const res = await fetch(`${API_BASE_URL}/cylinder/delete_delivery.php`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delivery_id: deliveryId }),
       });
 
@@ -541,38 +630,75 @@ function DeliveryPage() {
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
   const visibleDeliveries = useMemo(() => {
-    const currentRole = localStorage.getItem("role") || role;
-    const currentStaffId = localStorage.getItem("staff_id") || staffId;
-    const currentUsername = localStorage.getItem("username") || username;
+    let currentRole = localStorage.getItem("role") || role;
+    let currentUsername =
+      localStorage.getItem("username") ||
+      localStorage.getItem("userName") ||
+      localStorage.getItem("name") ||
+      username;
+    let currentStaffId = localStorage.getItem("staff_id") || staffId;
 
-    const activeDeliveries = deliveries.filter((d) => d.status !== "success");
-
-    if (currentRole === "admin" || currentRole === "ผู้ดูแลระบบ") {
-      return activeDeliveries;
+    if (!currentStaffId) {
+      try {
+        const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+        currentStaffId = userObj.id || userObj.staff_id || userObj.user_id || "";
+      } catch (e) {}
     }
 
-    return activeDeliveries.filter((d) => {
-      if (d.status === "pending_approval") return false;
+    if (currentRole === "admin" || currentRole === "ผู้ดูแลระบบ") {
+      return deliveries.filter((d) => d.status !== "success");
+    }
 
-      const dStaffId = String(d.staff_id ?? d.staffId ?? "");
-      const myStaffId = String(currentStaffId ?? "");
+    return deliveries.filter((d) => {
+      if (d.status === "pending_approval" || d.status === "success") {
+        return false;
+      }
+
+      const dStaffId = String(d.staff_id ?? d.staffId ?? "").trim();
+      const myStaffId = String(currentStaffId ?? "").trim();
       const dStaffName = String(d.assignedStaff ?? d.staff_name ?? "").toLowerCase();
       const myUsername = String(currentUsername ?? "").toLowerCase();
 
       const isMyJob =
-        (myStaffId && dStaffId === myStaffId) ||
-        (myUsername && dStaffName.includes(myUsername));
+        (myStaffId && dStaffId && dStaffId === myStaffId) ||
+        (myUsername && myUsername !== "" && (dStaffName.includes(myUsername) || myUsername.includes(dStaffName)));
 
-      const isUnassigned = !dStaffId || dStaffId === "0" || dStaffId === "null";
+      const isUnassigned = !dStaffId || dStaffId === "0" || dStaffId === "null" || dStaffId === "";
 
-      return isMyJob || isUnassigned;
+      if (d.status === "pending") {
+        return isMyJob || isUnassigned;
+      }
+
+      if (d.status === "delivering") {
+        return isMyJob || isUnassigned || !myStaffId;
+      }
+
+      return false;
     });
   }, [deliveries, role, username, staffId]);
 
-  const currentStaffActiveJob = useMemo(
-    () => deliveries.find((d) => d.assignedStaff === username && d.status === "delivering"),
-    [deliveries, username]
-  );
+  const currentStaffActiveJob = useMemo(() => {
+    let currentUsername =
+      localStorage.getItem("username") ||
+      localStorage.getItem("userName") ||
+      localStorage.getItem("name") ||
+      username;
+    let currentStaffId = localStorage.getItem("staff_id") || staffId;
+
+    if (!currentStaffId) {
+      try {
+        const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+        currentStaffId = userObj.id || userObj.staff_id || "";
+      } catch (e) {}
+    }
+
+    return deliveries.find(
+      (d) =>
+        d.status === "delivering" &&
+        ((currentUsername && (d.assignedStaff || "").includes(currentUsername)) ||
+          (currentStaffId && String(d.staff_id) === String(currentStaffId)))
+    );
+  }, [deliveries, username, staffId]);
 
   const maintenanceDueItems = cylinders.filter((c) => {
     if (!c.nextCheckDate) return false;
@@ -632,79 +758,145 @@ function DeliveryPage() {
       {role === "admin" && (
         <div style={styles.formCard}>
           <h2 style={{ marginTop: 0 }}>สร้างงานจัดส่ง</h2>
-          <div style={styles.formGrid}>
-            <input
-              placeholder="ชื่อลูกค้า"
-              value={newCustomerName}
-              onChange={(e) => setNewCustomerName(e.target.value)}
-              style={styles.input}
-            />
-            <input
-              placeholder="เบอร์โทร"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              style={styles.input}
-            />
-            <input
-              placeholder="ที่อยู่"
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              style={styles.input}
-            />
-            <input
-              placeholder="Map Pin / พิกัด"
-              value={newMapPin}
-              onChange={(e) => setNewMapPin(e.target.value)}
-              style={styles.input}
-            />
 
-            <select
-              value={newBrand}
-              onChange={(e) => setNewBrand(e.target.value)}
-              style={styles.input}
-            >
-              <option value="">-- เลือกยี่ห้อ --</option>
-              {brandOptions.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-
-            <select
-              value={newGasType}
-              onChange={(e) => setNewGasType(e.target.value)}
-              style={styles.input}
-            >
-              <option value="">-- เลือกชนิดแก๊ส --</option>
-              {gasTypeOptions.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-
-            <select
-              value={newSize}
-              onChange={(e) => setNewSize(e.target.value)}
-              style={styles.input}
-            >
-              <option value="">-- เลือกขนาดถัง --</option>
-              {sizeOptions.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-
-            <select
-              value={newStaffId}
-              onChange={(e) => setNewStaffId(e.target.value)}
-              style={styles.input}
-            >
-              <option value="">-- เลือกคนส่ง --</option>
-              {availableStaffs.map((staff) => (
-                <option key={staff.staff_id} value={staff.staff_id}>
-                  {staff.staff_id} - {staff.staff_name}
-                </option>
-              ))}
-            </select>
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", fontWeight: "bold" }}>
+              ค้นหาเบอร์โทรศัพท์ลูกค้า *
+            </label>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <input
+                placeholder="กรอกเบอร์โทรศัพท์เพื่อค้นหา"
+                value={newPhone}
+                onChange={(e) => {
+                  setNewPhone(e.target.value);
+                  setIsCustomerFound(false);
+                }}
+                style={{ ...styles.input, flex: 1, minWidth: "200px" }}
+              />
+              <button
+                type="button"
+                onClick={handleSearchCustomer}
+                style={styles.blueBtn}
+              >
+                🔍 ค้นหา
+              </button>
+              {isCustomerFound && (
+                <button
+                  type="button"
+                  onClick={handleOpenEditCustomer}
+                  style={styles.yellowBtn}
+                >
+                  ✏️ แก้ไขข้อมูลลูกค้า
+                </button>
+              )}
+            </div>
           </div>
-          <button onClick={createDeliveryJob} style={styles.blueBtn}>
+
+          <div style={styles.formGrid}>
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                ชื่อลูกค้า *
+              </label>
+              <input
+                placeholder="ชื่อลูกค้า *"
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                ที่อยู่ *
+              </label>
+              <input
+                placeholder="ที่อยู่ *"
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                Map Pin / พิกัด
+              </label>
+              <input
+                placeholder="Map Pin / พิกัด"
+                value={newMapPin}
+                onChange={(e) => setNewMapPin(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                ยี่ห้อ *
+              </label>
+              <select
+                value={newBrand}
+                onChange={(e) => setNewBrand(e.target.value)}
+                style={styles.input}
+              >
+                <option value="">-- เลือกยี่ห้อ --</option>
+                {brandOptions.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                ชนิดแก๊ส *
+              </label>
+              <select
+                value={newGasType}
+                onChange={(e) => setNewGasType(e.target.value)}
+                style={styles.input}
+              >
+                <option value="">-- เลือกชนิดแก๊ส --</option>
+                {gasTypeOptions.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                ขนาดถัง *
+              </label>
+              <select
+                value={newSize}
+                onChange={(e) => setNewSize(e.target.value)}
+                style={styles.input}
+              >
+                <option value="">-- เลือกขนาดถัง --</option>
+                {sizeOptions.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                พนักงานส่ง *
+              </label>
+              <select
+                value={newStaffId}
+                onChange={(e) => setNewStaffId(e.target.value)}
+                style={styles.input}
+              >
+                <option value="">-- เลือกคนส่ง --</option>
+                {availableStaffs.map((staff) => (
+                  <option key={staff.staff_id} value={staff.staff_id}>
+                    {staff.staff_id} - {staff.staff_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button onClick={createDeliveryJob} style={{ ...styles.blueBtn, marginTop: "12px" }}>
             สร้างงานส่ง
           </button>
         </div>
@@ -754,8 +946,21 @@ function DeliveryPage() {
                   <span>{item.address}</span>
                 </div>
                 <div style={styles.row}>
-                  <strong>Map Pin:</strong>
-                  <span>{item.mapPin || "-"}</span>
+                  <strong>Map Pin / พิกัดบ้าน:</strong>
+                  <span>
+                    {item.mapPin && item.mapPin !== "-" ? (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.mapPin)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#60a5fa", textDecoration: "underline", fontWeight: "bold" }}
+                      >
+                        📍 {item.mapPin} (กดนำทาง Google Maps)
+                      </a>
+                    ) : (
+                      "-"
+                    )}
+                  </span>
                 </div>
                 <div style={styles.row}>
                   <strong>สเปกถังแก๊สที่ต้องส่ง:</strong>
@@ -899,7 +1104,7 @@ function DeliveryPage() {
                     }
                     style={styles.input}
                   />
-                  <button onClick={() => approveDelivery(item.id)} style={styles.greenBtn}>
+                  <button onClick={() => approveDelivery(item.id)} style={{ ...styles.greenBtn, marginTop: "10px" }}>
                     ✅ อนุมัติงาน
                   </button>
                 </div>
@@ -921,6 +1126,68 @@ function DeliveryPage() {
           <div style={styles.emptyBox}>ไม่พบข้อมูลงานจัดส่ง</div>
         )}
       </div>
+
+      {isEditingCustomer && (
+        <div style={styles.modalOverlay}>
+          <div style={{ ...styles.modalContent, maxWidth: "500px" }}>
+            <h3 style={{ marginTop: 0 }}>✏️ แก้ไขข้อมูลลูกค้า</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                  เบอร์โทรศัพท์ (Primary Key) *
+                </label>
+                <input
+                  value={editCustomerData.new_phone}
+                  onChange={(e) => setEditCustomerData({ ...editCustomerData, new_phone: e.target.value })}
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                  ชื่อลูกค้า *
+                </label>
+                <input
+                  value={editCustomerData.name}
+                  onChange={(e) => setEditCustomerData({ ...editCustomerData, name: e.target.value })}
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                  ที่อยู่ *
+                </label>
+                <textarea
+                  value={editCustomerData.address}
+                  onChange={(e) => setEditCustomerData({ ...editCustomerData, address: e.target.value })}
+                  style={{ ...styles.input, height: "80px", resize: "vertical" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                  Map Pin / พิกัด
+                </label>
+                <input
+                  value={editCustomerData.map_pin}
+                  onChange={(e) => setEditCustomerData({ ...editCustomerData, map_pin: e.target.value })}
+                  style={styles.input}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "20px" }}>
+              <button onClick={() => setIsEditingCustomer(false)} style={{ ...styles.blueBtn, background: "#6b7280" }}>
+                ยกเลิก
+              </button>
+              <button onClick={handleSaveCustomerEdit} style={styles.yellowBtn}>
+                บันทึกการแก้ไข
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCylinderModal && (
         <div style={styles.modalOverlay}>
@@ -1126,6 +1393,16 @@ const styles = {
     color: "white",
     cursor: "pointer",
     fontWeight: "bold",
+  },
+  yellowBtn: {
+    padding: "10px 16px",
+    border: "none",
+    borderRadius: "10px",
+    background: "#f59e0b",
+    color: "#000000",
+    cursor: "pointer",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
   },
   orangeBtn: {
     padding: "10px 16px",

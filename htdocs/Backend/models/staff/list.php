@@ -1,35 +1,45 @@
 <?php
-header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Credentials: true");
+header("Content-Type: application/json; charset=UTF-8");
 
-require_once "../../config/db.php";
+require_once "../../config/db.php"; 
 
-// ดึงข้อมูลพนักงาน พร้อมนับจำนวนงาน pending (งานที่กำลังจัดส่ง)
-$sql = "SELECT 
-            s.staff_id,
-            s.staff_name,
-            s.staff_phone,
-            s.address,
-            s.username,
-            s.password,
-            s.status,
-            COUNT(CASE WHEN d.status = 'pending' THEN 1 END) AS pending_jobs
-        FROM delivery_staff s
-        LEFT JOIN deliveries d ON s.staff_id = d.staff_id
-        GROUP BY s.staff_id
-        ORDER BY s.staff_id ASC";
+try {
+    // เปลี่ยนมาใช้ชื่อตาราง delivery_staff และ deliveries ให้ตรงตามฐานข้อมูลจริง
+    $sql = "SELECT 
+                s.staff_id,
+                s.staff_name,
+                s.staff_phone,
+                s.username,
+                s.password,
+                s.address,
+                s.status,
+                COUNT(CASE WHEN d.status = 'pending' THEN 1 END) AS pending_jobs
+            FROM delivery_staff s
+            LEFT JOIN deliveries d ON s.staff_id = d.staff_id
+            GROUP BY s.staff_id
+            ORDER BY s.staff_id ASC";
 
-$result = $conn->query($sql);
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        throw new Exception($conn->error);
+    }
 
-if (!$result) {
-    echo json_encode(["success" => false, "message" => $conn->error]);
-    exit;
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $staffs = $result->fetch_all(MYSQLI_ASSOC);
+
+    echo json_encode([
+        "success" => true,
+        "data" => $staffs
+    ], JSON_UNESCAPED_UNICODE);
+
+} catch (Exception $e) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Database Error: " . $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
 }
-
-$data = [];
-while ($row = $result->fetch_assoc()) {
-    $data[] = $row;
-}
-
-echo json_encode(["success" => true, "data" => $data]);
 ?>

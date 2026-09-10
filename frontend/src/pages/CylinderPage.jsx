@@ -23,6 +23,20 @@ const getInspectionStatus = (statusFromDb) => {
   return { text: statusFromDb, color: "#ef4444" }
 }
 
+// ฟังก์ชันสำหรับแปลง URL ของรูปภาพให้เรียกผ่าน Vite Proxy
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith("http")) return imagePath;
+  
+  const cleanPath = imagePath.startsWith("/") ? imagePath.slice(1) : imagePath;
+  
+  if (cleanPath.startsWith("Backend/")) {
+    return `/${cleanPath}`;
+  }
+  
+  return `/Backend/uploads/${cleanPath}`;
+};
+
 function CylinderPage() {
   const { id } = useParams() 
   const [cylinder, setCylinder] = useState(null)
@@ -87,6 +101,7 @@ function CylinderPage() {
 
   const inspectionStatus = getInspectionStatus(cylinder.status)
   const expiryDate = cylinder.expiry_date || calculateExpiryDate(cylinder.manufacture_date)
+  const cylinderImage = cylinder.image || cylinder.proof_image || cylinder.cylinder_image
 
   return (
     <div style={pageStyle}>
@@ -100,6 +115,29 @@ function CylinderPage() {
             {inspectionStatus.text}
           </span>
         </div>
+
+        {/* ส่วนแสดงรูปภาพถังแก๊ส (แสดงผลเมื่อมีข้อมูลรูปภาพในฐานข้อมูล) */}
+        {cylinderImage && (
+          <div style={{ textAlign: "center", marginBottom: "20px" }}>
+            <img
+              src={getImageUrl(cylinderImage)}
+              alt="รูปภาพถังแก๊ส"
+              style={{
+                width: "100%",
+                maxHeight: "240px",
+                borderRadius: "12px",
+                objectFit: "contain",
+                backgroundColor: "#0f172a",
+                border: "1px solid #2d3748",
+                padding: "8px",
+                boxSizing: "border-box"
+              }}
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
+          </div>
+        )}
 
         {/* ข้อมูลเนื้อหาตารางแสดงผลตามลำดับ */}
         <div style={rowStyle}>

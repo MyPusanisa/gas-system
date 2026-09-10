@@ -1,103 +1,105 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { fetchAPI } from "../services/api";
+import React, { useState } from 'react';
 
-function Login() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
+const Login = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!username || !password) {
-      setError("กรุณากรอก Username และ Password ให้ครบถ้วน");
-      return;
-    }
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setLoading(true);
 
-    setError("");
-    const data = await fetchAPI("/login.php", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
+    try {
+      const response = await fetch('http://localhost:8080/Backend/models/login.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
+      });
 
-    if (data.success) {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("name", data.name);
-      localStorage.setItem("admin_id", data.admin_id);
-      localStorage.setItem("username", data.username);
-      localStorage.setItem("staff_id", data.staff_id);
+      const result = await response.json();
 
-      if (data.role === "admin") {
-        navigate("/dashboard");
+      if (result && result.success) {
+        // ดึงชื่อพนักงาน/แอดมินให้ชัวร์
+        const displayName = result.name || result.staff_name || result.username;
+
+        // บันทึกลง localStorage ทั้งรูปแบบ Object และ String คีย์เดี่ยว
+        const userData = {
+          ...result,
+          name: displayName,
+          staff_name: displayName
+        };
+
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('userName', displayName);
+        localStorage.setItem('name', displayName);
+        localStorage.setItem('role', result.role);
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        // สลับไปหน้าตาม Role
+        if (result.role === 'admin') {
+          window.location.href = '/staff';
+        } else {
+          window.location.href = '/delivery';
+        }
       } else {
-        navigate("/delivery");
+        setErrorMessage(result.message || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
       }
-    } else {
-      setError(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+    } catch (error) {
+      console.error('Login Error:', error);
+      setErrorMessage('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "40px", maxWidth: "400px", margin: "60px auto" }}>
-      <h2 style={{ marginBottom: "20px" }}>เข้าสู่ระบบ</h2>
+    <div className="login-container">
+      <form onSubmit={handleLogin} className="login-form">
+        <h2>เข้าสู่ระบบ</h2>
 
-      <div style={{ marginBottom: "15px" }}>
-        <label>Username</label>
-        <input
-          type="text"
-          placeholder="admin หรือ staff"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          style={inputStyle}
-        />
-      </div>
+        {errorMessage && (
+          <div className="error-banner" style={{ color: 'red', marginBottom: '1rem' }}>
+            {errorMessage}
+          </div>
+        )}
 
-      <div style={{ marginBottom: "15px" }}>
-        <label>Password</label>
-        <input
-          type="password"
-          placeholder="รหัสผ่าน"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={inputStyle}
-        />
-      </div>
+        <div className="form-group">
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="ป้อน Username"
+            required
+          />
+        </div>
 
-      {error && <div style={errorStyle}>{error}</div>}
+        <div className="form-group">
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="ป้อน Password"
+            required
+          />
+        </div>
 
-      <button onClick={handleLogin} style={buttonStyle}>
-        Login
-      </button>
+        <button type="submit" disabled={loading}>
+          {loading ? 'กำลังเข้าสู่ระบบ...' : 'Login'}
+        </button>
+      </form>
     </div>
   );
-}
-
-const inputStyle = {
-  width: "100%",
-  padding: "10px",
-  marginTop: "6px",
-  borderRadius: "8px",
-  border: "1px solid #ccc",
-  boxSizing: "border-box",
-};
-
-const buttonStyle = {
-  width: "100%",
-  padding: "12px",
-  backgroundColor: "#2563eb",
-  color: "white",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-const errorStyle = {
-  marginBottom: "15px",
-  padding: "10px",
-  borderRadius: "8px",
-  background: "#fee2e2",
-  color: "#b91c1c",
 };
 
 export default Login;

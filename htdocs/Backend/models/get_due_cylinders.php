@@ -1,32 +1,38 @@
 <?php
-// 1. เคลียร์ Output ทั้งหมดป้องกัน HTML/Whitespace หลุดออกมา
 while (ob_get_level()) {
     ob_end_clean();
 }
 
-// 2. จัดการ CORS Header ให้รองรับ credentials และ Origin
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Credentials: true");
+error_reporting(0);
+ini_set('display_errors', 0);
+
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=UTF-8");
 
-// 3. ตอบกลับ OPTIONS Request สำหรับ Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// 4. เชื่อมต่อ DB (ดึงค่าตั้งค่าจาก db.php หรือต่อตรงเพื่อลดความซ้ำซ้อน)
-$conn = new mysqli("localhost", "root", "", "gas_system", 3307);
-if ($conn->connect_error) {
-    echo json_encode(["success" => false, "message" => "DB Connection Failed"]);
-    exit();
-}
-$conn->set_charset("utf8mb4");
-
 try {
-    // 5. ดึงข้อมูลถังที่ถึงกำหนดตรวจ
+    // เชื่อมต่อ MySQL โดยเน้นพอร์ต 3308 ก่อน
+    $conn = @new mysqli("127.0.0.1", "root", "", "gas_system", 3308);
+    if ($conn->connect_error) {
+        $conn = @new mysqli("127.0.0.1", "root", "", "gas_system", 3307);
+    }
+    if ($conn->connect_error) {
+        $conn = @new mysqli("127.0.0.1", "root", "", "gas_system", 3306);
+    }
+
+    if ($conn->connect_error) {
+        throw new Exception("เชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
+    }
+
+    $conn->set_charset("utf8mb4");
+
+    // ดึงข้อมูลถังที่ถึงกำหนดตรวจ (next_check_date น้อยกว่าหรือเท่ากับวันปัจจุบัน)
     $sql = "SELECT * FROM gas_cylinder WHERE next_check_date <= CURRENT_DATE() OR next_check_date IS NULL ORDER BY next_check_date ASC";
     $result = $conn->query($sql);
 
@@ -40,15 +46,18 @@ try {
     echo json_encode([
         "success" => true,
         "data" => $data
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
+
 } catch (Exception $e) {
     echo json_encode([
         "success" => false,
         "message" => $e->getMessage(),
         "data" => []
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }
 
-$conn->close();
+if (isset($conn) && $conn instanceof mysqli) {
+    $conn->close();
+}
 exit();
 ?>

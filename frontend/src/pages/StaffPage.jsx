@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const API_BASE = `${BASE_URL}/Backend/models/staff`;
 
 // ฟังก์ชันสำหรับลบอิโมจิและสัญลักษณ์พิเศษออกจากข้อความ
@@ -43,7 +43,7 @@ function StaffPage() {
     const fetchHistory = async () => {
       try {
         const res = await fetch(
-          `${API_BASE}/history.php?staff_id=${selectedStaff}&period=${period}`
+          `${BASE_URL}/Backend/models/history.php?staff_id=${selectedStaff}&period=${period}`
         );
         if (!res.ok) throw new Error("Network response was not ok");
         
@@ -78,7 +78,22 @@ function StaffPage() {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE}/list.php`);
-      const data = await res.json();
+      
+      // อ่านค่าตอบกลับเป็น Text ก่อนเพื่อป้องกัน Crash
+      const text = await res.text();
+      let data;
+      
+      try {
+        data = JSON.parse(text);
+      } catch (jsonErr) {
+        console.error("PHP Error Output:", text);
+        setMessage({ 
+          type: "error", 
+          text: "Server ตอบกลับไม่ถูกต้อง (มี PHP Error ดูรายละเอียดใน Console)" 
+        });
+        return;
+      }
+
       if (data.success) {
         setStaffs(data.data);
       } else {
@@ -407,12 +422,12 @@ function StaffPage() {
         
           <tbody>
             {filteredStaffs.length > 0 ? (
-              filteredStaffs.map((item) => {
+              filteredStaffs.map((item, index) => {
                 const pendingCount = Number(item.pending_jobs || 0);
                 const isWorking = pendingCount > 0;
 
                 return (
-                  <tr key={item.staff_id}>
+                  <tr key={`${item.staff_id || 'staff'}-${index}`}>
                     <td style={tdStyle}>{item.staff_id}</td>
                     <td style={tdStyle}>
                       <strong>{removeEmojis(item.staff_name)}</strong>

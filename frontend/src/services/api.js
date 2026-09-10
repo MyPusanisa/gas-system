@@ -1,4 +1,4 @@
-import API_BASE_URL from "../config";
+import { API_BASE_URL } from "./config";
 
 export const fetchAPI = async (endpoint, options = {}) => {
   const config = {
@@ -6,7 +6,7 @@ export const fetchAPI = async (endpoint, options = {}) => {
       "Content-Type": "application/json",
       ...options.headers,
     },
-    // credentials: "include", 👈 ลบบรรทัดนี้ออก หรือคอมเมนต์ไว้
+    credentials: "include",
     ...options,
   };
 

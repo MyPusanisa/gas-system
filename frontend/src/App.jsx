@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, Navigate } from "react-router-dom"
 import Login from "./pages/Login"
 import Dashboard from "./pages/Dashboard"
 import GasPage from "./pages/GasPage"
@@ -22,6 +22,16 @@ function App() {
     <Routes>
       <Route path="/" element={<Login />} />
 
+      {/* Route สำหรับ Admin */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Dashboard cylinders={cylinders} deliveries={deliveries} />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/dashboard"
         element={
@@ -31,6 +41,7 @@ function App() {
         }
       />
 
+      {/* หน้าจัดการพนักงาน (สำหรับ Admin) */}
       <Route
         path="/staff"
         element={
@@ -62,6 +73,7 @@ function App() {
         }
       />
 
+      {/* หน้าการจัดส่ง (สำหรับทั้ง Admin และ Staff) */}
       <Route
         path="/delivery"
         element={
@@ -95,6 +107,9 @@ function App() {
       />
 
       <Route path="/cylinder/:id" element={<QRCodePage cylinders={cylinders} />} />
+
+      {/* Catch-all Route: นำทางกลับหน้าแรกเมื่อพิมพ์ Path ที่ไม่มีจริง */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

@@ -2,24 +2,51 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import TopBar from "./TopBar";
 
+// ฟังก์ชันดึงชื่อผู้ใช้จาก LocalStorage แบบรองรับหลาย Key (userName, username, name, user JSON)
+const getStoredUsername = () => {
+  let storedUsername =
+    localStorage.getItem("userName") ||
+    localStorage.getItem("username") ||
+    localStorage.getItem("name") ||
+    "";
+
+  if (!storedUsername) {
+    try {
+      const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+      storedUsername = userObj.name || userObj.username || userObj.userName || "";
+    } catch (e) {
+      storedUsername = "";
+    }
+  }
+  return storedUsername;
+};
+
 function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = localStorage.getItem("role");
-  const username = localStorage.getItem("username");
+
+  const [role, setRole] = useState(localStorage.getItem("role") || "");
+  const [username, setUsername] = useState(getStoredUsername());
 
   const [gasLevel, setGasLevel] = useState(0);
   const [deliverySuccessItems, setDeliverySuccessItems] = useState([]);
 
+  // อัปเดตข้อมูลผู้ใช้ทุกครั้งที่มีการเปลี่ยนหน้า
+  useEffect(() => {
+    setRole(localStorage.getItem("role") || "");
+    setUsername(getStoredUsername());
+  }, [location.pathname]);
+
   const fetchTopbarStats = async () => {
     try {
-      const res = await fetch("http://localhost/Backend/models/get_topbar_stats.php");
+      const res = await fetch("/Backend/models/get_topbar_stats.php", {
+        credentials: "include",
+      });
       const text = await res.text();
       try {
         const data = JSON.parse(text);
         if (data && data.success) {
           setGasLevel(data.gasLevel || 0);
-          // สร้าง Array ตามจำนวนที่นับได้จาก DB เพื่อส่งให้ TopBar
           const count = data.successCount || 0;
           setDeliverySuccessItems(new Array(count).fill(1));
         }
@@ -33,7 +60,7 @@ function Layout({ children }) {
 
   useEffect(() => {
     fetchTopbarStats();
-    const interval = setInterval(fetchTopbarStats, 3000); // ดึงข้อมูลใหม่ทุก 3 วินาที
+    const interval = setInterval(fetchTopbarStats, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -60,7 +87,7 @@ function Layout({ children }) {
         <aside style={asideStyle}>
           <h2 style={{ marginTop: 0, fontSize: "24px" }}>GAS SYS</h2>
           <p style={{ opacity: 0.85, fontSize: "16px", marginBottom: "24px" }}>
-            {role} : {username}
+            {role || "staff"} : {username || "ไม่ระบุชื่อ"}
           </p>
 
           <div style={{ marginTop: "10px" }}>
