@@ -25,7 +25,6 @@ if (file_exists($configPath)) {
     exit();
 }
 
-// รับข้อมูล JSON จาก Frontend
 $input = json_decode(file_get_contents('php://input'), true);
 
 $delivery_id = isset($input['delivery_id']) ? intval($input['delivery_id']) : 0;
@@ -38,21 +37,23 @@ if ($delivery_id <= 0) {
 
 try {
     if ($action === 'approve') {
-        // 1. ค้นหา staff_id ของงานนี้ก่อน
-        $getStaffSql = "SELECT staff_id FROM deliveries WHERE delivery_id = ?";
-        $stmtStaff = $conn->prepare($getStaffSql);
-        $stmtStaff->bind_param("i", $delivery_id);
-        $stmtStaff->execute();
-        $staffResult = $stmtStaff->get_result()->fetch_assoc();
-        $staff_id = $staffResult ? $staffResult['staff_id'] : null;
+        // 1. ดึงข้อมูล staff_id และ serial_number จากการจัดส่ง
+        $getDeliverySql = "SELECT staff_id, serial_number FROM deliveries WHERE delivery_id = ?";
+        $stmtDelivery = $conn->prepare($getDeliverySql);
+        $stmtDelivery->bind_param("i", $delivery_id);
+        $stmtDelivery->execute();
+        $deliveryResult = $stmtDelivery->get_result()->fetch_assoc();
+        
+        $staff_id = $deliveryResult ? $deliveryResult['staff_id'] : null;
+        $serial_number = $deliveryResult ? $deliveryResult['serial_number'] : null;
 
-        // 2. อัปเดตสถานะงานจัดส่งเป็น success
+        // 2. อัปเดตตาราง deliveries
         $updateSql = "UPDATE deliveries SET status = 'success' WHERE delivery_id = ?";
         $stmt = $conn->prepare($updateSql);
         $stmt->bind_param("i", $delivery_id);
         
         if ($stmt->execute()) {
-            // 3. บวกจำนวนงานจัดส่งของพนักงานเพิ่ม 1 (ถ้ามี staff_id)
+            // 3. อัปเดตจำนวนงานของพนักงาน
             if ($staff_id) {
                 $countSql = "UPDATE delivery_staff SET delivery_count = delivery_count + 1 WHERE staff_id = ?";
                 $stmtCount = $conn->prepare($countSql);
@@ -60,7 +61,16 @@ try {
                 $stmtCount->execute();
             }
 
-            echo json_encode(["success" => true, "message" => "อนุมัติการจัดส่งเรียบร้อยแล้ว"]);
+            // 4. อัปเดตตาราง gas_cylinder ทันที
+            if ($serial_number) {
+                $today = date("Y-m-d");
+                $cylinderSql = "UPDATE gas_cylinder SET status = 'จัดส่งสำเร็จ', delivered_date = ? WHERE serial_number = ?";
+                $stmtCylinder = $conn->prepare($cylinderSql);
+                $stmtCylinder->bind_param("ss", $today, $serial_number);
+                $stmtCylinder->execute();
+            }
+
+            echo json_encode(["success" => true, "message" => "อนุมัติการจัดส่งและอัปเดตสถานะถังแก๊สสำเร็จ"]);
         } else {
             echo json_encode(["success" => false, "message" => "ไม่สามารถอัปเดตสถานะได้"]);
         }

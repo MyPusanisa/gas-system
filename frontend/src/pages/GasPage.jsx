@@ -46,6 +46,27 @@ function GasPage() {
 
   const [formData, setFormData] = useState(initialFormState);
 
+  // ----------------------------------------------------
+  // ฟังก์ชันคำนวณ URL สำหรับ QR Code
+  // ----------------------------------------------------
+  const getQrUrl = (item) => {
+    if (!item) return "#";
+
+    const cylinderIdentifier =
+      item.serial_number ||
+      item.serial ||
+      item.delivery_id ||
+      item.id;
+
+    const cleanId = String(cylinderIdentifier || "").trim();
+
+    if (cleanId && cleanId !== "0" && cleanId !== "undefined" && cleanId !== "null") {
+      return `http://${window.location.hostname}:5173/cylinder/${encodeURIComponent(cleanId)}`;
+    }
+
+    return "#";
+  };
+
   // 1. ดึงตัวเลือกยี่ห้อ ชนิด ขนาด สถานที่
   const fetchOptions = async () => {
     try {
@@ -75,7 +96,7 @@ function GasPage() {
     }
   };
 
-  // 3. ดึงรายการจัดส่งทั้งหมด (Success & Pending)
+  // 3. ดึงรายการจัดส่งทั้งหมด
   const fetchDeliveries = async () => {
     try {
       const res = await fetch(`${API_BASE}/get_delivery_success.php`);
@@ -164,6 +185,98 @@ function GasPage() {
     });
   };
 
+  // ฟังก์ชันเช็คว่าจัดส่งเกิน 3 ปีหรือไม่ (365 * 3 = 1,095 วัน)
+  const isOver3Years = (dateString) => {
+    if (!dateString) return false;
+    const deliveryDate = new Date(dateString);
+    if (isNaN(deliveryDate.getTime())) return false;
+    
+    const today = new Date();
+    const diffTime = today - deliveryDate;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays > (365 * 3);
+  };
+
+  // การกรองรายการถังแก๊สในคลัง (ค้นหาได้ทุกฟิลด์)
+  const filteredCylinders = cylinders.filter((item) => {
+    const term = searchTerm.toLowerCase().trim();
+
+    const serial = (item.serial_number || item.serial || "").toLowerCase();
+    const brand = (item.brand || item.brand_name || "").toLowerCase();
+    const gasType = (item.gas_type || item.gas_type_name || "").toLowerCase();
+    const size = (item.size || item.size_name || "").toLowerCase();
+    const mfgDate = (item.manufacture_date || "").toLowerCase();
+    const expiryDate = (item.expiry_date || item.expire_date || "").toLowerCase();
+    const nextCheckDate = (item.next_check_date || item.next_check || "").toLowerCase();
+    const location = (item.current_location || item.location_name || "").toLowerCase();
+    const status = (item.status || "").trim().toLowerCase();
+
+    const isInStock = status === "ในคลัง";
+
+    const matchesSearch =
+      serial.includes(term) ||
+      brand.includes(term) ||
+      gasType.includes(term) ||
+      size.includes(term) ||
+      mfgDate.includes(term) ||
+      expiryDate.includes(term) ||
+      nextCheckDate.includes(term) ||
+      location.includes(term) ||
+      status.includes(term);
+
+    return isInStock && matchesSearch;
+  });
+
+  // การกรองรายการจัดส่ง (ค้นหาได้ทุกฟิลด์ + ค้นหาภาษาไทย)
+  const filteredDeliveries = deliveries
+    .filter((item) => {
+      const term = searchTerm.toLowerCase().trim();
+
+      const deliveryId = (item.delivery_id || "").toString().toLowerCase();
+      const serialNumber = (item.serial_number || item.serial || "").toString().toLowerCase();
+      const customer = (item.customer_name || "").toLowerCase();
+      const address = (item.address || "").toLowerCase();
+      const brand = (item.brand || item.req_brand || "").toLowerCase();
+      const gasType = (item.gas_type || item.req_gas_type || "").toLowerCase();
+      const size = (item.size || item.req_size || "").toLowerCase();
+      const rawStatus = (item.status || "").toLowerCase();
+      const deliveryDate = (item.created_at || item.delivered_date || "").toLowerCase();
+
+      const isLost = isOver3Years(item.created_at || item.delivered_date);
+
+      let thStatus = "";
+      if (isLost) {
+        thStatus = "สูญหาย";
+      } else if (rawStatus === "success") {
+        thStatus = "จัดส่งสำเร็จ";
+      } else if (rawStatus === "pending") {
+        thStatus = "กำลังจัดส่ง";
+      }
+
+      const matchesSearch =
+        deliveryId.includes(term) ||
+        serialNumber.includes(term) ||
+        customer.includes(term) ||
+        address.includes(term) ||
+        brand.includes(term) ||
+        gasType.includes(term) ||
+        size.includes(term) ||
+        rawStatus.includes(term) ||
+        thStatus.includes(term) ||
+        deliveryDate.includes(term);
+
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      const aIsLost = isOver3Years(a.created_at || a.delivered_date);
+      const bIsLost = isOver3Years(b.created_at || b.delivered_date);
+
+      if (aIsLost && !bIsLost) return 1;
+      if (!aIsLost && bIsLost) return -1;
+      
+      return 0;
+    });
+
   const handleSave = async (e) => {
     if (e) e.preventDefault();
 
@@ -214,6 +327,49 @@ function GasPage() {
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteCylinder = async (serialNumber) => {
+    if (!serialNumber) return alert("ไม่พบรหัส Serial Number");
+    if (!window.confirm(`คุณต้องการลบถังแก๊ส ${serialNumber} ออกจากฐานข้อมูลใช่หรือไม่?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/delete_cylinder.php?serial_number=${encodeURIComponent(serialNumber)}`);
+      const data = await res.json();
+
+      if (data.success) {
+        alert("ลบข้อมูลออกจากฐานข้อมูลสำเร็จ");
+        setCylinders((prev) => prev.filter((item) => (item.serial_number || item.serial) !== serialNumber));
+      } else {
+        alert(data.message || "เกิดข้อผิดพลาดในการลบข้อมูล");
+      }
+    } catch (err) {
+      console.error("Error deleting cylinder:", err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+    }
+  };
+
+  const handleDeleteDelivery = async (deliveryId) => {
+    if (!deliveryId) return;
+    if (!window.confirm(`คุณต้องการลบรายการจัดส่ง Delivery ID: #${deliveryId} ใช่หรือไม่?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/delete_delivery.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delivery_id: deliveryId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("ลบรายการจัดส่งเรียบร้อยแล้ว");
+        fetchDeliveries();
+      } else {
+        alert(data.message || "ไม่สามารถลบรายการจัดส่งได้");
+      }
+    } catch (err) {
+      console.error("Error deleting delivery:", err);
+      alert("เกิดข้อผิดพลาดในการลบรายการจัดส่ง");
     }
   };
 
@@ -291,10 +447,30 @@ function GasPage() {
   };
 
   const handleShowQR = (item) => {
-    setQrModal({ open: true, cylinder: item });
+    let fullData = { ...item };
+    const targetSerial = item.serial_number || item.serial;
+
+    if (targetSerial && Array.isArray(cylinders)) {
+      const found = cylinders.find(
+        (c) => String(c.serial_number || c.serial) === String(targetSerial)
+      );
+
+      if (found) {
+        fullData = {
+          ...found,
+          ...item,
+          serial_number: found.serial_number || found.serial
+        };
+      }
+    }
+
+    setQrModal({ open: true, cylinder: fullData });
   };
 
-  // จัดการ URL รูปภาพ
+  const handlePrintQR = () => {
+    window.print();
+  };
+
   const getProofImageUrl = (proofImg) => {
     if (!proofImg) return "";
     if (proofImg.startsWith("http://") || proofImg.startsWith("https://")) {
@@ -313,49 +489,6 @@ function GasPage() {
     setImageModal({ open: true, imgSrc: fullImgUrl, rawPath, serial: serialOrId });
   };
 
-  // Dynamic URL Helper สำหรับ QR Code
-  const getQrUrl = (cylinder) => {
-    if (!cylinder) return "";
-    const rawId = cylinder.cylinder_id || cylinder.id || cylinder.cylinder_no || "";
-    const cleanId = String(rawId).trim().replace(/\s+/g, "");
-    return `http://${window.location.hostname}:5173/cylinder/${cleanId}`;
-  };
-
-  const filteredCylinders = cylinders.filter((item) => {
-    const term = searchTerm.toLowerCase();
-    const serial = (item.serial_number || "").toLowerCase();
-    const brand = (item.brand || item.brand_name || "").toLowerCase();
-    const location = (item.current_location || item.location_name || "").toLowerCase();
-    const status = (item.status || "").trim();
-
-    const isInStock = status === "ในคลัง";
-
-    const matchesSearch =
-      serial.includes(term) ||
-      brand.includes(term) ||
-      location.includes(term) ||
-      status.toLowerCase().includes(term);
-
-    return isInStock && matchesSearch;
-  });
-
-  const filteredDeliveries = deliveries.filter((item) => {
-    const term = searchTerm.toLowerCase();
-    const deliveryId = (item.delivery_id || "").toString().toLowerCase();
-    const cylinderId = (item.cylinder_id || "").toString().toLowerCase();
-    const customer = (item.customer_name || "").toLowerCase();
-    const brand = (item.brand || item.req_brand || "").toLowerCase();
-    const status = (item.status || "").toLowerCase();
-
-    return (
-      deliveryId.includes(term) ||
-      cylinderId.includes(term) ||
-      customer.includes(term) ||
-      brand.includes(term) ||
-      status.includes(term)
-    );
-  });
-
   if (loading) {
     return (
       <Layout>
@@ -367,6 +500,7 @@ function GasPage() {
   }
 
   const currentModalItems = getModalItems();
+  const selectedCylinder = qrModal.cylinder;
 
   return (
     <Layout>
@@ -645,31 +779,41 @@ function GasPage() {
       )}
 
       {/* Modal QR Code */}
-      {qrModal.open && qrModal.cylinder && (
-        <div style={modalOverlayStyle}>
-          <div style={{ ...modalContentStyle, textAlign: "center", width: "320px" }}>
-            <h3 style={{ marginTop: 0, color: "white" }}>QR Code ถังแก๊ส</h3>
-            <p style={{ color: "#9ca3af", marginBottom: "5px", fontSize: "14px" }}>
-              Cylinder ID: <strong style={{ color: "#38bdf8" }}>#{qrModal.cylinder.cylinder_id || qrModal.cylinder.id || "-"}</strong>
-            </p>
-            <p style={{ color: "#9ca3af", marginBottom: "15px", fontSize: "14px" }}>
-              Serial: <strong>{qrModal.cylinder.serial_number || qrModal.cylinder.serial || "-"}</strong>
-            </p>
+      {qrModal.open && (
+        <div style={modalOverlayStyle} onClick={() => setQrModal({ open: false, cylinder: null })}>
+          <div
+            style={{ ...modalContentStyle, textAlign: "center" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, color: "white" }}>QR Code สำหรับสแกนด้วยมือถือ</h3>
 
-            <div style={{ background: "white", padding: "15px", borderRadius: "8px", display: "inline-block" }}>
-              <QRCodeSVG
-                value={getQrUrl(qrModal.cylinder)}
-                size={180}
+            {(() => {
+              const serialVal = selectedCylinder?.serial_number || selectedCylinder?.serial;
+              if (serialVal && serialVal !== "-") {
+                return (
+                  <p style={{ margin: "4px 0", color: "#94a3b8", fontWeight: "bold" }}>
+                    Serial: {serialVal}
+                  </p>
+                );
+              }
+              return null;
+            })()}
+
+            <div style={{ background: "white", padding: "16px", borderRadius: "12px", display: "inline-block", margin: "16px 0" }}>
+              <QRCodeSVG 
+                value={getQrUrl(selectedCylinder)} 
+                size={200}
+                includeMargin={true}
               />
             </div>
 
-            <p style={{ color: "#9ca3af", fontSize: "11px", marginTop: "10px", wordBreak: "break-all" }}>
-              {getQrUrl(qrModal.cylinder)}
+            <p style={{ fontSize: "12px", color: "#64748b", wordBreak: "break-all", margin: "4px 0" }}>
+              URL: {getQrUrl(selectedCylinder)}
             </p>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "15px" }}>
-              <button type="button" onClick={() => window.print()} style={primaryButtonStyle}>
-                🖨️ พิมพ์
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "16px" }}>
+              <button type="button" onClick={handlePrintQR} style={primaryButtonStyle}>
+                🖨️ พิมพ์ QR Code
               </button>
               <button
                 type="button"
@@ -727,7 +871,7 @@ function GasPage() {
       <div style={{ marginBottom: "20px", width: "100%" }}>
         <input
           type="text"
-          placeholder="ค้นหา Serial, Delivery ID, Cylinder ID, ยี่ห้อ, ลูกค้า, สถานที่..."
+          placeholder="ค้นหา Serial Number, Delivery ID, ยี่ห้อ, ลูกค้า, สถานที่..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -747,8 +891,7 @@ function GasPage() {
         <table style={tableStyle}>
           <thead>
             <tr>
-              <th style={thStyle}>Cylinder ID</th>
-              <th style={thStyle}>Serial</th>
+              <th style={thStyle}>Serial Number</th>
               <th style={thStyle}>ยี่ห้อ</th>
               <th style={thStyle}>ชนิด</th>
               <th style={thStyle}>ขนาด</th>
@@ -763,11 +906,10 @@ function GasPage() {
           <tbody>
             {filteredCylinders.length > 0 ? (
               filteredCylinders.map((item) => (
-                <tr key={item.serial_number || item.id}>
+                <tr key={item.serial_number || item.serial || item.id}>
                   <td style={{ ...tdStyle, color: "#38bdf8", fontWeight: "bold" }}>
-                    #{item.cylinder_id || item.id || "-"}
+                    {item.serial_number || item.serial || "-"}
                   </td>
-                  <td style={{ ...tdStyle, fontWeight: "500" }}>{item.serial_number || "-"}</td>
                   <td style={tdStyle}>{item.brand || item.brand_name || "-"}</td>
                   <td style={tdStyle}>{item.gas_type || item.gas_type_name || "-"}</td>
                   <td style={tdStyle}>{item.size || item.size_name || "-"}</td>
@@ -786,7 +928,11 @@ function GasPage() {
                       <button type="button" onClick={() => editCylinder(item)} style={editButtonStyle}>
                         แก้ไข
                       </button>
-                      <button type="button" style={deleteButtonStyle}>
+                      <button 
+                        type="button" 
+                        onClick={() => handleDeleteCylinder(item.serial_number || item.serial)} 
+                        style={deleteButtonStyle}
+                      >
                         ลบ
                       </button>
                     </div>
@@ -795,7 +941,7 @@ function GasPage() {
               ))
             ) : (
               <tr>
-                <td colSpan="11" style={{ ...tdStyle, textAlign: "center", color: "#9ca3af", padding: "20px" }}>
+                <td colSpan="10" style={{ ...tdStyle, textAlign: "center", color: "#9ca3af", padding: "20px" }}>
                   ไม่พบข้อมูลถังแก๊สในคลัง
                 </td>
               </tr>
@@ -813,7 +959,7 @@ function GasPage() {
           <thead>
             <tr style={{ backgroundColor: "#064e3b" }}>
               <th style={{ ...thStyle, backgroundColor: "#064e3b" }}>Delivery ID</th>
-              <th style={{ ...thStyle, backgroundColor: "#064e3b" }}>Cylinder ID</th>
+              <th style={{ ...thStyle, backgroundColor: "#064e3b" }}>Serial Number</th>
               <th style={{ ...thStyle, backgroundColor: "#064e3b" }}>ลูกค้า / สถานที่</th>
               <th style={{ ...thStyle, backgroundColor: "#064e3b" }}>ยี่ห้อ</th>
               <th style={{ ...thStyle, backgroundColor: "#064e3b" }}>ชนิด</th>
@@ -828,26 +974,31 @@ function GasPage() {
             {filteredDeliveries.length > 0 ? (
               filteredDeliveries.map((item) => {
                 const proofImg = item.proof_image_path || item.proof_image || "";
+                
+                const deliveryDate = item.created_at || item.delivered_date;
+                const isLost = isOver3Years(deliveryDate);
 
                 return (
-                  <tr key={item.delivery_id || item.id}>
+                  <tr 
+                    key={item.delivery_id || item.id}
+                    style={isLost ? { backgroundColor: "rgba(239, 68, 68, 0.15)" } : {}}
+                  >
                     <td style={{ ...tdStyle, color: "#f59e0b", fontWeight: "bold" }}>
                       #{item.delivery_id || "-"}
                     </td>
 
                     <td style={tdStyle}>
                       {(() => {
-                        const rawCylinderId = item.cylinder_id || item.cylinder_no || item.id_cylinder;
+                        const serialVal = item.serial_number || item.serial;
                         if (
-                          rawCylinderId &&
-                          String(rawCylinderId).trim() !== "" &&
-                          String(rawCylinderId) !== "undefined" &&
-                          String(rawCylinderId) !== "null" &&
-                          !String(rawCylinderId).includes("serhlths")
+                          serialVal &&
+                          String(serialVal).trim() !== "" &&
+                          String(serialVal) !== "undefined" &&
+                          String(serialVal) !== "null"
                         ) {
                           return (
                             <span style={{ color: "#38bdf8", fontWeight: "bold" }}>
-                              #{rawCylinderId}
+                              {serialVal}
                             </span>
                           );
                         }
@@ -866,8 +1017,13 @@ function GasPage() {
                     <td style={tdStyle}>{item.brand || item.req_brand || "-"}</td>
                     <td style={tdStyle}>{item.gas_type || item.req_gas_type || "-"}</td>
                     <td style={tdStyle}>{item.size || item.req_size || "-"}</td>
+                    
                     <td style={tdStyle}>
                       {(() => {
+                        if (isLost) {
+                          return <span style={badgeStyle("#ef4444")}>สูญหาย</span>;
+                        }
+
                         const rawStatus = (item.status || "").trim().toLowerCase();
                         if (rawStatus === "success") {
                           return <span style={badgeStyle("#22c55e")}>จัดส่งสำเร็จ</span>;
@@ -878,6 +1034,7 @@ function GasPage() {
                         return <span style={badgeStyle("#6b7280")}>{item.status || "-"}</span>;
                       })()}
                     </td>
+
                     <td style={{ ...tdStyle, color: "#38bdf8", fontSize: "12px" }}>
                       {item.created_at || item.delivered_date || "-"}
                     </td>
@@ -904,7 +1061,11 @@ function GasPage() {
                         <button type="button" onClick={() => editCylinder(item)} style={editButtonStyle}>
                           แก้ไข
                         </button>
-                        <button type="button" style={deleteButtonStyle}>
+                        <button 
+                          type="button" 
+                          onClick={() => handleDeleteDelivery(item.delivery_id)} 
+                          style={deleteButtonStyle}
+                        >
                           ลบ
                         </button>
                       </div>

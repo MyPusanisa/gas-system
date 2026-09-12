@@ -61,9 +61,8 @@ if ($check->num_rows > 0) {
 }
 $check->close();
 
-$stmt = $conn->prepare("INSERT INTO gas_cylinder 
-    (cylinder_id, serial_number, brand, gas_type, size, manufacture_date, expiry_date, qr_code, last_check_date, next_check_date, delivered_date, current_location, status) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$sql = "INSERT INTO gas_cylinder (serial_number, brand, gas_type, size, status, expiry_date, next_check_date) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)";
 
 $stmt->bind_param("sssssssssssss", 
     $cylinder_id, $serial_number, $brand, $gas_type, $size, $manufacture_date, 

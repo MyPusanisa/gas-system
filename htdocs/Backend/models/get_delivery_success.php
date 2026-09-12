@@ -4,8 +4,8 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require_once "../config/db.php";
 
-// ดึงข้อมูลการจัดส่ง พร้อม cylinder_id
-$sql = "SELECT delivery_id, cylinder_id, customer_name, address, brand, gas_type, size, status, proof_image_path, created_at 
+// ดึงข้อมูลการจัดส่ง พร้อม serial_number
+$sql = "SELECT delivery_id, serial_number, customer_name, address, brand, gas_type, size, status, proof_image_path, created_at 
         FROM deliveries 
         ORDER BY delivery_id DESC";
 

@@ -4,8 +4,8 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require_once "../config/db.php";
 
-// ดึงเฉพาะรายการถังที่มีสถานะ 'ในคลัง'
-$sql = "SELECT * FROM gas_cylinder WHERE status = 'ในคลัง' ORDER BY cylinder_id DESC";
+// ดึงเฉพาะรายการถังที่มีสถานะ 'ในคลัง' โดยเรียงลำดับตาม serial_number
+$sql = "SELECT * FROM gas_cylinder WHERE status = 'ในคลัง' ORDER BY serial_number DESC";
 $result = mysqli_query($conn, $sql);
 
 $data = array();

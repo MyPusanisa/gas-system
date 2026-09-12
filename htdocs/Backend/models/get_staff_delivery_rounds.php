@@ -1,43 +1,59 @@
 <?php
-header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json; charset=UTF-8");
 
-include_once "../config/db.php";
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
-// ❌ ของเดิม: FROM delivery d
-// ✅ แก้ไขเป็น: FROM deliveries d (เติม s)
-$sql = "SELECT 
-            ds.staff_name,
-            COUNT(d.delivery_id) AS delivery_count
-        FROM deliveries d
-        JOIN delivery_staff ds 
-            ON d.staff_id = ds.staff_id
-        GROUP BY d.staff_id
-        ORDER BY delivery_count DESC";
+$configPath = __DIR__ . "/../config/db.php";
+if (!file_exists($configPath)) {
+    $configPath = __DIR__ . "/../db.php";
+}
 
-$result = $conn->query($sql);
+if (file_exists($configPath)) {
+    require_once $configPath;
+} else {
+    echo json_encode(["success" => false, "message" => "ไม่พบไฟล์ db.php"]);
+    exit();
+}
 
-if (!$result) {
+try {
+    // ดึงชื่อพนักงานและคอลัมน์ delivery_count จากตาราง delivery_staff โดยตรง
+    $sql = "SELECT 
+                staff_name,
+                COALESCE(delivery_count, 0) AS delivery_count
+            FROM delivery_staff
+            ORDER BY delivery_count DESC";
+
+    $result = $conn->query($sql);
+
+    if (!$result) {
+        throw new Exception($conn->error);
+    }
+
+    $staffRounds = [];
+    while ($row = $result->fetch_assoc()) {
+        $staffRounds[] = [
+            "staff_name" => $row["staff_name"],
+            "count" => (int)$row["delivery_count"]
+        ];
+    }
+
+    echo json_encode([
+        "success" => true,
+        "data" => $staffRounds
+    ], JSON_UNESCAPED_UNICODE);
+
+} catch (Exception $e) {
     echo json_encode([
         "success" => false,
-        "message" => $conn->error
+        "message" => "Database Error: " . $e->getMessage()
     ]);
-    exit;
 }
-
-$staffRounds = [];
-
-while ($row = $result->fetch_assoc()) {
-    $staffRounds[] = [
-        "staff_name" => $row["staff_name"],
-        "count" => (int)$row["delivery_count"]
-    ];
-}
-
-echo json_encode([
-    "success" => true,
-    "data" => $staffRounds
-]);
 
 $conn->close();
 ?>

@@ -5,7 +5,6 @@ import API_BASE_URL from "../config";
 
 const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
 
-// ฟังก์ชันดึงข้อมูลผู้ใช้จาก LocalStorage แบบรองรับหลายคีย์
 const getInitialUserData = () => {
   const storedRole = localStorage.getItem("role") || "";
   const storedUsername =
@@ -30,9 +29,9 @@ const getInitialUserData = () => {
 function DeliveryPage() {
   const { storedRole, storedUsername, storedStaffId } = getInitialUserData();
 
-  const [role, setRole] = useState(storedRole);
-  const [username, setUsername] = useState(storedUsername);
-  const [staffId, setStaffId] = useState(storedStaffId);
+  const [role] = useState(storedRole);
+  const [username] = useState(storedUsername);
+  const [staffId] = useState(storedStaffId);
 
   const [deliveries, setDeliveries] = useState([]);
   const [cylinders, setCylinders] = useState([]);
@@ -40,6 +39,7 @@ function DeliveryPage() {
   const [customers, setCustomers] = useState([]);
   const [gasLevel, setGasLevel] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [gettingLocationId, setGettingLocationId] = useState(null);
 
   const [selectedProofId, setSelectedProofId] = useState(null);
   const [confirmCylinderInputs, setConfirmCylinderInputs] = useState({});
@@ -112,27 +112,13 @@ function DeliveryPage() {
       return JSON.parse(text);
     } catch (e) {
       console.error("Invalid JSON from server:", text.slice(0, 200));
-      throw new Error("Server responded with non-JSON (likely PHP error)");
+      throw new Error("Server responded with non-JSON");
     }
   };
 
-  const brandOptions = useMemo(() => {
-    if (!Array.isArray(cylinders)) return [];
-    const brands = cylinders.map((c) => c.brand || c.brand_name).filter(Boolean);
-    return Array.from(new Set(brands));
-  }, [cylinders]);
-
-  const gasTypeOptions = useMemo(() => {
-    if (!Array.isArray(cylinders)) return [];
-    const types = cylinders.map((c) => c.gas_type || c.gasType || c.type).filter(Boolean);
-    return Array.from(new Set(types));
-  }, [cylinders]);
-
-  const sizeOptions = useMemo(() => {
-    if (!Array.isArray(cylinders)) return [];
-    const sizes = cylinders.map((c) => c.size || c.cylinder_size).filter(Boolean);
-    return Array.from(new Set(sizes));
-  }, [cylinders]);
+  const brandOptions = useMemo(() => ["ปตท.", "World Gas", "สยามแก๊ส", "ยูนิคแก๊ส", "PT Gas", "พีเอพี"], []);
+  const gasTypeOptions = useMemo(() => ["LPG"], []);
+  const sizeOptions = useMemo(() => ["4 กก.", "7 กก.", "11.5 กก.", "13.5 กก.", "15 กก.", "48 กก."], []);
 
   const findCustomerByPhone = (phone) =>
     customers.find((c) => (c.phone || c.customer_phone || "").trim() === phone.trim());
@@ -270,6 +256,71 @@ function DeliveryPage() {
     };
   }, [scanningJobId]);
 
+  const handleSaveCurrentLocation = (item) => {
+    if (!navigator.geolocation) {
+      alert("อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการดึงพิกัด GPS");
+      return;
+    }
+
+    setGettingLocationId(item.id);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const mapPinString = `${lat},${lng}`;
+
+        try {
+          const res = await apiFetch(`${API_BASE_URL}/customer/update.php`, {
+            method: "PUT",
+            body: JSON.stringify({
+              old_phone: item.phone,
+              new_phone: item.phone,
+              name: item.customerName,
+              address: item.address,
+              map_pin: mapPinString,
+            }),
+          });
+
+          if (res && res.success) {
+            alert(`บันทึกพิกัด GPS สำเร็จ: ${mapPinString}`);
+            await loadData();
+          } else {
+            alert(res.message || "บันทึกพิกัด GPS ไม่สำเร็จ");
+          }
+        } catch (err) {
+          console.error("Error saving GPS location:", err);
+          alert("เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อบันทึกพิกัด GPS");
+        } finally {
+          setGettingLocationId(null);
+        }
+      },
+      (error) => {
+        setGettingLocationId(null);
+        console.error("Geolocation error:", error);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            alert("กรุณาเปิดสิทธิ์การเข้าถึงตำแหน่ง GPS บนอุปกรณ์/เบราว์เซอร์");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            alert("ไม่สามารถระบุตำแหน่งพิกัด GPS ในขณะนี้ได้");
+            break;
+          case error.TIMEOUT:
+            alert("หมดเวลาในการดึงตำแหน่ง GPS กรุณาลองใหม่อีกครั้ง");
+            break;
+          default:
+            alert("เกิดข้อผิดพลาดในการรับพิกัด GPS");
+            break;
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   const handleSearchCustomer = async () => {
     if (!newPhone.trim()) {
       alert("กรุณากรอกเบอร์โทรศัพท์เพื่อค้นหา");
@@ -282,7 +333,7 @@ function DeliveryPage() {
       setNewAddress(exist.address || exist.customer_address || "");
       setNewMapPin(exist.mapPin || exist.map_pin || "");
       setIsCustomerFound(true);
-      alert("พบข้อมูลลูกค้า");
+      alert("พบข้อมูลลูกค้าในระบบ");
     } else {
       try {
         const res = await apiFetch(`${API_BASE_URL}/customer/get.php?phone=${encodeURIComponent(newPhone.trim())}`);
@@ -291,10 +342,10 @@ function DeliveryPage() {
           setNewAddress(res.data.address || res.data.customer_address || "");
           setNewMapPin(res.data.map_pin || res.data.mapPin || "");
           setIsCustomerFound(true);
-          alert("พบข้อมูลลูกค้า");
+          alert("พบข้อมูลลูกค้าในระบบ");
         } else {
           setIsCustomerFound(false);
-          alert("ไม่พบข้อมูลลูกค้า เบอร์นี้สามารถกรอกข้อมูลลูกค้าใหม่ได้ทันที");
+          alert("ไม่พบข้อมูลลูกค้า เบอร์นี้สามารถกรอกเป็นลูกค้าใหม่ได้ทันที");
         }
       } catch (err) {
         console.error("Search customer error:", err);
@@ -352,7 +403,7 @@ function DeliveryPage() {
 
   const createDeliveryJob = async () => {
     if (!newCustomerName || !newPhone || !newAddress || !newStaffId) {
-      alert("กรุณากรอกข้อมูลลูกค้าและพนักงานให้ครบ");
+      alert("กรุณากรอกข้อมูลลูกค้าและพนักงานส่งให้ครบ");
       return;
     }
     if (!newBrand || !newGasType || !newSize) {
@@ -494,7 +545,7 @@ function DeliveryPage() {
         });
 
         if (completeRes.success) {
-          alert("ส่งรูปหลักฐานและส่งงานเรียบร้อยแล้ว (รอแอดมินอนุมัติ)");
+          alert("ส่งรูปหลักฐานสำเร็จ รออนุมัติงาน");
           setSelectedProofId(null);
 
           setDeliveries((prevDeliveries) =>
@@ -564,10 +615,10 @@ function DeliveryPage() {
         gas_type: "LPG",
         brand: "",
         size: "",
-        manufacture_date: "",
-        expiry_date: "",
-        last_check_date: "",
-        next_check_date: "",
+        manufacture_date: new Date().toISOString().split("T")[0],
+        expiry_date: calculateExpiry(new Date().toISOString().split("T")[0]),
+        last_check_date: new Date().toISOString().split("T")[0],
+        next_check_date: calculateExpiry(new Date().toISOString().split("T")[0]),
       });
       setShowCylinderModal(true);
       return;
@@ -591,34 +642,18 @@ function DeliveryPage() {
 
   const handleDelete = async (item) => {
     const deliveryId = item.id || item.delivery_id;
-    if (!deliveryId) {
-      alert("ไม่พบรหัสงานจัดส่ง");
-      return;
-    }
-
-    if (!window.confirm(`คุณต้องการลบงานรหัส ${deliveryId} ใช่หรือไม่?`)) return;
+    if (!deliveryId) return alert("ไม่พบรหัสงานจัดส่ง");
+    if (!window.confirm(`คุณต้องการลบงานรหัส #${deliveryId} ใช่หรือไม่?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/cylinder/delete_delivery.php`, {
+      const res = await apiFetch(`${API_BASE_URL}/cylinder/delete_delivery.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delivery_id: deliveryId }),
       });
 
-      const textData = await res.text();
-      let data;
-
-      try {
-        data = JSON.parse(textData);
-      } catch (e) {
-        console.error("PHP Response ไม่ใช่ JSON:", textData);
-        alert("เซิร์ฟเวอร์ตอบกลับมาไม่ถูกต้อง: " + textData.substring(0, 100));
-        return;
-      }
-
-      alert(data.message || (data.success ? "ลบข้อมูลสำเร็จ" : "ลบข้อมูลไม่สำเร็จ"));
-
-      if (data.success) {
+      alert(res.message || (res.success ? "ลบข้อมูลสำเร็จ" : "ลบข้อมูลไม่สำเร็จ"));
+      if (res.success) {
         setDeliveries((prev) => prev.filter((d) => (d.id || d.delivery_id) !== deliveryId));
       }
     } catch (err) {
@@ -631,17 +666,18 @@ function DeliveryPage() {
 
   const visibleDeliveries = useMemo(() => {
     let currentRole = localStorage.getItem("role") || role;
-    let currentUsername =
+    let currentUsername = (
       localStorage.getItem("username") ||
       localStorage.getItem("userName") ||
       localStorage.getItem("name") ||
-      username;
-    let currentStaffId = localStorage.getItem("staff_id") || staffId;
+      username
+    ).toLowerCase();
+    let currentStaffId = String(localStorage.getItem("staff_id") || staffId || "").trim();
 
     if (!currentStaffId) {
       try {
         const userObj = JSON.parse(localStorage.getItem("user") || "{}");
-        currentStaffId = userObj.id || userObj.staff_id || userObj.user_id || "";
+        currentStaffId = String(userObj.id || userObj.staff_id || userObj.user_id || "").trim();
       } catch (e) {}
     }
 
@@ -650,29 +686,23 @@ function DeliveryPage() {
     }
 
     return deliveries.filter((d) => {
-      if (d.status === "pending_approval" || d.status === "success") {
-        return false;
-      }
+      if (d.status === "pending_approval" || d.status === "success") return false;
 
       const dStaffId = String(d.staff_id ?? d.staffId ?? "").trim();
-      const myStaffId = String(currentStaffId ?? "").trim();
       const dStaffName = String(d.assignedStaff ?? d.staff_name ?? "").toLowerCase();
-      const myUsername = String(currentUsername ?? "").toLowerCase();
 
       const isMyJob =
-        (myStaffId && dStaffId && dStaffId === myStaffId) ||
-        (myUsername && myUsername !== "" && (dStaffName.includes(myUsername) || myUsername.includes(dStaffName)));
+        (currentStaffId !== "" && dStaffId === currentStaffId) ||
+        (currentUsername !== "" && (dStaffName.includes(currentUsername) || currentUsername.includes(dStaffName)));
 
       const isUnassigned = !dStaffId || dStaffId === "0" || dStaffId === "null" || dStaffId === "";
 
       if (d.status === "pending") {
         return isMyJob || isUnassigned;
       }
-
       if (d.status === "delivering") {
-        return isMyJob || isUnassigned || !myStaffId;
+        return true;
       }
-
       return false;
     });
   }, [deliveries, role, username, staffId]);
@@ -710,15 +740,15 @@ function DeliveryPage() {
   const getStatusStyle = (status) => {
     switch (status) {
       case "pending":
-        return { background: "#facc15", color: "black" };
+        return { background: "rgba(234, 179, 8, 0.2)", color: "#facc15", border: "1px solid #ca8a04" };
       case "delivering":
-        return { background: "#f59e0b", color: "white" };
+        return { background: "rgba(249, 115, 22, 0.2)", color: "#fb923c", border: "1px solid #ea580c" };
       case "pending_approval":
-        return { background: "#8b5cf6", color: "white" };
+        return { background: "rgba(168, 85, 247, 0.2)", color: "#c084fc", border: "1px solid #9333ea" };
       case "success":
-        return { background: "#22c55e", color: "white" };
+        return { background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", border: "1px solid #16a34a" };
       default:
-        return { background: "#6b7280", color: "white" };
+        return { background: "rgba(107, 114, 128, 0.2)", color: "#9ca3af", border: "1px solid #4b5563" };
     }
   };
 
@@ -727,7 +757,7 @@ function DeliveryPage() {
       case "pending_approval":
         return "รออนุมัติ";
       case "pending":
-        return "รอรับงาน";
+        return "กำลังจัดส่ง";
       case "delivering":
         return "กำลังจัดส่ง";
       case "success":
@@ -740,7 +770,9 @@ function DeliveryPage() {
   if (loading) {
     return (
       <Layout>
-        <div style={{ color: "white", textAlign: "center", padding: "40px" }}>⏳ กำลังโหลดข้อมูล...</div>
+        <div style={{ color: "white", textAlign: "center", padding: "60px 20px" }}>
+          ⏳ กำลังโหลดข้อมูลงานจัดส่ง...
+        </div>
       </Layout>
     );
   }
@@ -753,705 +785,710 @@ function DeliveryPage() {
       deliverySuccessItems={deliverySuccessItems}
       newAssignedJobItems={[]}
     >
-      <h1 style={{ marginBottom: "20px" }}>Delivery Management</h1>
-
-      {role === "admin" && (
-        <div style={styles.formCard}>
-          <h2 style={{ marginTop: 0 }}>สร้างงานจัดส่ง</h2>
-
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", fontWeight: "bold" }}>
-              ค้นหาเบอร์โทรศัพท์ลูกค้า *
-            </label>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <input
-                placeholder="กรอกเบอร์โทรศัพท์เพื่อค้นหา"
-                value={newPhone}
-                onChange={(e) => {
-                  setNewPhone(e.target.value);
-                  setIsCustomerFound(false);
-                }}
-                style={{ ...styles.input, flex: 1, minWidth: "200px" }}
-              />
-              <button
-                type="button"
-                onClick={handleSearchCustomer}
-                style={styles.blueBtn}
-              >
-                🔍 ค้นหา
-              </button>
-              {isCustomerFound && (
-                <button
-                  type="button"
-                  onClick={handleOpenEditCustomer}
-                  style={styles.yellowBtn}
-                >
-                  ✏️ แก้ไขข้อมูลลูกค้า
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div style={styles.formGrid}>
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                ชื่อลูกค้า *
-              </label>
-              <input
-                placeholder="ชื่อลูกค้า *"
-                value={newCustomerName}
-                onChange={(e) => setNewCustomerName(e.target.value)}
-                style={styles.input}
-              />
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 12px 40px 12px" }}>
+        
+        {/* Card สร้างงานจัดส่ง (Admin) */}
+        {role === "admin" && (
+          <div style={styles.cardContainer}>
+            <div style={styles.cardHeader}>
+              <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: "600", color: "#f8fafc" }}>
+                สร้างงานจัดส่งใหม่
+              </h2>
             </div>
 
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                ที่อยู่ *
-              </label>
-              <input
-                placeholder="ที่อยู่ *"
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                Map Pin / พิกัด
-              </label>
-              <input
-                placeholder="Map Pin / พิกัด"
-                value={newMapPin}
-                onChange={(e) => setNewMapPin(e.target.value)}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                ยี่ห้อ *
-              </label>
-              <select
-                value={newBrand}
-                onChange={(e) => setNewBrand(e.target.value)}
-                style={styles.input}
-              >
-                <option value="">-- เลือกยี่ห้อ --</option>
-                {brandOptions.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                ชนิดแก๊ส *
-              </label>
-              <select
-                value={newGasType}
-                onChange={(e) => setNewGasType(e.target.value)}
-                style={styles.input}
-              >
-                <option value="">-- เลือกชนิดแก๊ส --</option>
-                {gasTypeOptions.map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                ขนาดถัง *
-              </label>
-              <select
-                value={newSize}
-                onChange={(e) => setNewSize(e.target.value)}
-                style={styles.input}
-              >
-                <option value="">-- เลือกขนาดถัง --</option>
-                {sizeOptions.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                พนักงานส่ง *
-              </label>
-              <select
-                value={newStaffId}
-                onChange={(e) => setNewStaffId(e.target.value)}
-                style={styles.input}
-              >
-                <option value="">-- เลือกคนส่ง --</option>
-                {availableStaffs.map((staff) => (
-                  <option key={staff.staff_id} value={staff.staff_id}>
-                    {staff.staff_id} - {staff.staff_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button onClick={createDeliveryJob} style={{ ...styles.blueBtn, marginTop: "12px" }}>
-            สร้างงานส่ง
-          </button>
-        </div>
-      )}
-
-      {role === "staff" && currentStaffActiveJob && (
-        <div style={styles.warningBox}>
-          คุณกำลังจัดส่งงาน {currentStaffActiveJob.id} อยู่ กรุณาส่งงานนี้ให้เสร็จก่อน
-        </div>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {visibleDeliveries.length > 0 ? (
-          visibleDeliveries.map((item) => (
-            <div key={item.id} id={`job-card-${item.id}`} style={styles.card}>
-              <div style={styles.headerBar}>
-                <div>
-                  <h2 style={{ margin: 0 }}>ข้อมูลงานจัดส่ง</h2>
-                  <p style={{ margin: "8px 0 0", opacity: 0.9 }}>รหัสงาน: {item.id}</p>
-                </div>
-                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <span style={{ ...styles.statusBadge, ...getStatusStyle(item.status) }}>
-                    {getStatusText(item.status)}
-                  </span>
-                  {role === "admin" && (item.status === "pending" || item.status === "delivering") && (
-                    <button
-                      onClick={() => handleDelete(item)}
-                      style={styles.deleteBtn}
-                    >
-                      ลบ
+            <div style={{ padding: "16px" }}>
+              <div style={{ marginBottom: "16px" }}>
+                <label style={styles.label}>ค้นหาเบอร์โทรศัพท์ลูกค้า *</label>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    placeholder="กรอกเบอร์โทรศัพท์..."
+                    value={newPhone}
+                    onChange={(e) => {
+                      setNewPhone(e.target.value);
+                      setIsCustomerFound(false);
+                    }}
+                    style={{ ...styles.input, flex: 1, minWidth: "180px" }}
+                  />
+                  <button type="button" onClick={handleSearchCustomer} style={styles.primaryBtn}>
+                    🔍 ค้นหา
+                  </button>
+                  {isCustomerFound && (
+                    <button type="button" onClick={handleOpenEditCustomer} style={styles.warningBtn}>
+                      ✏️ แก้ไข
                     </button>
                   )}
                 </div>
               </div>
 
-              <div style={styles.bodyBox}>
-                <div style={styles.row}>
-                  <strong>ลูกค้า:</strong>
-                  <span>{item.customerName}</span>
+              <div style={styles.formGrid}>
+                <div>
+                  <label style={styles.label}>ชื่อลูกค้า *</label>
+                  <input
+                    type="text"
+                    placeholder="ระบุชื่อลูกค้า"
+                    value={newCustomerName}
+                    onChange={(e) => setNewCustomerName(e.target.value)}
+                    style={styles.input}
+                  />
                 </div>
-                <div style={styles.row}>
-                  <strong>เบอร์:</strong>
-                  <span>{item.phone}</span>
+
+                <div>
+                  <label style={styles.label}>Map Pin / พิกัด GPS</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น 13.818, 100.514"
+                    value={newMapPin}
+                    onChange={(e) => setNewMapPin(e.target.value)}
+                    style={styles.input}
+                  />
                 </div>
-                <div style={styles.row}>
-                  <strong>ที่อยู่:</strong>
-                  <span>{item.address}</span>
+
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={styles.label}>ที่อยู่จัดส่ง *</label>
+                  <textarea
+                    rows={2}
+                    placeholder="ระบุที่อยู่จัดส่งโดยละเอียด"
+                    value={newAddress}
+                    onChange={(e) => setNewAddress(e.target.value)}
+                    style={{ ...styles.input, resize: "vertical" }}
+                  />
                 </div>
-                <div style={styles.row}>
-                  <strong>Map Pin / พิกัดบ้าน:</strong>
-                  <span>
-                    {item.mapPin && item.mapPin !== "-" ? (
+
+                <div>
+                  <label style={styles.label}>ยี่ห้อถังแก๊ส *</label>
+                  <select
+                    value={newBrand}
+                    onChange={(e) => setNewBrand(e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="">-- เลือกยี่ห้อ --</option>
+                    {brandOptions.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={styles.label}>ชนิดแก๊ส *</label>
+                  <select
+                    value={newGasType}
+                    onChange={(e) => setNewGasType(e.target.value)}
+                    style={styles.select}
+                  >
+                    {gasTypeOptions.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={styles.label}>ขนาดถังแก๊ส *</label>
+                  <select
+                    value={newSize}
+                    onChange={(e) => setNewSize(e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="">-- เลือกขนาด --</option>
+                    {sizeOptions.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={styles.label}>พนักงานจัดส่ง *</label>
+                  <select
+                    value={newStaffId}
+                    onChange={(e) => setNewStaffId(e.target.value)}
+                    style={styles.select}
+                  >
+                    <option value="">-- เลือกพนักงานส่ง --</option>
+                    {availableStaffs.map((staff) => (
+                      <option key={staff.staff_id} value={staff.staff_id}>
+                        {staff.staff_id} - {staff.staff_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                <button onClick={createDeliveryJob} style={{ ...styles.primaryBtn, width: "100%", padding: "10px", fontSize: "14px" }}>
+                  สร้างงานจัดส่ง 
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {role === "staff" && currentStaffActiveJob && (
+          <div style={styles.activeJobBanner}>
+            คุณกำลังจัดส่งงาน #{currentStaffActiveJob.id} กรุณาส่งรูปหลักฐานเพื่อปิดงาน
+          </div>
+        )}
+
+        {/* รายการงานจัดส่ง */}
+        <h2 style={{ fontSize: "1.1rem", color: "#f8fafc", marginBottom: "14px", fontWeight: "600" }}>
+          รายการงานจัดส่งทั้งหมด ({visibleDeliveries.length})
+        </h2>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {visibleDeliveries.length > 0 ? (
+            visibleDeliveries.map((item) => (
+              <div key={item.id} style={styles.jobCard}>
+                
+                {/* Header */}
+                <div style={styles.jobCardHeader}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={styles.jobTag}>งาน #{item.id}</span>
+                    <span style={{ ...styles.badge, ...getStatusStyle(item.status) }}>
+                      {getStatusText(item.status)}
+                    </span>
+                  </div>
+
+                  {role === "admin" && (item.status === "pending" || item.status === "delivering") && (
+                    <button onClick={() => handleDelete(item)} style={styles.dangerBtn}>
+                      🗑️ ลบ
+                    </button>
+                  )}
+                </div>
+
+                {/* Body Details */}
+                <div style={styles.jobCardBody}>
+                  
+                  {/* ลูกค้า */}
+                  <div style={styles.infoRow}>
+                    <span style={styles.iconSpan}> </span>
+                    <div>
+                      <div style={{ color: "#ffffff", fontWeight: "600", fontSize: "15px" }}>
+                        {item.customerName}
+                      </div>
+                      <div style={{ color: "#94a3b8", fontSize: "13px" }}>{item.phone}</div>
+                    </div>
+                  </div>
+
+                  {/* ที่อยู่ */}
+                  <div style={styles.infoRow}>
+                    <span style={styles.iconSpan}> </span>
+                    <div style={{ color: "#cbd5e1", fontSize: "13px", lineHeight: "1.4" }}>
+                      {item.address}
+                    </div>
+                  </div>
+
+                  {/* สเปกแก๊ส & Serial */}
+                  <div style={styles.specBox}>
+                    <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>สเปกแก๊ส:</div>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={styles.specBadge}>
+                        {(item.req_brand || item.brand || "-")}
+                      </span>
+                      <span style={styles.specBadge}>
+                        {(item.req_gas_type || item.gasType || item.gas_type || "LPG")}
+                      </span>
+                      <span style={{ ...styles.specBadge, background: "#0284c7", color: "#fff" }}>
+                        {(item.req_size || item.size || "-")}
+                      </span>
+                    </div>
+
+                    {(item.serial_number || item.deliveryCylinderId) && (
+                      <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed #334155", fontSize: "13px" }}>
+                        <span style={{ color: "#94a3b8" }}>Serial ถังที่ส่ง: </span>
+                        <strong style={{ color: "#4ade80" }}>{item.serial_number || item.deliveryCylinderId}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* พนักงานผู้รับผิดชอบ */}
+                  <div style={{ fontSize: "13px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "6px" }}>
+                    
+                    <span>ผู้รับผิดชอบ: <strong style={{ color: "#e2e8f0" }}>{item.assignedStaff || "ไม่ระบุชื่อ"}</strong></span>
+                  </div>
+
+                  {/* Action Bar ปุ่มดำเนินการ */}
+                  <div style={styles.jobCardActions}>
+                    
+                    {/* ปุ่มปักหมุด GPS */}
+                    {(!item.mapPin || item.mapPin === "-") ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSaveCurrentLocation(item)}
+                        disabled={gettingLocationId === item.id}
+                        style={styles.gpsPinBtn}
+                      >
+                       {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งปัจจุบัน"}
+                      </button>
+                    ) : (
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.mapPin)}`}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ color: "#60a5fa", textDecoration: "underline", fontWeight: "bold" }}
+                        style={styles.gpsLinkBtn}
                       >
-                        📍 {item.mapPin} (กดนำทาง Google Maps)
+                        เปิด Google Maps ({item.mapPin})
                       </a>
-                    ) : (
-                      "-"
                     )}
-                  </span>
-                </div>
-                <div style={styles.row}>
-                  <strong>สเปกถังแก๊สที่ต้องส่ง:</strong>
-                  <span style={{ color: "#facc15", fontWeight: "bold" }}>
-                    {(item.req_brand || item.brand || "-")} | {(item.req_gas_type || item.gasType || item.gas_type || "LPG")} | {(item.req_size || item.size || "-")}
-                  </span>
-                </div>
-                <div style={styles.row}>
-                  <strong>ผู้รับผิดชอบ:</strong>
-                  <span>{item.assignedStaff || "ไม่ระบุชื่อ"}</span>
-                </div>
 
-                {(item.serial_number || item.deliveryCylinderId) && (
-                  <div style={styles.row}>
-                    <strong>Serial Number ถังที่ส่ง (สแกนรับแล้ว):</strong>
-                    <span style={{ fontWeight: "bold", color: "#22c55e" }}>
-                      {item.serial_number || item.deliveryCylinderId}
-                    </span>
-                  </div>
-                )}
-                {(item.received_serial_number || item.receivedCylinderId) && (
-                  <div style={styles.row}>
-                    <strong>Serial Number ถังที่รับคืน:</strong>
-                    <span>{item.received_serial_number || item.receivedCylinderId}</span>
-                  </div>
-                )}
-                {item.deliveredAt && (
-                  <div style={styles.row}>
-                    <strong>เวลาส่งสำเร็จ:</strong>
-                    <span>{item.deliveredAt}</span>
-                  </div>
-                )}
-              </div>
+                    {/* Staff: รับงาน */}
+                    {role === "staff" && item.status === "pending" && (
+                      <div style={{ width: "100%", marginTop: "6px" }}>
+                        {scanningJobId === item.id ? (
+                          <div style={{ textAlign: "center" }}>
+                            <div id="qr-reader-container" style={{ width: "100%", background: "#fff", borderRadius: "8px", overflow: "hidden" }}></div>
+                            <button
+                              onClick={() => setScanningJobId(null)}
+                              style={{ ...styles.secondaryBtn, width: "100%", marginTop: "8px" }}
+                            >
+                              ยกเลิกการสแกน
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <button onClick={() => setScanningJobId(item.id)} style={{ ...styles.secondaryBtn, background: "#0284c7" }}>
+                             สแกน QR Code ถัง
+                            </button>
 
-              {role === "staff" && item.status === "pending" && (
-                <div style={styles.sectionBox}>
-                  <h3>📷 ยืนยันรับงาน (สแกน QR Code ถังแก๊ส)</h3>
+                            {confirmCylinderInputs[item.id] && (
+                              <div style={{ background: "#0f172a", padding: "8px", borderRadius: "6px", fontSize: "12px", textAlign: "center" }}>
+                                Serial ที่สแกน: <strong style={{ color: "#4ade80" }}>{confirmCylinderInputs[item.id]}</strong>
+                              </div>
+                            )}
 
-                  {scanningJobId === item.id ? (
-                    <div style={{ textAlign: "center" }}>
-                      <div id="qr-reader-container" style={{ maxWidth: "320px", margin: "0 auto", background: "white", borderRadius: "12px", overflow: "hidden" }}></div>
-                      <button
-                        onClick={() => setScanningJobId(null)}
-                        style={{ ...styles.blueBtn, background: "#6b7280", marginTop: "10px" }}
-                      >
-                        ยกเลิกการสแกน
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <button
-                        onClick={() => setScanningJobId(item.id)}
-                        style={{ ...styles.greenBtn, marginBottom: "12px", width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}
-                      >
-                        📷 เปิดกล้องสแกน QR Code
-                      </button>
+                            <button
+                              onClick={() => confirmReceiveJob(item)}
+                              disabled={!confirmCylinderInputs[item.id]}
+                              style={{
+                                ...styles.primaryBtn,
+                                opacity: confirmCylinderInputs[item.id] ? 1 : 0.5,
+                                cursor: confirmCylinderInputs[item.id] ? "pointer" : "not-allowed",
+                              }}
+                            >
+                            ยืนยันรับงานส่ง
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                      {confirmCylinderInputs[item.id] && (
-                        <div style={{ background: "#1f2937", padding: "10px 14px", borderRadius: "8px", border: "1px solid #22c55e", marginBottom: "12px" }}>
-                          <span style={{ fontSize: "12px", color: "#9ca3af" }}>Serial Number ที่สแกนได้: </span>
-                          <strong style={{ fontSize: "16px", color: "#22c55e" }}>{confirmCylinderInputs[item.id]}</strong>
-                        </div>
-                      )}
+                    {/* Staff: ถ่ายรูปถังคืน */}
+                    {role === "staff" && item.status === "delivering" && (
+                      <div style={{ width: "100%", marginTop: "6px" }}>
+                        <button
+                          onClick={() => setSelectedProofId(selectedProofId === item.id ? null : item.id)}
+                          style={styles.cameraBtn}
+                        >
+                        ถ่ายรูปถังที่รับคืน
+                        </button>
+                        {selectedProofId === item.id && (
+                          <div style={{ marginTop: "8px" }}>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={(e) => handleProofUpload(item.id, e.target.files?.[0])}
+                              style={{ color: "white", fontSize: "12px", width: "100%" }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                      <button
-                        onClick={() => confirmReceiveJob(item)}
-                        disabled={!confirmCylinderInputs[item.id]}
-                        style={{
-                          ...styles.blueBtn,
-                          width: "100%",
-                          opacity: confirmCylinderInputs[item.id] ? 1 : 0.5,
-                          cursor: confirmCylinderInputs[item.id] ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        ✅ ตรวจสอบสเปกและรับงาน
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {role === "staff" && item.status === "delivering" && (
-                <div style={styles.sectionBox}>
-                  <h3>📸 ถ่ายรูปถังที่รับคืน (ต้องเห็น Serial Number ชัดเจน)</h3>
-                  {item.proofImagePath ? (
-                    <div>
-                      <img
-                        src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
-                        alt="proof"
-                        style={styles.proofImage}
-                      />
-                      <p style={{ color: "#22c55e", fontWeight: "bold" }}>✅ อัปโหลดรูปแล้ว งานเสร็จสมบูรณ์</p>
-                    </div>
-                  ) : (
-                    <>
-                      <p style={{ color: "#f87171" }}>⚠️ ยังไม่มีรูปถังคืน</p>
-                      <button
-                        onClick={() => setSelectedProofId(selectedProofId === item.id ? null : item.id)}
-                        style={styles.orangeBtn}
-                      >
-                        📸 ถ่ายรูปถังที่รับคืน
-                      </button>
-                      {selectedProofId === item.id && (
+                    {/* Admin: อนุมัติงาน */}
+                    {role === "admin" && item.status === "pending_approval" && (
+                      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "8px", marginTop: "6px" }}>
+                        {item.proofImagePath && (
+                          <img
+                            src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
+                            alt="proof"
+                            style={styles.proofImgPreview}
+                          />
+                        )}
                         <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => handleProofUpload(item.id, e.target.files?.[0])}
-                          style={{ color: "white", marginTop: "10px" }}
+                          type="text"
+                          placeholder="กรอก Serial ถังที่รับคืน"
+                          value={adminApproveInputs[item.id] ?? ""}
+                          onChange={(e) =>
+                            setAdminApproveInputs((prev) => ({
+                              ...prev,
+                              [item.id]: e.target.value,
+                            }))
+                          }
+                          style={styles.input}
                         />
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+                        <button onClick={() => approveDelivery(item.id)} style={{ ...styles.primaryBtn, background: "#16a34a" }}>
+                          อนุมัติงานส่ง
+                        </button>
+                      </div>
+                    )}
 
-              {role === "admin" && item.status === "pending_approval" && (
-                <div style={styles.sectionBox}>
-                  <h3>🔍 อนุมัติงานส่ง</h3>
-                  {item.proofImagePath && (
-                    <div>
-                      <p>
-                        <strong>รูปถังที่รับคืน (โปรดดู Serial Number จากรูป):</strong>
-                      </p>
-                      <img
-                        src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
-                        alt="return cylinder"
-                        style={styles.proofImage}
-                      />
-                    </div>
-                  )}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={styles.emptyCard}>ไม่มีรายการงานจัดส่งในขณะนี้</div>
+          )}
+        </div>
+
+        {/* Modal แก้ไขลูกค้า */}
+        {isEditingCustomer && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalBody}>
+              <h3 style={{ marginTop: 0, color: "#fff", fontSize: "16px" }}>แก้ไขข้อมูลลูกค้า</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "14px" }}>
+                <div>
+                  <label style={styles.label}>เบอร์โทรศัพท์ *</label>
                   <input
-                    type="text"
-                    placeholder="กรอก Serial Number ถังที่รับคืน"
-                    value={adminApproveInputs[item.id] ?? ""}
-                    onChange={(e) =>
-                      setAdminApproveInputs((prev) => ({
-                        ...prev,
-                        [item.id]: e.target.value,
-                      }))
-                    }
+                    value={editCustomerData.new_phone}
+                    onChange={(e) => setEditCustomerData({ ...editCustomerData, new_phone: e.target.value })}
                     style={styles.input}
                   />
-                  <button onClick={() => approveDelivery(item.id)} style={{ ...styles.greenBtn, marginTop: "10px" }}>
-                    ✅ อนุมัติงาน
-                  </button>
                 </div>
-              )}
-
-              {role === "admin" && item.proofImagePath && item.status !== "pending_approval" && (
-                <div style={styles.sectionBox}>
-                  <h3>หลักฐานการส่ง</h3>
-                  <img
-                    src={`${UPLOADS_BASE_URL}/${item.proofImagePath}`}
-                    alt="proof"
-                    style={styles.proofImage}
+                <div>
+                  <label style={styles.label}>ชื่อลูกค้า *</label>
+                  <input
+                    value={editCustomerData.name}
+                    onChange={(e) => setEditCustomerData({ ...editCustomerData, name: e.target.value })}
+                    style={styles.input}
                   />
                 </div>
-              )}
+                <div>
+                  <label style={styles.label}>ที่อยู่ *</label>
+                  <textarea
+                    rows={2}
+                    value={editCustomerData.address}
+                    onChange={(e) => setEditCustomerData({ ...editCustomerData, address: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div>
+                  <label style={styles.label}>Map Pin / พิกัด GPS</label>
+                  <input
+                    value={editCustomerData.map_pin}
+                    onChange={(e) => setEditCustomerData({ ...editCustomerData, map_pin: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+                <button onClick={() => setIsEditingCustomer(false)} style={{ ...styles.secondaryBtn, flex: 1 }}>
+                  ยกเลิก
+                </button>
+                <button onClick={handleSaveCustomerEdit} style={{ ...styles.warningBtn, flex: 1 }}>
+                  บันทึก
+                </button>
+              </div>
             </div>
-          ))
-        ) : (
-          <div style={styles.emptyBox}>ไม่พบข้อมูลงานจัดส่ง</div>
+          </div>
         )}
+
+        {/* Modal ลงทะเบียนถังใหม่ */}
+        {showCylinderModal && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.modalBody}>
+              <h3 style={{ marginTop: 0, color: "#fff", fontSize: "16px" }}>➕ เพิ่มถังใหม่เข้าระบบ</h3>
+              <p style={{ fontSize: "13px", color: "#94a3b8" }}>
+                ไม่พบ Serial Number <strong style={{ color: "#facc15" }}>{newCylinderForApproval.serial_number}</strong> ในฐานข้อมูล
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
+                <div>
+                  <label style={styles.label}>Serial Number *</label>
+                  <input
+                    value={newCylinderForApproval.serial_number}
+                    onChange={(e) => setNewCylinderForApproval({ ...newCylinderForApproval, serial_number: e.target.value })}
+                    style={styles.input}
+                  />
+                </div>
+                <div>
+                  <label style={styles.label}>ยี่ห้อ *</label>
+                  <select
+                    value={newCylinderForApproval.brand}
+                    onChange={(e) => setNewCylinderForApproval({ ...newCylinderForApproval, brand: e.target.value })}
+                    style={styles.select}
+                  >
+                    <option value="">-- เลือกยี่ห้อ --</option>
+                    {brandOptions.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>ชนิดแก๊ส</label>
+                  <select
+                    value={newCylinderForApproval.gas_type}
+                    onChange={(e) => setNewCylinderForApproval({ ...newCylinderForApproval, gas_type: e.target.value })}
+                    style={styles.select}
+                  >
+                    <option value="LPG">LPG</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>ขนาดถัง *</label>
+                  <select
+                    value={newCylinderForApproval.size}
+                    onChange={(e) => setNewCylinderForApproval({ ...newCylinderForApproval, size: e.target.value })}
+                    style={styles.select}
+                  >
+                    <option value="">-- เลือกขนาด --</option>
+                    {sizeOptions.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>วันที่ผลิต *</label>
+                  <input
+                    type="date"
+                    value={newCylinderForApproval.manufacture_date}
+                    onChange={(e) => {
+                      const manu = e.target.value;
+                      setNewCylinderForApproval({
+                        ...newCylinderForApproval,
+                        manufacture_date: manu,
+                        expiry_date: calculateExpiry(manu),
+                        next_check_date: calculateExpiry(manu),
+                        last_check_date: manu,
+                      });
+                    }}
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+                <button onClick={() => setShowCylinderModal(false)} style={{ ...styles.secondaryBtn, flex: 1 }}>
+                  ยกเลิก
+                </button>
+                <button onClick={handleCreateAndApprove} style={{ ...styles.primaryBtn, flex: 1 }}>
+                  ยืนยันและอนุมัติ
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
-
-      {isEditingCustomer && (
-        <div style={styles.modalOverlay}>
-          <div style={{ ...styles.modalContent, maxWidth: "500px" }}>
-            <h3 style={{ marginTop: 0 }}>✏️ แก้ไขข้อมูลลูกค้า</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
-              <div>
-                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                  เบอร์โทรศัพท์ (Primary Key) *
-                </label>
-                <input
-                  value={editCustomerData.new_phone}
-                  onChange={(e) => setEditCustomerData({ ...editCustomerData, new_phone: e.target.value })}
-                  style={styles.input}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                  ชื่อลูกค้า *
-                </label>
-                <input
-                  value={editCustomerData.name}
-                  onChange={(e) => setEditCustomerData({ ...editCustomerData, name: e.target.value })}
-                  style={styles.input}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                  ที่อยู่ *
-                </label>
-                <textarea
-                  value={editCustomerData.address}
-                  onChange={(e) => setEditCustomerData({ ...editCustomerData, address: e.target.value })}
-                  style={{ ...styles.input, height: "80px", resize: "vertical" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#9ca3af" }}>
-                  Map Pin / พิกัด
-                </label>
-                <input
-                  value={editCustomerData.map_pin}
-                  onChange={(e) => setEditCustomerData({ ...editCustomerData, map_pin: e.target.value })}
-                  style={styles.input}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "20px" }}>
-              <button onClick={() => setIsEditingCustomer(false)} style={{ ...styles.blueBtn, background: "#6b7280" }}>
-                ยกเลิก
-              </button>
-              <button onClick={handleSaveCustomerEdit} style={styles.yellowBtn}>
-                บันทึกการแก้ไข
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCylinderModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3>➕ เพิ่มถังใหม่ในระบบ</h3>
-            <p>
-              ไม่พบ Serial Number <strong>{newCylinderForApproval.serial_number}</strong> กรุณากรอกข้อมูลถังใหม่
-            </p>
-            <div style={styles.formGrid}>
-              <div>
-                <label>Serial Number *</label>
-                <input
-                  value={newCylinderForApproval.serial_number}
-                  onChange={(e) =>
-                    setNewCylinderForApproval({ ...newCylinderForApproval, serial_number: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-              <div>
-                <label>ยี่ห้อ *</label>
-                <select
-                  value={newCylinderForApproval.brand}
-                  onChange={(e) =>
-                    setNewCylinderForApproval({ ...newCylinderForApproval, brand: e.target.value })
-                  }
-                  style={styles.input}
-                >
-                  <option value="">-- เลือก --</option>
-                  <option>ปตท.</option>
-                  <option>World Gas</option>
-                  <option>สยามแก๊ส</option>
-                  <option>ยูนิคแก๊ส</option>
-                  <option>PT Gas</option>
-                  <option>พีเอพี</option>
-                </select>
-              </div>
-              <div>
-                <label>ชนิดแก๊ส</label>
-                <select
-                  value={newCylinderForApproval.gas_type}
-                  onChange={(e) =>
-                    setNewCylinderForApproval({ ...newCylinderForApproval, gas_type: e.target.value })
-                  }
-                  style={styles.input}
-                >
-                  <option>LPG</option>
-                </select>
-              </div>
-              <div>
-                <label>ขนาดถัง *</label>
-                <select
-                  value={newCylinderForApproval.size}
-                  onChange={(e) =>
-                    setNewCylinderForApproval({ ...newCylinderForApproval, size: e.target.value })
-                  }
-                  style={styles.input}
-                >
-                  <option value="">-- เลือก --</option>
-                  <option>4 กก.</option>
-                  <option>7 กก.</option>
-                  <option>11.5 กก.</option>
-                  <option>13.5 กก.</option>
-                  <option>15 กก.</option>
-                  <option>48 กก.</option>
-                </select>
-              </div>
-              <div>
-                <label>วันที่ผลิต *</label>
-                <input
-                  type="date"
-                  value={newCylinderForApproval.manufacture_date}
-                  onChange={(e) => {
-                    const manu = e.target.value;
-                    setNewCylinderForApproval({
-                      ...newCylinderForApproval,
-                      manufacture_date: manu,
-                      expiry_date: calculateExpiry(manu),
-                      next_check_date: calculateExpiry(manu),
-                      last_check_date: manu,
-                    });
-                  }}
-                  style={styles.input}
-                />
-              </div>
-              <div>
-                <label>วันหมดอายุ</label>
-                <input
-                  value={newCylinderForApproval.expiry_date}
-                  disabled
-                  style={{ ...styles.input, background: "#e5e7eb" }}
-                />
-              </div>
-              <div>
-                <label>QR Code</label>
-                <input
-                  value={newCylinderForApproval.qr_code}
-                  onChange={(e) =>
-                    setNewCylinderForApproval({ ...newCylinderForApproval, qr_code: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-              <div>
-                <label>สถานที่ปัจจุบัน</label>
-                <input
-                  value={newCylinderForApproval.current_location}
-                  onChange={(e) =>
-                    setNewCylinderForApproval({ ...newCylinderForApproval, current_location: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "20px" }}>
-              <button onClick={() => setShowCylinderModal(false)} style={{ ...styles.blueBtn, background: "#6b7280" }}>
-                ยกเลิก
-              </button>
-              <button onClick={handleCreateAndApprove} style={styles.blueBtn}>
-                ✅ ยืนยันและอนุมัติ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
 
 const styles = {
-  formCard: {
-    background: "#1f2937",
-    color: "white",
-    padding: "20px",
+  cardContainer: {
+    background: "#1e293b",
+    border: "1px solid #334155",
     borderRadius: "12px",
+    overflow: "hidden",
     marginBottom: "20px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+  },
+  cardHeader: {
+    padding: "12px 16px",
+    background: "#0f172a",
+    borderBottom: "1px solid #334155",
   },
   formGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
     gap: "12px",
-    marginBottom: "16px",
   },
-  card: {
-    background: "#1f2937",
-    color: "white",
-    borderRadius: "16px",
-    overflow: "hidden",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-  },
-  headerBar: {
-    background: "linear-gradient(90deg, #1d4ed8, #2563eb)",
-    padding: "20px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    flexWrap: "wrap",
-  },
-  statusBadge: {
-    padding: "8px 14px",
-    borderRadius: "999px",
-    fontWeight: "bold",
-    fontSize: "14px",
-  },
-  bodyBox: { padding: "20px" },
-  row: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "12px",
-    padding: "12px 0",
-    borderBottom: "1px solid #374151",
-    flexWrap: "wrap",
-  },
-  sectionBox: {
-    margin: "0 20px 20px",
-    padding: "20px",
-    background: "#111827",
-    borderRadius: "12px",
-    position: "relative",
-    zIndex: 20,
-    pointerEvents: "auto",
+  label: {
+    display: "block",
+    fontSize: "12px",
+    fontWeight: "500",
+    color: "#94a3b8",
+    marginBottom: "4px",
   },
   input: {
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: "8px",
-    border: "1px solid #9ca3af",
-    background: "#ffffff",
-    color: "#111827",
-    fontSize: "16px",
+    padding: "8px 12px",
+    borderRadius: "6px",
+    border: "1px solid #334155",
+    background: "#0f172a",
+    color: "#f8fafc",
+    fontSize: "13px",
     boxSizing: "border-box",
     outline: "none",
-    position: "relative",
-    zIndex: 21,
-    pointerEvents: "auto",
   },
-  blueBtn: {
-    padding: "10px 16px",
-    border: "none",
-    borderRadius: "10px",
-    background: "#2563eb",
-    color: "white",
+  select: {
+    width: "100%",
+    padding: "8px 12px",
+    borderRadius: "6px",
+    border: "1px solid #334155",
+    background: "#0f172a",
+    color: "#f8fafc",
+    fontSize: "13px",
+    boxSizing: "border-box",
     cursor: "pointer",
-    fontWeight: "bold",
   },
-  yellowBtn: {
-    padding: "10px 16px",
+  primaryBtn: {
+    padding: "8px 14px",
+    background: "#0284c7",
+    color: "#ffffff",
     border: "none",
-    borderRadius: "10px",
-    background: "#f59e0b",
-    color: "#000000",
+    borderRadius: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
     cursor: "pointer",
-    fontWeight: "bold",
     whiteSpace: "nowrap",
   },
-  orangeBtn: {
-    padding: "10px 16px",
+  secondaryBtn: {
+    padding: "8px 14px",
+    background: "#475569",
+    color: "#ffffff",
     border: "none",
-    borderRadius: "10px",
-    background: "#f59e0b",
-    color: "white",
+    borderRadius: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
     cursor: "pointer",
-    fontWeight: "bold",
+    whiteSpace: "nowrap",
   },
-  greenBtn: {
-    padding: "10px 16px",
+  warningBtn: {
+    padding: "8px 14px",
+    background: "#d97706",
+    color: "#ffffff",
     border: "none",
-    borderRadius: "10px",
-    background: "#16a34a",
-    color: "white",
+    borderRadius: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
     cursor: "pointer",
-    fontWeight: "bold",
+    whiteSpace: "nowrap",
   },
-  proofImage: {
-    width: "180px",
-    maxWidth: "100%",
+  dangerBtn: {
+    padding: "4px 8px",
+    background: "rgba(239, 68, 68, 0.2)",
+    color: "#f87171",
+    border: "1px solid #ef4444",
+    borderRadius: "6px",
+    fontSize: "12px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  badge: {
+    padding: "2px 8px",
     borderRadius: "12px",
-    border: "2px solid #374151",
-    marginBottom: "10px",
-  },
-  warningBox: {
-    background: "#7c2d12",
-    color: "white",
-    padding: "14px 16px",
-    borderRadius: "10px",
-    marginBottom: "20px",
+    fontSize: "11px",
     fontWeight: "bold",
   },
-  emptyBox: {
-    background: "#1f2937",
-    color: "white",
-    padding: "20px",
+  jobCard: {
+    background: "#1e293b",
+    border: "1px solid #334155",
     borderRadius: "12px",
+    overflow: "hidden",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
   },
-  deleteBtn: {
-    padding: "8px 16px",
-    border: "none",
-    borderRadius: "999px",
-    background: "#dc2626",
-    color: "white",
-    cursor: "pointer",
+  jobCardHeader: {
+    padding: "10px 14px",
+    background: "#0f172a",
+    borderBottom: "1px solid #334155",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  jobTag: {
+    fontSize: "13px",
     fontWeight: "bold",
-    fontSize: "14px",
+    color: "#38bdf8",
+    background: "rgba(56, 189, 248, 0.1)",
+    padding: "2px 8px",
+    borderRadius: "4px",
+  },
+  jobCardBody: {
+    padding: "14px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+  infoRow: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "flex-start",
+  },
+  iconSpan: {
+    fontSize: "16px",
+    lineHeight: "1.2",
+  },
+  specBox: {
+    background: "#0f172a",
+    padding: "10px",
+    borderRadius: "8px",
+    border: "1px solid #1e293b",
+  },
+  specBadge: {
+    background: "#334155",
+    color: "#f8fafc",
+    padding: "3px 8px",
+    borderRadius: "4px",
+    fontSize: "12px",
+    fontWeight: "500",
+  },
+  jobCardActions: {
+    marginTop: "4px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+  gpsPinBtn: {
+    width: "100%",
+    padding: "8px 12px",
+    background: "#0284c7",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
+    cursor: "pointer",
+    textAlign: "center",
+  },
+  gpsLinkBtn: {
+    display: "block",
+    textAlign: "center",
+    padding: "6px 10px",
+    background: "rgba(56, 189, 248, 0.1)",
+    color: "#38bdf8",
+    border: "1px solid #0284c7",
+    borderRadius: "6px",
+    fontSize: "12px",
+    textDecoration: "none",
+    fontWeight: "500",
+  },
+  cameraBtn: {
+    width: "100%",
+    padding: "10px",
+    background: "#d97706",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "13px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  emptyCard: {
+    background: "#1e293b",
+    padding: "24px",
+    borderRadius: "10px",
+    textAlign: "center",
+    color: "#94a3b8",
+    fontSize: "13px",
+    border: "1px solid #334155",
+  },
+  activeJobBanner: {
+    background: "#9a3412",
+    color: "#ffedd5",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    marginBottom: "14px",
+    fontSize: "13px",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  proofImgPreview: {
+    width: "100%",
+    maxHeight: "140px",
+    objectFit: "cover",
+    borderRadius: "6px",
+    border: "1px solid #334155",
   },
   modalOverlay: {
     position: "fixed",
@@ -1459,21 +1496,23 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: "rgba(0,0,0,0.7)",
+    background: "rgba(0, 0, 0, 0.75)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1000,
+    zIndex: 9999,
+    padding: "16px",
   },
-  modalContent: {
-    background: "#1f2937",
-    color: "white",
-    padding: "20px",
-    borderRadius: "16px",
-    maxWidth: "800px",
-    width: "90%",
-    maxHeight: "90%",
-    overflow: "auto",
+  modalBody: {
+    background: "#1e293b",
+    border: "1px solid #334155",
+    borderRadius: "12px",
+    padding: "18px",
+    width: "100%",
+    maxWidth: "400px",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    boxSizing: "border-box",
   },
 };
 

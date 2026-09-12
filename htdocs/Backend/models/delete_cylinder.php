@@ -1,22 +1,25 @@
 <?php
-require_once '../config/db.php';
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
 
-$data = json_decode(file_get_contents('php://input'), true);
-if (!$data || !isset($data['cylinder_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Missing cylinder_id']);
+require_once "../config/db.php";
+
+// รับค่า serial_number (แทน cylinder_id เดิม)
+$serial_number = $_GET['serial_number'] ?? $_POST['serial_number'] ?? '';
+
+if (empty($serial_number)) {
+    echo json_encode(["success" => false, "message" => "Missing serial_number"]);
     exit;
 }
 
-$cylinder_id = $data['cylinder_id'];
-$stmt = $conn->prepare("DELETE FROM gas_cylinder WHERE cylinder_id = ?");
-$stmt->bind_param("s", $cylinder_id);
+// แก้ไขคำสั่ง DELETE ให้ลบตาม serial_number
+$sql = "DELETE FROM gas_cylinder WHERE serial_number = '$serial_number'";
 
-if ($stmt->execute()) {
-    echo json_encode(['success' => true, 'message' => 'Deleted']);
+if (mysqli_query($conn, $sql)) {
+    echo json_encode(["success" => true, "message" => "Deleted successfully"]);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Delete failed: ' . $stmt->error]);
+    echo json_encode(["success" => false, "message" => mysqli_error($conn)]);
 }
 
-$stmt->close();
-$conn->close();
+mysqli_close($conn);
 ?>

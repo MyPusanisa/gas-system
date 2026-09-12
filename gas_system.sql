@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Sep 10, 2026 at 05:13 PM
+-- Generation Time: Sep 12, 2026 at 08:03 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -91,33 +91,12 @@ INSERT INTO `customers` (`customer_id`, `name`, `phone`, `address`, `map_pin`) V
 -- --------------------------------------------------------
 
 --
--- Table structure for table `cylinders`
---
-
-CREATE TABLE `cylinders` (
-  `serial_number` varchar(50) NOT NULL,
-  `brand` varchar(50) DEFAULT NULL,
-  `gas_type` varchar(50) DEFAULT NULL,
-  `size` varchar(20) DEFAULT NULL,
-  `manufacture_date` date DEFAULT NULL,
-  `expiry_date` date DEFAULT NULL,
-  `last_check_date` date DEFAULT NULL,
-  `next_check_date` date DEFAULT NULL,
-  `delivered_date` date DEFAULT NULL,
-  `current_location` varchar(100) DEFAULT NULL,
-  `status` varchar(50) DEFAULT 'ในคลัง',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `deliveries`
 --
 
 CREATE TABLE `deliveries` (
   `delivery_id` int(11) NOT NULL,
-  `cylinder_id` int(11) DEFAULT NULL,
+  `serial_number` varchar(100) DEFAULT NULL,
   `customer_name` varchar(100) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
@@ -135,19 +114,36 @@ CREATE TABLE `deliveries` (
 -- Dumping data for table `deliveries`
 --
 
-INSERT INTO `deliveries` (`delivery_id`, `cylinder_id`, `customer_name`, `phone`, `address`, `map_pin`, `brand`, `gas_type`, `size`, `staff_id`, `status`, `proof_image_path`, `created_at`) VALUES
+INSERT INTO `deliveries` (`delivery_id`, `serial_number`, `customer_name`, `phone`, `address`, `map_pin`, `brand`, `gas_type`, `size`, `staff_id`, `status`, `proof_image_path`, `created_at`) VALUES
 (2, NULL, 'สมชาย การค้า', '0812345678', '123/45 ถ.สุขุมวิท กรุงเทพฯ', '13.7563,100.5018', 'PTT', 'LPG', '15 กก.', 1, 'pending', NULL, '2026-08-31 12:38:44'),
 (3, NULL, 'ร้านอาหารแม่ยอม', '0898765432', '88 หมู่ 3 ต.ในเมือง อ.เมือง', '-', 'World Gas', 'LPG', '48 กก.', 2, 'success', NULL, '2026-08-31 12:38:44'),
 (4, NULL, 'บริษัท ไทยกลาส จำกัด', '029998888', '555 อุตสาหกรรมบางปู สมุทรปราการ', '13.5412,100.6234', 'Unique Gas', 'N2O', '36 กก.', 4, 'pending', NULL, '2026-08-31 12:38:44'),
 (5, NULL, 'วิชัย บริการ', '0861112233', '12/1 หมู่บ้านสวนหลวง กรุงเทพฯ', '-', 'PTT', 'LPG', '15 กก.', 1, 'success', 'proof_6aa12d21b01979.13398703.png', '2026-08-31 12:38:44'),
 (6, NULL, 'โรงงานแก้วพัฒนา', '023456789', '99/1 บางพลี สมุทรปราการ', '13.6123,100.7123', 'World Gas', 'O2', '48 กก.', 2, 'pending', NULL, '2026-08-31 12:38:44'),
-(7, NULL, 'คุณนภา ลิขิต', '0845556677', '432 ซอยลาดพร้าว 101 กรุงเทพฯ', '-', 'Unique Gas', 'LPG', '7 กก.', 4, 'pending', NULL, '2026-08-31 12:38:44'),
+(7, 'SN-3004', 'คุณนภา ลิขิต', '0845556677', '432 ซอยลาดพร้าว 101 กรุงเทพฯ', '-', 'Unique Gas', 'LPG', '7 กก.', 1, 'delivering', NULL, '2026-08-31 12:38:44'),
 (8, NULL, 'ร้านเบเกอรี่โฮมเมด', '0839991122', '77 ถนนสีลม กรุงเทพฯ', '13.7234,100.5289', 'PTT', 'LPG', '15 กก.', 1, 'success', 'proof_6aa1217293b743.17317853.png', '2026-08-31 12:38:44'),
-(9, NULL, 'คลินิกทันตกรรมสมบูรณ์', '028887766', '50/2 ถ.พหลโยธิน กรุงเทพฯ', '-', 'Siam Gas', 'N2O', '15 กก.', 2, 'pending', NULL, '2026-08-31 12:38:44'),
+(9, 'SN-8003', 'คลินิกทันตกรรมสมบูรณ์', '028887766', '50/2 ถ.พหลโยธิน กรุงเทพฯ', '-', 'Siam Gas', 'N2O', '15 กก.', 1, 'success', 'proof_6aa5829d557972.07007668.png', '2026-08-31 12:38:44'),
 (10, NULL, 'ร้านหมูกระทะ ชาบูชิ', '0874445566', '101/5 ถ.พระราม 2 กรุงเทพฯ', '13.6512,100.4321', 'PTT', 'LPG', '48 กก.', 1, 'success', 'proof_6a965242331762.43356366.png', '2026-08-31 12:38:44'),
-(11, 101, 'ฟ้า', '0822222222', 'ฟพะ่ไะัาไะัรา', '', 'PTT', 'LPG', '15 กก.', 1, 'success', NULL, '2026-09-09 12:06:16'),
+(11, NULL, 'ฟ้า', '0822222222', 'ฟพะ่ไะัาไะัรา', '', 'PTT', 'LPG', '15 กก.', 1, 'success', NULL, '2026-09-09 12:06:16'),
 (15, NULL, 'ฟ้าลดา', '014451567496', 'กรุงเทพ', '125.66.5872', 'PTT', 'LPG', '14', 1, 'success', 'proof_6aa2af6305b5a8.15312240.png', '2026-09-10 08:24:59'),
-(16, NULL, 'Grace', '08646515498', 'ภูเก็ต', '1556.513', 'PTT', 'LPG', '14', 4, 'success', 'proof_6aa2b4be59bb11.01730526.png', '2026-09-10 13:25:08');
+(16, NULL, 'Grace', '08646515498', 'ภูเก็ต', '1556.513', 'PTT', 'LPG', '14', 4, 'success', 'proof_6aa2b4be59bb11.01730526.png', '2026-09-10 13:25:08'),
+(101, 'SN-3001', 'สมชาย การค้า', NULL, '123/45 ถ.สุขุมวิท เขตวัฒนา กรุงเทพฯ 10110', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-01 02:00:00'),
+(102, 'SN-3002', 'ร้านอาหารแซ่บเวอร์', NULL, '88 หมู่ 3 ต.บางพูน อ.เมือง จ.ปทุมธานี', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-02 02:30:00'),
+(103, 'SN-3003', 'ภัตตาคารเจริญกรุง', NULL, '456 ถ.เจริญกรุง เขตสัมพันธวงศ์ กรุงเทพฯ 10100', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-03 04:00:00'),
+(104, 'SN-3004', 'ก๋วยเตี๋ยวเรือนายเอก', NULL, '12/9 ถ.พหลโยธิน อ.คลองหลวง จ.ปทุมธานี', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-04 01:15:00'),
+(105, NULL, 'คุณวิภาวรรณ', NULL, '99/12 หมู่บ้านศุภาลัย ถ.รามอินทรา กรุงเทพฯ 10220', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-05 06:30:00'),
+(106, NULL, 'โรงงานไทยอุตสาหกรรม', NULL, '77 นิคมอุตสาหกรรมบางปู จ.สมุทรปราการ', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-06 03:00:00'),
+(107, NULL, 'ร้านเบเกอรี่อบอุ่น', NULL, '33/4 ถ.เพชรบุรี เขตราชเทวี กรุงเทพฯ 10400', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-07 01:30:00'),
+(108, NULL, 'โรงแรมสยามริเวอร์', NULL, '555 ถ.พระราม 3 เขตยานนาวา กรุงเทพฯ 10120', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-08 04:45:00'),
+(109, NULL, 'ชาบูยิ้มหวาน', NULL, '201 ศูนย์การค้าฟิวเจอร์พาร์ค รังสิต จ.ปทุมธานี', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-09 02:15:00'),
+(110, NULL, 'คุณสมศักดิ์ พรหมมี', NULL, '44/1 ซ.ลาดพร้าว 101 เขตบางกะปิ กรุงเทพฯ 10240', NULL, NULL, 'LPG', NULL, NULL, 'success', NULL, '2026-09-10 05:00:00'),
+(112, NULL, 'วิภาดา วงศ์ใหญ่', NULL, '88/9 หมู่ 3 ต.บางกระสอ นนทบุรี', NULL, 'WORLDGAS', 'LPG', '15 กก.', NULL, 'success', NULL, '2022-05-10 07:15:00'),
+(115, NULL, 'อารียา สุขสันต์', NULL, '99/1 ถ.รัชดาภิเษก กทม.', NULL, 'ปตท.', 'LPG', '15 กก.', NULL, 'success', NULL, '2025-02-10 01:30:00'),
+(116, NULL, 'ณัฐพล มั่นคง', NULL, '55/4 ซอยลาดพร้าว 71 กทม.', NULL, 'WORLDGAS', 'LPG', '15 กก.', NULL, 'success', NULL, '2025-06-18 06:20:00'),
+(117, NULL, 'โรงแรมสยามธานี', NULL, '789 ถ.เพชรบุรี กทม.', NULL, 'ปตท.', 'LPG', '48 กก.', NULL, 'success', NULL, '2026-01-05 03:00:00'),
+(118, NULL, 'ร้านก๋วยเตี๋ยวรสเด็ด', NULL, '101 ถ.พระราม 2 กทม.', NULL, 'สยามแก๊ส', 'LPG', '15 กก.', NULL, 'success', NULL, '2026-04-12 08:10:00'),
+(119, NULL, 'ประวิทย์ ศรีสุข', NULL, '33/7 ถ.จรัญสนิทวงศ์ กทม.', NULL, 'ปตท.', 'LPG', '15 กก.', 1, 'success', 'proof_6aa57e0c0a3648.04211315.png', '2026-09-10 02:00:00'),
+(120, NULL, 'ธนากร เลิศรัตน์', NULL, '214 ซอยสุขุมวิท 55 กทม.', NULL, 'WORLDGAS', 'LPG', '4 กก.', 1, 'success', 'proof_6aa577e8bd6b03.58572461.png', '2026-09-12 04:30:00');
 
 -- --------------------------------------------------------
 
@@ -171,7 +167,7 @@ CREATE TABLE `delivery_staff` (
 --
 
 INSERT INTO `delivery_staff` (`staff_id`, `staff_name`, `staff_phone`, `address`, `username`, `password`, `status`, `delivery_count`) VALUES
-(1, 'สมชาย ใจดี', '0812345678', 'เชียงใหม่', 'somchai', '12345', 'active', 5),
+(1, 'สมชาย ใจดี', '0812345678', 'เชียงใหม่', 'somchai', '12345', 'active', 7),
 (2, 'สมหญิง พูนสุข', '0898765435', 'ลำปาง', 'somying', '5555525', 'active', 1),
 (3, 'วีระชัย ทองคำ', '0821112233', 'กรุงเทพ', 'weerachai', '9999', 'inactive', 0),
 (4, 'ภูษณิศา จันทร์นวล', '0822153045', '26/39 ม.9 เพชรหงษ์ 2 ต.ทรงคนอง', 'pimlypire', '9632', 'active', 1),
@@ -195,6 +191,9 @@ CREATE TABLE `gas_brands` (
 
 INSERT INTO `gas_brands` (`id`, `brand_name`) VALUES
 (16, 'PTT'),
+(18, 'Siam Gas'),
+(19, 'Unique Gas'),
+(17, 'WORLDGAS'),
 (15, 'ข้าวหอม'),
 (1, 'ปตท.'),
 (5, 'พีที (PT Gas)'),
@@ -209,8 +208,7 @@ INSERT INTO `gas_brands` (`id`, `brand_name`) VALUES
 --
 
 CREATE TABLE `gas_cylinder` (
-  `cylinder_id` varchar(50) NOT NULL,
-  `serial_number` varchar(100) DEFAULT NULL,
+  `serial_number` varchar(100) NOT NULL,
   `status` varchar(50) DEFAULT NULL,
   `size` varchar(50) DEFAULT NULL,
   `manufacture_date` date DEFAULT NULL,
@@ -223,35 +221,39 @@ CREATE TABLE `gas_cylinder` (
   `delivered_date` date DEFAULT NULL,
   `current_location` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `import_date` date DEFAULT curdate(),
+  `next_inspection_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `gas_cylinder`
 --
 
-INSERT INTO `gas_cylinder` (`cylinder_id`, `serial_number`, `status`, `size`, `manufacture_date`, `expiry_date`, `qr_code`, `brand`, `gas_type`, `last_check_date`, `next_check_date`, `delivered_date`, `current_location`, `created_at`, `updated_at`) VALUES
-('', '6003', 'กำลังส่ง', '14', '2026-09-09', '2036-09-09', NULL, 'PTT', 'LPG', NULL, '2031-09-09', NULL, 'กำลังจัดส่ง', '2026-09-10 12:45:32', '2026-09-10 12:57:36'),
-('101', 'SN-3001', 'ในคลัง', '15kg', NULL, NULL, NULL, 'PTT', NULL, NULL, '2027-08-10', NULL, 'คลังสินค้า A', '2026-08-10 14:16:06', '2026-08-10 15:07:14'),
-('102', 'SN-3002', 'ใช้งานอยู่', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2027-08-11', NULL, 'ร้านค้าสาขา 1', '2026-08-10 14:16:06', '2026-08-11 05:35:44'),
-('103', 'SN-3003', 'ในคลัง', '11.5kg', NULL, NULL, NULL, 'Siam Gas', NULL, NULL, '2027-09-10', NULL, 'คลังสินค้า B', '2026-08-10 14:16:06', '2026-09-10 12:07:07'),
-('104', 'SN-3004', 'ในคลัง', '4kg', NULL, NULL, NULL, 'Unique Gas', NULL, NULL, '2027-09-10', NULL, 'คลังสินค้า A', '2026-08-10 14:16:06', '2026-09-10 12:07:07'),
-('asd', 'asd', 'ในคลัง', '11.5 กก.', '2026-05-04', '2036-05-04', 'https://yourdomain.com/cylinder/asd', 'World Gas', 'LPG', '2026-05-17', '2027-08-29', '2026-05-19', 'คลัง', '2026-05-17 08:14:26', '2026-08-29 16:45:03'),
-('CY001', 'SN-1001', 'กำลังจัดส่ง', '99 kg', '2022-01-10', '2032-01-10', '', 'พีที (PT Gas)', 'NGV', '2025-05-01', '2027-09-10', '2025-01-15', 'คลัง', '2026-05-08 20:24:47', '2026-09-10 12:46:06'),
-('CY002', 'SN-1002', 'กำลังส่ง', '15 กก.', '2021-03-12', '2031-03-12', '', 'PTT', 'LPG', '2025-04-15', '2027-09-10', NULL, 'กำลังจัดส่ง', '2026-05-08 20:24:47', '2026-09-10 12:46:06'),
-('CYL-178904777785', '9874', 'ในคลัง', '14', NULL, '2036-09-18', NULL, 'PTT', 'LPG', NULL, '2031-09-18', NULL, NULL, '2026-09-10 13:42:57', '2026-09-10 13:42:57'),
-('CYL-178904783314', '8525', 'กำลังส่ง', '14', NULL, '2036-09-02', NULL, 'PTT', 'LPG', NULL, '2031-09-02', NULL, 'กำลังจัดส่ง', '2026-09-10 13:43:53', '2026-09-10 13:46:21'),
-('CYL-2026091015392657', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:39:26', '2026-09-10 13:39:26'),
-('CYL-2026091015393157', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:39:31', '2026-09-10 13:39:31'),
-('CYL-2026091015401054', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:40:10', '2026-09-10 13:40:10'),
-('CYL-2026091015402877', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:40:28', '2026-09-10 13:40:28'),
-('CYL-8001', 'SN-8001', 'ในคลัง', '14', '2026-09-15', '2036-09-15', '', 'พีที (PT Gas)', 'LPG', NULL, '2031-09-15', NULL, 'คลังสินค้า A', '2026-08-10 14:19:20', '2026-09-10 14:02:21'),
-('CYL-8002', 'SN-8002', 'ใช้งานอยู่', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2026-08-01', NULL, 'ร้านค้าสาขา 1', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
-('CYL-8003', 'SN-8003', 'ในคลัง', '11.5kg', NULL, NULL, NULL, 'Siam Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า B', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
-('CYL-8004', 'SN-8004', 'ในคลัง', '4kg', NULL, NULL, NULL, 'Unique Gas', NULL, NULL, '2026-08-01', NULL, 'คลังสินค้า A', '2026-08-10 14:19:20', '2026-08-10 14:29:29'),
-('dsdhywrt', 'dsdhywrt', 'กำลังส่ง', '14', '2026-08-01', '2036-08-01', '', 'พีที (PT Gas)', 'NGV', '2026-08-08', '2027-08-29', NULL, 'คลัง', '2026-08-08 17:49:14', '2026-09-09 11:40:45'),
-('etyketk', 'etyketk', 'ปกติ', '36 กก.', '2026-08-01', '2036-08-01', '', 'พีที (PT Gas)', 'LPG', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 17:50:42', '2026-09-09 11:40:55'),
-('serhths', 'serhths', 'กำลังส่ง', '15 กก.', '2026-08-01', '2036-08-01', '', 'PTT', 'LPG', '2026-08-08', '2027-08-29', NULL, 'กำลังจัดส่ง', '2026-08-08 16:19:18', '2026-09-09 09:05:47');
+INSERT INTO `gas_cylinder` (`serial_number`, `status`, `size`, `manufacture_date`, `expiry_date`, `qr_code`, `brand`, `gas_type`, `last_check_date`, `next_check_date`, `delivered_date`, `current_location`, `created_at`, `updated_at`, `import_date`, `next_inspection_date`) VALUES
+('5641654', 'กำลังส่ง', '4 กก.', NULL, '2036-09-03', NULL, 'WORLDGAS', 'LPG', NULL, '2031-09-03', NULL, 'กำลังจัดส่ง', '2026-09-12 16:02:38', '2026-09-12 16:03:40', '2026-09-12', NULL),
+('564651354', 'ในคลัง', '15 kg', NULL, NULL, NULL, 'เวิลด์แก๊ส', 'LPG', NULL, NULL, NULL, 'คลังแก๊ส', '2026-09-12 14:48:34', '2026-09-12 14:48:34', '2026-09-12', '2031-09-12'),
+('6003', 'กำลังส่ง', '14', '2026-09-09', '2036-09-09', NULL, 'PTT', 'LPG', NULL, '2031-09-09', NULL, 'กำลังจัดส่ง', '2026-09-10 12:45:32', '2026-09-10 12:57:36', '2026-09-12', NULL),
+('8525', 'กำลังส่ง', '14', NULL, '2036-09-02', NULL, 'PTT', 'LPG', NULL, '2031-09-02', NULL, 'กำลังจัดส่ง', '2026-09-10 13:43:53', '2026-09-10 13:46:21', '2026-09-12', NULL),
+('8976546', 'ในคลัง', '4 กก.', NULL, NULL, NULL, 'ปตท.', 'LPG', NULL, NULL, NULL, 'คลังแก๊ส', '2026-09-12 16:04:34', '2026-09-12 16:04:34', '2026-09-12', '2031-09-12'),
+('asd', 'ในคลัง', '15 กก.', '2026-05-04', '2036-05-04', '', 'PTT', 'LPG', '2026-05-17', '2027-08-29', NULL, 'คลัง', '2026-05-17 08:14:26', '2026-09-12 10:29:17', '2026-09-12', NULL),
+('dsdhywrt', 'กำลังส่ง', '14', '2026-08-01', '2036-08-01', '', 'พีที (PT Gas)', 'NGV', '2026-08-08', '2027-08-29', NULL, 'คลัง', '2026-08-08 17:49:14', '2026-09-09 11:40:45', '2026-09-12', NULL),
+('etyketk', 'ปกติ', '36 กก.', '2026-08-01', '2036-08-01', '', 'พีที (PT Gas)', 'LPG', '2026-08-08', '2027-08-29', NULL, 'พะเยา', '2026-08-08 17:50:42', '2026-09-09 11:40:55', '2026-09-12', NULL),
+('serhths', 'กำลังส่ง', '15 กก.', '2026-08-01', '2036-08-01', '', 'PTT', 'LPG', '2026-08-08', '2027-08-29', NULL, 'กำลังจัดส่ง', '2026-08-08 16:19:18', '2026-09-09 09:05:47', '2026-09-12', NULL),
+('SN-1001', 'กำลังจัดส่ง', '99 kg', '2022-01-10', '2032-01-10', '', 'พีที (PT Gas)', 'NGV', '2025-05-01', '2027-09-10', '2025-01-15', 'คลัง', '2026-05-08 20:24:47', '2026-09-10 12:46:06', '2026-09-12', NULL),
+('SN-1002', 'กำลังส่ง', '15 กก.', '2021-03-12', '2031-03-12', '', 'PTT', 'LPG', '2025-04-15', '2027-09-10', NULL, 'กำลังจัดส่ง', '2026-05-08 20:24:47', '2026-09-10 12:46:06', '2026-09-12', NULL),
+('SN-3001', 'จัดส่งสำเร็จ', '15kg', NULL, NULL, NULL, 'PTT', NULL, NULL, '2027-08-10', '2026-09-01', 'คลังสินค้า A', '2026-08-10 14:16:06', '2026-09-12 17:29:48', '2026-09-12', NULL),
+('SN-3002', 'จัดส่งสำเร็จ', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2027-08-11', '2026-09-02', 'ร้านค้าสาขา 1', '2026-08-10 14:16:06', '2026-09-12 17:29:48', '2026-09-12', NULL),
+('SN-3003', 'จัดส่งสำเร็จ', '15 กก.', '2026-09-04', '2036-09-04', '', 'Siam Gas', 'N2O', NULL, '2031-09-04', '2026-09-03', 'คลังสินค้า B', '2026-08-10 14:16:06', '2026-09-12 17:29:48', '2026-09-12', NULL),
+('SN-3004', 'จัดส่งสำเร็จ', '7 กก.', '2026-09-02', '2036-09-02', '', 'Unique Gas', 'LPG', NULL, '2031-09-02', '2026-09-04', 'กำลังจัดส่ง', '2026-08-10 14:16:06', '2026-09-12 17:29:48', '2026-09-12', NULL),
+('SN-56498416', 'ในคลัง', '4 kg', '2026-09-01', '2036-09-01', NULL, 'WORLDGAS', 'LPG', NULL, '2031-09-01', NULL, 'คลังสินค้า A', '2026-09-12 15:53:43', '2026-09-12 15:53:43', '2026-09-12', NULL),
+('SN-8001', 'กำลังส่ง', '15 กก.', '2026-09-15', '2036-09-15', '', 'ปตท.', 'LPG', NULL, '2031-09-15', NULL, 'กำลังจัดส่ง', '2026-08-10 14:19:20', '2026-09-12 16:25:33', '2026-09-12', NULL),
+('SN-8002', 'ใช้งานอยู่', '15kg', NULL, NULL, NULL, 'World Gas', NULL, NULL, '2026-08-01', NULL, 'ร้านค้าสาขา 1', '2026-08-10 14:19:20', '2026-08-10 14:29:29', '2026-09-12', NULL),
+('SN-8003', 'จัดส่งสำเร็จ', '15 กก.', '2026-09-01', '2036-09-01', '', 'Siam Gas', 'N2O', NULL, '2031-09-01', '2026-08-31', 'กำลังจัดส่ง', '2026-08-10 14:19:20', '2026-09-12 17:29:48', '2026-09-12', NULL),
+('SN-TEMP-CYL-2026091015392657', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:39:26', '2026-09-12 13:18:03', '2026-09-12', NULL),
+('SN-TEMP-CYL-2026091015393157', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:39:31', '2026-09-12 13:18:03', '2026-09-12', NULL),
+('SN-TEMP-CYL-2026091015401054', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:40:10', '2026-09-12 13:18:03', '2026-09-12', NULL),
+('SN-TEMP-CYL-2026091015402877', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-10 13:40:28', '2026-09-12 13:18:03', '2026-09-12', NULL);
 
 -- --------------------------------------------------------
 
@@ -330,9 +332,12 @@ INSERT INTO `gas_sizes` (`id`, `size_name`) VALUES
 (1, '11.5 กก.'),
 (10, '14'),
 (2, '15 kg'),
+(12, '15 กก.'),
 (7, '36 kg.'),
 (8, '36 กก.'),
+(13, '4 กก.'),
 (3, '48 kg'),
+(14, '7 กก.'),
 (11, '99'),
 (9, '99 kg');
 
@@ -376,6 +381,7 @@ CREATE TABLE `gas_types` (
 INSERT INTO `gas_types` (`id`, `type_name`) VALUES
 (9, 'CP'),
 (1, 'LPG'),
+(10, 'N2O'),
 (8, 'NGV');
 
 -- --------------------------------------------------------
@@ -444,21 +450,6 @@ INSERT INTO `maintenance_options` (`option_id`, `option_category`, `option_value
 (13, 'note', 'วาล์วชำรุด สมควรเปลี่ยนวาล์ว'),
 (14, 'note', 'ตัวถังมีรอยบุบ/สนิม ต้องบำรุงรักษา');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `users`
---
-
-CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `role` enum('admin','staff') DEFAULT 'staff',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 --
 -- Indexes for dumped tables
 --
@@ -477,16 +468,12 @@ ALTER TABLE `customers`
   ADD PRIMARY KEY (`phone`);
 
 --
--- Indexes for table `cylinders`
---
-ALTER TABLE `cylinders`
-  ADD PRIMARY KEY (`serial_number`);
-
---
 -- Indexes for table `deliveries`
 --
 ALTER TABLE `deliveries`
-  ADD PRIMARY KEY (`delivery_id`);
+  ADD PRIMARY KEY (`delivery_id`),
+  ADD KEY `fk_deliv_gas_cyl_new` (`serial_number`),
+  ADD KEY `fk_deliv_staff_new` (`staff_id`);
 
 --
 -- Indexes for table `delivery_staff`
@@ -506,8 +493,7 @@ ALTER TABLE `gas_brands`
 -- Indexes for table `gas_cylinder`
 --
 ALTER TABLE `gas_cylinder`
-  ADD PRIMARY KEY (`cylinder_id`),
-  ADD UNIQUE KEY `serial_number` (`serial_number`);
+  ADD PRIMARY KEY (`serial_number`) USING BTREE;
 
 --
 -- Indexes for table `gas_locations`
@@ -557,13 +543,6 @@ ALTER TABLE `maintenance_options`
   ADD PRIMARY KEY (`option_id`);
 
 --
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`);
-
---
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -577,7 +556,7 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `deliveries`
 --
 ALTER TABLE `deliveries`
-  MODIFY `delivery_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `delivery_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=121;
 
 --
 -- AUTO_INCREMENT for table `delivery_staff`
@@ -589,7 +568,7 @@ ALTER TABLE `delivery_staff`
 -- AUTO_INCREMENT for table `gas_brands`
 --
 ALTER TABLE `gas_brands`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `gas_locations`
@@ -607,7 +586,7 @@ ALTER TABLE `gas_sensor_logs`
 -- AUTO_INCREMENT for table `gas_sizes`
 --
 ALTER TABLE `gas_sizes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `gas_statuses`
@@ -619,7 +598,7 @@ ALTER TABLE `gas_statuses`
 -- AUTO_INCREMENT for table `gas_types`
 --
 ALTER TABLE `gas_types`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `maintenance`
@@ -634,14 +613,17 @@ ALTER TABLE `maintenance_options`
   MODIFY `option_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
--- AUTO_INCREMENT for table `users`
---
-ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `deliveries`
+--
+ALTER TABLE `deliveries`
+  ADD CONSTRAINT `fk_deliv_gas_cyl_new` FOREIGN KEY (`serial_number`) REFERENCES `gas_cylinder` (`serial_number`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_deliv_staff_new` FOREIGN KEY (`staff_id`) REFERENCES `delivery_staff` (`staff_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_deliveries_delivery_staff` FOREIGN KEY (`staff_id`) REFERENCES `delivery_staff` (`staff_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_deliveries_gas_cylinder` FOREIGN KEY (`serial_number`) REFERENCES `gas_cylinder` (`serial_number`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `maintenance`

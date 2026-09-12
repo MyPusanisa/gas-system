@@ -1,35 +1,21 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=UTF-8");
+require_once "../config/db.php";
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
-include_once "../../config/db.php";
-
-$input = json_decode(file_get_contents('php://input'), true);
-$serial = $input['serial_number'] ?? $input['id'] ?? '';
+$data = json_decode(file_get_contents("php://input"), true);
+$serial = isset($data['serial_number']) ? trim($data['serial_number']) : '';
 
 if (empty($serial)) {
-    echo json_encode(["success" => false, "message" => "ไม่พบ Serial Number ของถังแก๊ส"]);
-    exit();
+    echo json_encode(["success" => false, "message" => "ไม่ได้ระบุ Serial Number"]);
+    exit;
 }
 
-try {
-    $sql = "DELETE FROM gas_cylinder WHERE serial_number = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $serial);
-
-    if ($stmt->execute()) {
-        echo json_encode(["success" => true, "message" => "ลบถังแก๊สสำเร็จ"]);
-    } else {
-        echo json_encode(["success" => false, "message" => "ไม่สามารถลบข้อมูลได้"]);
-    }
-} catch (Exception $e) {
-    echo json_encode(["success" => false, "message" => "Error: " . $e->getMessage()]);
+$sql = "DELETE FROM gas_cylinder WHERE serial_number = '$serial'";
+if (mysqli_query($conn, $sql)) {
+    echo json_encode(["success" => true, "message" => "ลบถังแก๊สสำเร็จ"]);
+} else {
+    echo json_encode(["success" => false, "message" => mysqli_error($conn)]);
 }
+mysqli_close($conn);
 ?>

@@ -1,0 +1,29 @@
+<?php
+// confirm_delivery.php (หรือไฟล์ประมวลผลการยืนยันของ Admin)
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+
+include_once '../config/database.php'; // ปรับ Path ตามโครงสร้างโปรเจกต์
+
+$data = json_decode(file_get_contents("php://input"));
+$cylinder_id = isset($data->id) ? $data->id : null;
+
+if ($cylinder_id) {
+    // อัปเดตสถานะเป็น 'จัดส่งแล้ว' และบันทึกวันที่เวลาปัจจุบัน
+    $query = "UPDATE cylinders 
+              SET status = 'จัดส่งแล้ว', 
+                  delivered_date = NOW() 
+              WHERE id = :id OR serial_number = :id";
+              
+    $stmt = $db->prepare($query);
+    $stmt->bindParam(':id', $cylinder_id);
+    
+    if ($stmt->execute()) {
+        echo json_encode(["success" => true, "message" => "ยืนยันการจัดส่งสำเร็จ"]);
+    } else {
+        echo json_encode(["success" => false, "message" => "ไม่สามารถอัปเดตข้อมูลได้"]);
+    }
+} else {
+    echo json_encode(["success" => false, "message" => "ไม่พบข้อมูล ID"]);
+}
+?>
