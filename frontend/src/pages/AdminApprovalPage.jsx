@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import { API_BASE } from "../config";
 
+const FONT_FAMILY = "'Kanit', 'Sarabun', sans-serif";
+
 export default function AdminApprovalPage() {
   const [pendingList, setPendingList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -419,6 +421,7 @@ const cardContainerStyle = {
   padding: "20px",
   marginBottom: "30px",
   border: "1px solid #374151",
+  fontFamily: FONT_FAMILY,
 };
 
 const inputStyle = {
@@ -430,11 +433,13 @@ const inputStyle = {
   width: "100%",
   fontSize: "14px",
   boxSizing: "border-box",
+  fontFamily: FONT_FAMILY,
 };
 
 const selectStyle = {
   ...inputStyle,
   cursor: "pointer",
+  fontFamily: FONT_FAMILY,
 };
 
 const labelStyle = {
@@ -442,6 +447,7 @@ const labelStyle = {
   fontSize: "12px",
   color: "#9ca3af",
   marginBottom: "4px",
+  fontFamily: FONT_FAMILY,
 };
 
 const primaryBtnStyle = {
@@ -454,6 +460,7 @@ const primaryBtnStyle = {
   fontWeight: "bold",
   fontSize: "14px",
   whiteSpace: "nowrap",
+  fontFamily: FONT_FAMILY,
 };
 
 const resultBoxStyle = (bgColor, textColor) => ({
@@ -462,4 +469,5 @@ const resultBoxStyle = (bgColor, textColor) => ({
   borderRadius: "8px",
   background: bgColor,
   color: textColor,
+  fontFamily: FONT_FAMILY,
 });

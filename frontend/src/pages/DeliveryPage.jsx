@@ -1366,6 +1366,7 @@ const styles = {
     cursor: "pointer",
   },
   badge: {
+    fontFamily: "'Prompt', sans-serif",
     padding: "2px 8px",
     borderRadius: "12px",
     fontSize: "11px",
