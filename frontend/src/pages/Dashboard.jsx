@@ -19,7 +19,6 @@ function Dashboard() {
     total_cylinders: 0,
     in_stock: 0,
     ready: 0,
-    expired: 0,
   });
 
   // State สำหรับเก็บข้อมูลแจ้งเตือน TopBar
@@ -69,8 +68,19 @@ function Dashboard() {
   };
 
   const fetchSummary = async () => {
-    const data = await safeFetchJson(`${API_BASE}/get_dashboard_summary.php`);
-    if (data && data.success) setSummary(data.data);
+    const summaryData = await safeFetchJson(`${API_BASE}/get_dashboard_summary.php`);
+    
+    const gasLevelData = await safeFetchJson(`${API_BASE}/get_gas_level.php`);
+
+    if (summaryData && summaryData.success) {
+      const readyVal = gasLevelData?.ready ?? gasLevelData?.ready_cylinders ?? summaryData.data?.ready ?? 0;
+
+      setSummary({
+        total_cylinders: summaryData.data?.total_cylinders || 0,
+        in_stock: summaryData.data?.in_stock || 0,
+        ready: readyVal, 
+      });
+    }
   };
 
   const fetchStaffRounds = async () => {
@@ -121,7 +131,6 @@ function Dashboard() {
           <Card title="ถังทั้งหมด" value={summary.total_cylinders} />
           <Card title="ในคลัง" value={summary.in_stock} />
           <Card title="พร้อมใช้งาน" value={summary.ready} />
-          <Card title="หมดอายุ" value={summary.expired} />
         </div>
 
         <div style={panelStyle}>
@@ -193,9 +202,9 @@ function Dashboard() {
           )}
         </div>
 
-        {/* ========== NEAR DUE CYLINDERS ========== */}
+        {/* ========== CYLINDER MAINTENANCE LIST ========== */}
         <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>ถังใกล้ถึงกำหนดตรวจ (30 วัน)</h2>
+          <h2 style={panelTitleStyle}>รายการตรวจบำรุงถังแก๊ส</h2>
           <table style={tableStyle}>
             <thead>
               <tr>
@@ -208,7 +217,7 @@ function Dashboard() {
               {nearDueCylinders.length === 0 ? (
                 <tr>
                   <td colSpan="3" align="center" style={{ padding: "20px" }}>
-                    ไม่มีถังใกล้หมดอายุ
+                    ไม่มีข้อมูลรายการบำรุง
                   </td>
                 </tr>
               ) : (

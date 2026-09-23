@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./config";
+const API_BASE_URL = '/Backend/models';
 
 export const fetchAPI = async (endpoint, options = {}) => {
   const config = {
@@ -11,7 +11,11 @@ export const fetchAPI = async (endpoint, options = {}) => {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    // จัดการลบ /Backend หรือ /models ที่อาจจะซ้ำซ้อนจาก endpoint
+    let cleanEndpoint = endpoint.replace(/^\/?(Backend\/)?(models\/)?/, '');
+    const targetUrl = `${API_BASE_URL}/${cleanEndpoint}`;
+
+    const response = await fetch(targetUrl, config);
     const data = await response.json();
 
     if (!response.ok) {

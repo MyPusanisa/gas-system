@@ -6,7 +6,7 @@ function GasStatusCard() {
   const fetchGasLevel = async () => {
     try {
       // ใช้ 127.0.0.1 เพื่อหลีกเลี่ยงปัญหา DNS localhost บน Windows
-      const res = await fetch("http://127.0.0.1/Backend/models/cylinder/get_gas_status.php", {
+      const res = await fetch("/Backend/models/cylinder/get_gas_status.php", {
         method: "GET",
         headers: {
           "Accept": "application/json"

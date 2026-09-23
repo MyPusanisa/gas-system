@@ -350,29 +350,6 @@ function GasPage() {
     }
   };
 
-  const handleDeleteDelivery = async (deliveryId) => {
-    if (!deliveryId) return;
-    if (!window.confirm(`คุณต้องการลบรายการจัดส่ง Delivery ID: #${deliveryId} ใช่หรือไม่?`)) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/delete_delivery.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delivery_id: deliveryId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert("ลบรายการจัดส่งเรียบร้อยแล้ว");
-        fetchDeliveries();
-      } else {
-        alert(data.message || "ไม่สามารถลบรายการจัดส่งได้");
-      }
-    } catch (err) {
-      console.error("Error deleting delivery:", err);
-      alert("เกิดข้อผิดพลาดในการลบรายการจัดส่ง");
-    }
-  };
-
   const openDatePicker = (e) => {
     if (e.target.showPicker) {
       try {
@@ -1054,21 +1031,9 @@ function GasPage() {
                     </td>
 
                     <td style={{ ...tdStyle, textAlign: "center" }}>
-                      <div style={{ display: "inline-flex", gap: "4px" }}>
-                        <button type="button" onClick={() => handleShowQR(item)} style={qrButtonStyle}>
-                          QR
-                        </button>
-                        <button type="button" onClick={() => editCylinder(item)} style={editButtonStyle}>
-                          แก้ไข
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => handleDeleteDelivery(item.delivery_id)} 
-                          style={deleteButtonStyle}
-                        >
-                          ลบ
-                        </button>
-                      </div>
+                      <button type="button" onClick={() => handleShowQR(item)} style={qrButtonStyle}>
+                        QR
+                      </button>
                     </td>
                   </tr>
                 );

@@ -6,8 +6,7 @@ function GasDashboard() {
 
   const fetchGasLevel = async () => {
     try {
-      // เปลี่ยนจาก /Backend/... เป็น Full URL ที่รันบน XAMPP
-      const res = await fetch("http://localhost/Backend/models/cylinder/get_gas_status.php");
+      const res = await fetch("/Backend/models/get_gas_level.php");
       const data = await res.json();
       if (data.success) {
         setGasLevel(data.level);

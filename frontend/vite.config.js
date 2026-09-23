@@ -7,7 +7,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/Backend': {
-        target: 'http://localhost:8080',
+        target: 'http://suchat-gas.com',
         changeOrigin: true,
         secure: false
       }
