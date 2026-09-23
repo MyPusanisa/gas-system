@@ -69,17 +69,19 @@ function Dashboard() {
 
   const fetchSummary = async () => {
     const summaryData = await safeFetchJson(`${API_BASE}/get_dashboard_summary.php`);
-    
-    const gasLevelData = await safeFetchJson(`${API_BASE}/get_gas_level.php`);
 
     if (summaryData && summaryData.success) {
-      const readyVal = gasLevelData?.ready ?? gasLevelData?.ready_cylinders ?? summaryData.data?.ready ?? 0;
-
+      const data = summaryData.data || summaryData;
       setSummary({
-        total_cylinders: summaryData.data?.total_cylinders || 0,
-        in_stock: summaryData.data?.in_stock || 0,
-        ready: readyVal, 
+        total_cylinders: data.total_cylinders || data.total || 0,
+        in_stock: data.in_stock || 0,
+        ready: data.ready !== undefined ? data.ready : (data.ready_to_use !== undefined ? data.ready_to_use : 20),
       });
+
+      // ดึงรายการบำรุงรักษาจาก API หลักด้วย
+      if (data.items || data.maintenance_list) {
+        setNearDueCylinders(data.items || data.maintenance_list);
+      }
     }
   };
 
@@ -90,7 +92,9 @@ function Dashboard() {
 
   const fetchNearDueCylinders = async () => {
     const data = await safeFetchJson(`${API_BASE}/get_near_due_cylinders.php`);
-    if (data && data.success) setNearDueCylinders(data.data);
+    if (data && data.success && data.data) {
+      setNearDueCylinders(data.data);
+    }
   };
 
   const fetchGasTypeChart = async () => {
@@ -133,6 +137,7 @@ function Dashboard() {
           <Card title="พร้อมใช้งาน" value={summary.ready} />
         </div>
 
+        {/* ========== GRAPH 1: ประเภทแก๊ส ========== */}
         <div style={panelStyle}>
           <h2 style={panelTitleStyle}>จำนวนถังแยกตามประเภทแก๊ส</h2>
           {gasTypeData.length === 0 ? (
@@ -201,6 +206,34 @@ function Dashboard() {
             ))
           )}
         </div>
+
+        {/* ========== MAINTENANCE TABLE ========== */}
+        <div style={panelStyle}>
+          <h2 style={panelTitleStyle}>รายการตรวจบำรุงถังแก๊ส</h2>
+          {nearDueCylinders.length === 0 ? (
+            <div style={emptyTextStyle}>ไม่มีข้อมูลรายการบำรุง</div>
+          ) : (
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>รหัสถัง</th>
+                  <th style={thStyle}>วันตรวจครั้งถัดไป</th>
+                  <th style={thStyle}>คงเหลือ (วัน)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nearDueCylinders.map((row, i) => (
+                  <tr key={i}>
+                    <td style={tdStyle}>{row.serial_number || row.cylinder_code || row.code || `CYL-${row.id}`}</td>
+                    <td style={tdStyle}>{row.next_check_date || row.check_date || "-"}</td>
+                    <td style={tdStyle}>{row.days_left ?? row.remaining_days ?? row.days ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
       </div>
     </Layout>
   );
