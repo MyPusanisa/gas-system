@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import { QRCodeSVG } from "qrcode.react";
 
-const API_BASE = "/Backend/models";
+const API_BASE = "../Backend/models";
 
 function GasPage() {
   const [cylinders, setCylinders] = useState([]);
@@ -87,10 +87,10 @@ function GasPage() {
   const fetchCylinders = async () => {
     try {
       const res = await fetch(`${API_BASE}/get_cylinders.php`);
-      const data = await res.json();
-      if (data.success) {
-        setCylinders(data.data || []);
-      }
+const data = await res.json();
+if (data.success) {
+  setCylinders(data.data || []);
+}
     } catch (err) {
       console.error("Error fetching cylinders:", err);
     }

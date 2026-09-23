@@ -201,39 +201,6 @@ function Dashboard() {
             ))
           )}
         </div>
-
-        {/* ========== CYLINDER MAINTENANCE LIST ========== */}
-        <div style={panelStyle}>
-          <h2 style={panelTitleStyle}>รายการตรวจบำรุงถังแก๊ส</h2>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>รหัสถัง</th>
-                <th style={thStyle}>วันตรวจครั้งถัดไป</th>
-                <th style={thStyle}>คงเหลือ (วัน)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {nearDueCylinders.length === 0 ? (
-                <tr>
-                  <td colSpan="3" align="center" style={{ padding: "20px" }}>
-                    ไม่มีข้อมูลรายการบำรุง
-                  </td>
-                </tr>
-              ) : (
-                nearDueCylinders.map((item, index) => (
-                  <tr key={item.cylinder_id || item.serial_number || index}>
-                    <td style={tdStyle}>{item.serial_number || item.cylinder_id || "-"}</td>
-                    <td style={tdStyle}>{item.next_check_date || "-"}</td>
-                    <td style={{ ...tdStyle, color: (item.days_left || 0) <= 0 ? "#ef4444" : "#f59e0b" }}>
-                      {item.days_left ?? "-"} วัน
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
     </Layout>
   );
