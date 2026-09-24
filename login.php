@@ -59,11 +59,6 @@ if ($username === "" || $password === "") {
     exit;
 }
 
-/*
-|--------------------------------------------------------------------------
-| ฟังก์ชันตรวจสอบรหัสผ่าน (รองรับทั้ง Hash, Plaintext และ MD5)
-|--------------------------------------------------------------------------
-*/
 function passwordMatches($plainPassword, $storedPassword)
 {
     if (password_verify($plainPassword, $storedPassword)) return true;
@@ -73,27 +68,8 @@ function passwordMatches($plainPassword, $storedPassword)
 }
 
 try {
-    // 1. ตรวจสอบ Admin
-    $adminSql = "SELECT * FROM admins WHERE username = :username LIMIT 1";
-    $adminStmt = $pdo->prepare($adminSql);
-    $adminStmt->execute([":username" => $username]);
-    $admin = $adminStmt->fetch();
-
-    if ($admin && passwordMatches($password, $admin["password"])) {
-        echo json_encode([
-            "success"  => true,
-            "message"  => "เข้าสู่ระบบสำเร็จ",
-            "role"     => "admin",
-            "admin_id" => $admin["id"] ?? $admin["admin_id"] ?? 1,
-            "staff_id" => null,
-            "username" => $admin["username"],
-            "name"     => $admin["name"] ?? $admin["username"]
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    // 2. ตรวจสอบ Staff (พนักงานส่งแก๊ส)
-    $staffSql = "SELECT * FROM staff WHERE username = :username LIMIT 1";
+    // 1. ตรวจสอบจากตาราง delivery_staff (สำหรับ พนักงานส่งแก๊ส)
+    $staffSql = "SELECT * FROM delivery_staff WHERE username = :username LIMIT 1";
     $staffStmt = $pdo->prepare($staffSql);
     $staffStmt->execute([":username" => $username]);
     $staff = $staffStmt->fetch();
@@ -104,9 +80,28 @@ try {
             "message"  => "เข้าสู่ระบบสำเร็จ",
             "role"     => "staff",
             "admin_id" => null,
-            "staff_id" => $staff["id"] ?? $staff["staff_id"] ?? 1,
+            "staff_id" => $staff["staff_id"],
             "username" => $staff["username"],
-            "name"     => $staff["name"] ?? $staff["username"]
+            "name"     => $staff["staff_name"] ?? $staff["username"]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 2. ตรวจสอบจากตาราง admin (สำหรับ ผู้ดูแลระบบ)
+    $adminSql = "SELECT * FROM admin WHERE username = :username LIMIT 1";
+    $adminStmt = $pdo->prepare($adminSql);
+    $adminStmt->execute([":username" => $username]);
+    $admin = $adminStmt->fetch();
+
+    if ($admin && passwordMatches($password, $admin["password"])) {
+        echo json_encode([
+            "success"  => true,
+            "message"  => "เข้าสู่ระบบสำเร็จ",
+            "role"     => "admin",
+            "admin_id" => $admin["admin_id"],
+            "staff_id" => null,
+            "username" => $admin["username"],
+            "name"     => $admin["name"] ?? $admin["username"]
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
