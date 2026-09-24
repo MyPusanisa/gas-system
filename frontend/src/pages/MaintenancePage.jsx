@@ -127,8 +127,12 @@ function MaintenancePage({
 
 const dueCylinders = useMemo(() => {
   if (!Array.isArray(allCylinders)) return [];
-  return allCylinders;
-}, [allCylinders]);
+  // เฉพาะถังที่เลยกำหนดตรวจแล้ว (ใช้ทั้งการ์ดสรุป, dropdown และตาราง)
+  return allCylinders.filter((item) => {
+    const dueDate = item && parseLocalDate(item.next_check_date);
+    return dueDate && dueDate < todayDate;
+  });
+}, [allCylinders, todayDate]);
 
   const getDueStatus = (nextCheckDateStr) => {
     if (!nextCheckDateStr) return "ไม่มีกำหนด";
@@ -184,8 +188,6 @@ const dueCylinders = useMemo(() => {
     return dueCylinders.filter((item) => {
       if (!item) return false;
       const statusText = getDueStatus(item.next_check_date);
-      // แสดงเฉพาะถังที่เลยกำหนดตรวจแล้ว
-      if (statusText !== "เลยกำหนด") return false;
       const searchText = [
         item.serial_number,
         item.brand,
@@ -363,7 +365,7 @@ const dueCylinders = useMemo(() => {
 
       <div style={summaryRowStyle}>
         <div style={summaryCardStyle}>
-          <h3>ถังที่ถึงกำหนดตรวจ</h3>
+          <h3>ถังที่เลยกำหนดตรวจ</h3>
           <p style={summaryNumberStyle}>{dueCylinders.length}</p>
         </div>
         <div style={summaryCardStyle}>
@@ -391,7 +393,7 @@ const dueCylinders = useMemo(() => {
                 disabled={selectedSerialNumbers.length > 0}
                 style={inputStyle}
               >
-                <option value="">-- เลือกถังที่ถึงกำหนดตรวจ --</option>
+                <option value="">-- เลือกถังที่เลยกำหนดตรวจ --</option>
                 {dueCylinders.map((cyl) => (
                   <option key={cyl.serial_number} value={cyl.serial_number}>
                     {cyl.serial_number} - {cyl.brand || "LPG"} ({cyl.size}) [กำหนดตรวจ: {cyl.next_check_date}]
@@ -526,7 +528,7 @@ const dueCylinders = useMemo(() => {
       <div style={{ marginBottom: "16px" }}>
         <input
           type="text"
-          placeholder="🔍 ค้นหาถังที่ถึงกำหนดตรวจ..."
+          placeholder="🔍 ค้นหาถังที่เลยกำหนดตรวจ..."
           value={dueSearchTerm}
           onChange={(e) => setDueSearchTerm(e.target.value)}
           style={searchInputStyle}
@@ -583,7 +585,7 @@ const dueCylinders = useMemo(() => {
                 </tr>
               ))
             ) : (
-              <tr><td style={tdStyle} colSpan="7" align="center">ไม่พบข้อมูลที่ค้นหาในถังที่ถึงกำหนดตรวจ</td></tr>
+              <tr><td style={tdStyle} colSpan="7" align="center">ไม่พบข้อมูลที่ค้นหาในถังที่เลยกำหนดตรวจ</td></tr>
             )}
           </tbody>
         </table>
