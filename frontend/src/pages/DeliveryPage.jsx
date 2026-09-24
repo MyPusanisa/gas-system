@@ -181,10 +181,12 @@ function DeliveryPage() {
     try {
       if (!isBackground) setLoading(true);
 
-      apiFetch(`${API_BASE_URL}/gas/latest.php`)
+      // โฟลเดอร์ชื่อ "Gas" (เซิร์ฟเวอร์ Linux แยกตัวพิมพ์เล็ก/ใหญ่ — "gas" ได้ 404)
+      apiFetch(`${API_BASE_URL}/Gas/latest.php`)
         .then((res) => {
-          if (res && res.success && res.data) {
-            setGasLevel(Number(res.data.gas_value));
+          const value = res?.data?.gas_value ?? res?.gas_value;
+          if (res && res.success && value !== undefined) {
+            setGasLevel(Number(value));
           }
         })
         .catch(() => {});
