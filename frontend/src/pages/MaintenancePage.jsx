@@ -1,6 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
 import Layout from "../components/Layout";
-import { Settings, Pencil, Trash2, CircleCheck } from "lucide-react";
+import {
+  Settings, Pencil, Trash2, CircleCheck, X, Save, Plus, Check, Search,
+  TriangleAlert, CalendarClock, ClipboardList, ClipboardCheck, History,
+} from "lucide-react";
 import API_BASE_URL from "../config"; 
 
 function MaintenancePage({
@@ -348,344 +351,289 @@ const dueCylinders = useMemo(() => {
     }
   };
 
+  // ถังที่จะถึงกำหนดตรวจภายใน 30 วัน (ยังไม่เลย)
+  const dueSoonCount = (Array.isArray(allCylinders) ? allCylinders : []).filter((c) => {
+    const d = c && parseLocalDate(c.next_check_date);
+    if (!d) return false;
+    const days = Math.round((d - todayDate) / 86400000);
+    return days >= 0 && days <= 30;
+  }).length;
+
+  const targetCount = selectedSerialNumbers.length || (selectedSerialNumber ? 1 : 0);
+
   if (loading) {
     return (
       <Layout>
-        <div style={{ color: "white", textAlign: "center", padding: "50px" }}>
-          กำลังโหลดข้อมูล...
-        </div>
+        <div style={{ color: "#9ca3af", textAlign: "center", padding: "50px" }}>กำลังโหลดข้อมูล...</div>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <h1 style={{ marginBottom: "20px", color: "white" }}>
-        ตรวจสภาพและบำรุงรักษา
-      </h1>
+      <div style={{ marginBottom: "20px" }}>
+        <h1 style={titleStyle}>ตรวจสภาพและบำรุงรักษา</h1>
+        <div style={subtitleStyle}>ติดตามกำหนดตรวจถังและบันทึกผลการตรวจ</div>
+      </div>
 
-      <div style={summaryRowStyle}>
-        <div style={{ ...summaryCardStyle, borderLeft: "4px solid #ef4444" }}>
-          <div style={summaryLabelStyle}>ถังที่เลยกำหนดตรวจ</div>
-          <div style={{ ...summaryNumberStyle, color: dueCylinders.length > 0 ? "#f87171" : "white" }}>
-            {dueCylinders.length} <span style={summaryUnitStyle}>ถัง</span>
-          </div>
+      {/* ===== การ์ดสรุป ===== */}
+      <div style={statGridStyle}>
+        <StatCard icon={TriangleAlert} accent="#ef4444" title="เลยกำหนดตรวจ" value={dueCylinders.length} unit="ถัง"
+          valueColor={dueCylinders.length > 0 ? "#f87171" : undefined} />
+        <StatCard icon={CalendarClock} accent="#f59e0b" title="ถึงกำหนดใน 30 วัน" value={dueSoonCount} unit="ถัง"
+          valueColor={dueSoonCount > 0 ? "#fbbf24" : undefined} />
+        <StatCard icon={ClipboardList} accent="#3b82f6" title="ประวัติการตรวจ" value={maintenances.length} unit="รายการ" />
+      </div>
+
+      {/* ===== ฟอร์มบันทึกผลตรวจ ===== */}
+      <div style={cardStyle}>
+        <div style={cardHeaderStyle}>
+          <h2 style={cardTitleStyle}><ClipboardCheck size={18} color="#60a5fa" /> บันทึกผลตรวจ</h2>
+          {targetCount > 0 && <span style={countPillStyle}>{targetCount} ถัง</span>}
         </div>
-        <div style={{ ...summaryCardStyle, borderLeft: "4px solid #3b82f6" }}>
-          <div style={summaryLabelStyle}>ประวัติการตรวจทั้งหมด</div>
-          <div style={summaryNumberStyle}>
-            {maintenances.length} <span style={summaryUnitStyle}>รายการ</span>
-          </div>
+
+        {/* ถังที่จะบันทึก */}
+        <div style={fieldGroupStyle}>
+          <label style={labelStyle}>ถังที่ตรวจ<span style={reqStyle}> *</span></label>
+          {selectedSerialNumbers.length > 0 ? (
+            <div style={chipWrapStyle}>
+              {selectedSerialNumbers.map((sn) => (
+                <span key={sn} style={serialChipStyle}>
+                  {sn}
+                  <button type="button" onClick={() => handleToggleSelect(sn)} style={chipCloseStyle} title="เอาออก">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+              <button type="button" onClick={() => setSelectedSerialNumbers([])} style={linkBtnStyle}>ล้างทั้งหมด</button>
+            </div>
+          ) : (
+            <select
+              value={selectedSerialNumber}
+              onChange={(e) => setSelectedSerialNumber(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">{dueCylinders.length ? "-- เลือกถังที่เลยกำหนดตรวจ --" : "ไม่มีถังที่เลยกำหนดตรวจ"}</option>
+              {dueCylinders.map((cyl) => (
+                <option key={cyl.serial_number} value={cyl.serial_number}>
+                  {cyl.serial_number} · {cyl.brand || "-"} {cyl.size || ""} · กำหนดตรวจ {formatDate(cyl.next_check_date)}
+                </option>
+              ))}
+            </select>
+          )}
+          <span style={hintStyle}>หรือติ๊กเลือกหลายถังจากตาราง "เลยกำหนดตรวจ" ด้านล่าง</span>
+        </div>
+
+        {/* ประเภท / ผลตรวจ แบบปุ่มเลือก */}
+        <div style={twoColStyle}>
+          <ChipPicker
+            label="ประเภทการตรวจ"
+            required
+            options={typeOptions}
+            value={maintenanceType}
+            onChange={setMaintenanceType}
+            onManage={() => setActiveModal("type")}
+          />
+          <ChipPicker
+            label="ผลการตรวจ"
+            required
+            options={resultOptions}
+            value={result}
+            onChange={setResult}
+            onManage={() => setActiveModal("result")}
+            colorFor={(opt) => resultBadgeStyle(opt).color}
+          />
+        </div>
+
+        <div style={twoColStyle}>
+          <SelectWithManage
+            label="สิ่งที่ต้องทำต่อ"
+            placeholder="-- เลือกสิ่งที่ต้องทำต่อ --"
+            options={actionOptions}
+            value={nextAction}
+            onChange={setNextAction}
+            onManage={() => setActiveModal("action")}
+          />
+          <SelectWithManage
+            label="หมายเหตุสำเร็จรูป"
+            placeholder="-- เลือกหมายเหตุ --"
+            options={noteOptions}
+            value={selectedNote}
+            onChange={setSelectedNote}
+            onManage={() => setActiveModal("note")}
+          />
+        </div>
+
+        <div style={{ ...fieldGroupStyle, marginTop: "14px" }}>
+          <label style={labelStyle}>รายละเอียดเพิ่มเติม</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={textAreaStyle}
+            placeholder="รายละเอียดการตรวจหรือข้อสังเกตเพิ่มเติม (ถ้ามี)"
+            rows="3"
+          />
+        </div>
+
+        <div style={formFooterStyle}>
+          <span style={hintStyle}>ผล "ผ่าน" จะเลื่อนวันตรวจครั้งถัดไปของถังออกไป 1 ปี</span>
+          <button onClick={saveMaintenance} style={primaryButtonStyle} disabled={saving}>
+            <Save size={16} />
+            {saving ? "กำลังบันทึก..." : `บันทึกผลตรวจ${targetCount > 1 ? ` (${targetCount} ถัง)` : ""}`}
+          </button>
         </div>
       </div>
 
-      <div style={formCardStyle}>
-        <h2 style={{ marginTop: 0, color: "white" }}>
-          บันทึกผลตรวจ {selectedSerialNumbers.length > 0 && `(เลือกอยู่ ${selectedSerialNumbers.length} รายการ)`}
-        </h2>
-        <div style={formGridStyle}>
-          <div style={fieldGroupStyle}>
-            <label style={labelStyle}>
-              เลือกถัง <span style={hintStyle}>(หรือติ๊กหลายรายการจากตารางด้านล่าง)</span>
-            </label>
-            <div style={inputWithBtnStyle}>
-              <select
-                value={selectedSerialNumber}
-                onChange={(e) => {
-                  setSelectedSerialNumber(e.target.value);
-                  if (e.target.value) setSelectedSerialNumbers([]);
-                }}
-                disabled={selectedSerialNumbers.length > 0}
-                style={inputStyle}
-              >
-                <option value="">-- เลือกถังที่เลยกำหนดตรวจ --</option>
-                {dueCylinders.map((cyl) => (
-                  <option key={cyl.serial_number} value={cyl.serial_number}>
-                    {cyl.serial_number} · {cyl.brand || "-"} {cyl.size || ""} · กำหนดตรวจ {formatDate(cyl.next_check_date)}
-                  </option>
-                ))}
-              </select>
-              <div style={spacerStyle} />
-            </div>
-          </div>
-
-          <div style={fieldGroupStyle}>
-            <label style={labelStyle}>
-              ประเภทการตรวจ/บำรุง *
-            </label>
-            <div style={inputWithBtnStyle}>
-              <select
-                value={maintenanceType}
-                onChange={(e) => setMaintenanceType(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">-- เลือกประเภท --</option>
-                {typeOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-              <button 
-                type="button" 
-                onClick={() => setActiveModal("type")} 
-                style={iconButtonStyle}
-                title="จัดการประเภท"
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-          </div>
-
-          <div style={fieldGroupStyle}>
-            <label style={labelStyle}>
-              ผลการตรวจ *
-            </label>
-            <div style={inputWithBtnStyle}>
-              <select
-                value={result}
-                onChange={(e) => setResult(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">-- เลือกผลตรวจ --</option>
-                {resultOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-              <button 
-                type="button" 
-                onClick={() => setActiveModal("result")} 
-                style={iconButtonStyle}
-                title="จัดการผลตรวจ"
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-          </div>
-
-          <div style={fieldGroupStyle}>
-            <label style={labelStyle}>
-              สิ่งที่ต้องทำต่อ
-            </label>
-            <div style={inputWithBtnStyle}>
-              <select
-                value={nextAction}
-                onChange={(e) => setNextAction(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">-- เลือกสิ่งที่ต้องทำต่อ --</option>
-                {actionOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-              <button 
-                type="button" 
-                onClick={() => setActiveModal("action")} 
-                style={iconButtonStyle}
-                title="จัดการสิ่งที่ต้องทำต่อ"
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-          </div>
-
-          <div style={{ ...fieldGroupStyle, gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>เลือกหมายเหตุสำเร็จรูป</label>
-            <div style={inputWithBtnStyle}>
-              <select
-                value={selectedNote}
-                onChange={(e) => setSelectedNote(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">-- เลือกหมายเหตุประเมิน --</option>
-                {noteOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-              <button 
-                type="button" 
-                onClick={() => setActiveModal("note")} 
-                style={iconButtonStyle}
-                title="จัดการหมายเหตุ"
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-          </div>
-
-          <div style={fieldGroupStyleFull}>
-            <label style={labelStyle}>รายละเอียดเพิ่มเติม</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={textAreaStyle}
-              placeholder="รายละเอียดการตรวจหรือข้อสังเกตเพิ่มเติม (ถ้ามี)"
-              rows="3"
-            />
-          </div>
+      {/* ===== ถังที่เลยกำหนดตรวจ ===== */}
+      <div style={cardStyle}>
+        <div style={cardHeaderStyle}>
+          <h2 style={cardTitleStyle}>
+            <TriangleAlert size={18} color="#f87171" /> ถังที่เลยกำหนดตรวจ <span style={countPillStyle}>{filteredDueCylinders.length}</span>
+          </h2>
+          <SearchBox value={dueSearchTerm} onChange={setDueSearchTerm} placeholder="ค้นหา Serial, ยี่ห้อ, ขนาด..." />
         </div>
-        <button onClick={saveMaintenance} style={primaryButtonStyle} disabled={saving}>
-          {saving 
-            ? "กำลังบันทึก..." 
-            : `บันทึกผลตรวจ ${selectedSerialNumbers.length > 0 ? `(${selectedSerialNumbers.length} รายการ)` : ""}`
-          }
-        </button>
-      </div>
 
-      <div style={sectionCardStyle}>
-      <div style={sectionHeaderStyle}>
-        <h2 style={sectionTitleStyle}>
-          ถังที่เลยกำหนดตรวจ <span style={countPillStyle}>{filteredDueCylinders.length}</span>
-        </h2>
-        <input
-          type="text"
-          placeholder="ค้นหา Serial, ยี่ห้อ, ขนาด..."
-          value={dueSearchTerm}
-          onChange={(e) => setDueSearchTerm(e.target.value)}
-          style={searchInputStyle}
-        />
-      </div>
-
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>
-                <input
-                  type="checkbox"
-                  onChange={handleSelectAll}
-                  checked={
-                    filteredDueCylinders.length > 0 &&
-                    selectedSerialNumbers.length === filteredDueCylinders.length
-                  }
-                />
-              </th>
-              <th style={thStyle}>Serial Number</th>
-              <th style={thStyle}>ยี่ห้อ</th>
-              <th style={thStyle}>ขนาด</th>
-              <th style={thStyle}>กำหนดตรวจ</th>
-              <th style={thStyle}>เลยกำหนด</th>
-              <th style={thStyle}>สถานะถัง</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDueCylinders.length > 0 ? (
-              filteredDueCylinders.map((item) => (
-                <tr
-                  key={item.serial_number}
-                  style={selectedSerialNumbers.includes(item.serial_number) ? selectedRowStyle : undefined}
-                >
-                  <td style={tdStyle}>
-                    <input
-                      type="checkbox"
-                      checked={selectedSerialNumbers.includes(item.serial_number)}
-                      onChange={() => handleToggleSelect(item.serial_number)}
-                    />
-                  </td>
-                  <td style={tdStyle}><strong>{item.serial_number}</strong></td>
-                  <td style={tdStyle}>{item.brand || "-"}</td>
-                  <td style={tdStyle}>{item.size || "-"}</td>
-                  <td style={tdNowrapStyle}>{formatDate(item.next_check_date)}</td>
-                  <td style={tdNowrapStyle}>
-                    <span style={{ ...badgeStyle, ...overdueStyle }}>
-                      {item.days_left != null ? `เลย ${Math.abs(item.days_left)} วัน` : getDueStatus(item.next_check_date)}
-                    </span>
-                  </td>
-                  <td style={tdNowrapStyle}>{item.status || "-"}</td>
-                </tr>
-              ))
-            ) : (
-              <tr><td style={emptyCellStyle} colSpan="7">
-                {dueSearchTerm ? "ไม่พบถังที่ค้นหา" : <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><CircleCheck size={16} color="#10b981" /> ไม่มีถังที่เลยกำหนดตรวจ</span>}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      </div>
-
-      <div style={sectionCardStyle}>
-      <div style={sectionHeaderStyle}>
-        <h2 style={sectionTitleStyle}>
-          ประวัติการตรวจล่าสุด <span style={countPillStyle}>{filteredMaintenances.length}</span>
-        </h2>
-        <input
-          type="text"
-          placeholder="ค้นหาประวัติการตรวจ..."
-          value={historySearchTerm}
-          onChange={(e) => setHistorySearchTerm(e.target.value)}
-          style={searchInputStyle}
-        />
-      </div>
-
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>วันที่ตรวจ</th>
-              <th style={thStyle}>Serial Number</th>
-              <th style={thStyle}>ประเภท</th>
-              <th style={thStyle}>ผลตรวจ</th>
-              <th style={thStyle}>สิ่งที่ต้องทำต่อ</th>
-              <th style={thStyle}>ตรวจครั้งถัดไป</th>
-              <th style={thStyle}>หมายเหตุ</th>
-              <th style={thStyle}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMaintenances.length > 0 ? (
-              filteredMaintenances.map((item, index) => (
-                <tr key={item.maintenance_id ? `${item.maintenance_id}-${index}` : index}>
-                  <td style={tdNowrapStyle}>{formatDate(item.maintenance_date)}</td>
-                  <td style={tdNowrapStyle}><strong>{item.serial_number || item.cylinder_id || "-"}</strong></td>
-                  <td style={tdNowrapStyle}>{item.maintenance_type || "-"}</td>
-                  <td style={tdNowrapStyle}>
-                    {item.result ? <span style={{ ...badgeStyle, ...resultBadgeStyle(item.result) }}>{item.result}</span> : "-"}
-                  </td>
-                  <td style={tdNowrapStyle}>
-                    {item.next_action ? <span style={actionBadgeStyle}>{item.next_action}</span> : "-"}
-                  </td>
-                  <td style={tdNowrapStyle}>{formatDate(calculateNextCheckDate(item))}</td>
-                  <td style={{ ...tdStyle, color: "#9ca3af", minWidth: "180px" }}>{item.description || "-"}</td>
-                  <td style={tdNowrapStyle}>
-                    <button onClick={() => handleEditClick(item)} style={editButtonStyle}>
-                      <Pencil size={13} /> แก้ไข
-                    </button>
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={{ ...thStyle, width: "40px" }}>
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={filteredDueCylinders.length > 0 && selectedSerialNumbers.length === filteredDueCylinders.length}
+                    title="เลือกทั้งหมด"
+                  />
+                </th>
+                <th style={thStyle}>Serial Number</th>
+                <th style={thStyle}>ยี่ห้อ / ขนาด</th>
+                <th style={thStyle}>กำหนดตรวจ</th>
+                <th style={thStyle}>เลยกำหนด</th>
+                <th style={thStyle}>สถานะถัง</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDueCylinders.length > 0 ? (
+                filteredDueCylinders.map((item) => {
+                  const selected = selectedSerialNumbers.includes(item.serial_number);
+                  return (
+                    <tr key={item.serial_number} style={selected ? selectedRowStyle : undefined}>
+                      <td style={tdStyle}>
+                        <input type="checkbox" checked={selected} onChange={() => handleToggleSelect(item.serial_number)} />
+                      </td>
+                      <td style={{ ...tdStyle, color: "#60a5fa", fontWeight: 700 }}>{item.serial_number}</td>
+                      <td style={tdMutedStyle}>{[item.brand, item.size].filter(Boolean).join(" · ") || "-"}</td>
+                      <td style={tdStyle}>{formatDate(item.next_check_date)}</td>
+                      <td style={tdStyle}>
+                        <span style={{ ...badgeStyle, ...badgeRed }}>
+                          {item.days_left != null ? `เลย ${Math.abs(item.days_left)} วัน` : getDueStatus(item.next_check_date)}
+                        </span>
+                      </td>
+                      <td style={tdMutedStyle}>{item.status || "-"}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td style={emptyCellStyle} colSpan="6">
+                    {dueSearchTerm ? "ไม่พบถังที่ค้นหา" : (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        <CircleCheck size={18} color="#10b981" /> ไม่มีถังที่เลยกำหนดตรวจ
+                      </span>
+                    )}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr><td style={emptyCellStyle} colSpan="8">
-                {historySearchTerm ? "ไม่พบประวัติที่ค้นหา" : "ยังไม่มีประวัติการตรวจ"}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* ===== ประวัติการตรวจ ===== */}
+      <div style={cardStyle}>
+        <div style={cardHeaderStyle}>
+          <h2 style={cardTitleStyle}>
+            <History size={18} color="#60a5fa" /> ประวัติการตรวจล่าสุด <span style={countPillStyle}>{filteredMaintenances.length}</span>
+          </h2>
+          <SearchBox value={historySearchTerm} onChange={setHistorySearchTerm} placeholder="ค้นหาประวัติการตรวจ..." />
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thStyle}>วันที่ตรวจ</th>
+                <th style={thStyle}>Serial Number</th>
+                <th style={thStyle}>ประเภท</th>
+                <th style={thStyle}>ผลตรวจ</th>
+                <th style={thStyle}>สิ่งที่ต้องทำต่อ</th>
+                <th style={thStyle}>ตรวจครั้งถัดไป</th>
+                <th style={thStyle}>หมายเหตุ</th>
+                <th style={{ ...thStyle, textAlign: "right" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMaintenances.length > 0 ? (
+                filteredMaintenances.map((item, index) => (
+                  <tr key={item.maintenance_id ? `${item.maintenance_id}-${index}` : index}>
+                    <td style={tdStyle}>{formatDate(item.maintenance_date)}</td>
+                    <td style={{ ...tdStyle, color: "#60a5fa", fontWeight: 700 }}>{item.serial_number || item.cylinder_id || "-"}</td>
+                    <td style={tdStyle}>{item.maintenance_type || "-"}</td>
+                    <td style={tdStyle}>
+                      {item.result ? <span style={{ ...badgeStyle, ...resultBadgeStyle(item.result) }}>{item.result}</span> : "-"}
+                    </td>
+                    <td style={tdStyle}>
+                      {item.next_action ? <span style={actionBadgeStyle}>{item.next_action}</span> : "-"}
+                    </td>
+                    <td style={tdStyle}>{formatDate(calculateNextCheckDate(item))}</td>
+                    <td style={{ ...tdMutedStyle, whiteSpace: "normal", minWidth: "180px" }}>{item.description || "-"}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      <button onClick={() => handleEditClick(item)} style={iconBtnStyle("#f59e0b")} title="แก้ไข">
+                        <Pencil size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td style={emptyCellStyle} colSpan="8">
+                    {historySearchTerm ? "ไม่พบประวัติที่ค้นหา" : "ยังไม่มีประวัติการตรวจ"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ===== Modal จัดการตัวเลือก ===== */}
       {activeModal && (
-        <div style={modalOverlayStyle}>
-          <div style={darkModalStyle}>
+        <div style={modalOverlayStyle} onClick={() => setActiveModal(null)}>
+          <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeaderStyle}>
-              <span style={{ fontWeight: "bold", fontSize: "16px" }}>{getModalTitle()}</span>
-              <button onClick={() => setActiveModal(null)} style={closeModalIconStyle}>✕</button>
+              <h3 style={modalTitleStyle}><Settings size={18} color="#9ca3af" /> {getModalTitle()}</h3>
+              <button onClick={() => setActiveModal(null)} style={closeBtnStyle}><X size={18} /></button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px", alignItems: "stretch" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
               <input
                 type="text"
                 placeholder="กรอกตัวเลือกใหม่..."
                 value={newItemInput}
                 onChange={(e) => setNewItemInput(e.target.value)}
-                style={{ ...darkInputStyle, height: "42px" }}
+                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                style={inputStyle}
               />
-              <button onClick={handleAddItem} style={{ ...blueAddButtonStyle, height: "42px" }}>+ เพิ่ม</button>
+              <button onClick={handleAddItem} style={primaryButtonStyle}><Plus size={16} /> เพิ่ม</button>
             </div>
 
-            <div style={itemListContainerStyle}>
+            <div style={itemListStyle}>
               {getCurrentModalList().map((item, idx) => (
-                <div key={idx} style={itemCardStyle}>
-                  <span style={{ fontSize: "14px", color: "#e5e7eb" }}>{item}</span>
-                  <button onClick={() => handleRemoveItem(idx)} style={redDeleteButtonStyle}><Trash2 size={13} /> ลบ</button>
+                <div key={idx} style={itemRowStyle}>
+                  <span>{item}</span>
+                  <button onClick={() => handleRemoveItem(idx)} style={iconBtnStyle("#ef4444")} title="ลบ">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -693,73 +641,37 @@ const dueCylinders = useMemo(() => {
         </div>
       )}
 
+      {/* ===== Modal แก้ไขประวัติ ===== */}
       {editingItem && (
-        <div style={modalOverlayStyle}>
-          <div style={modalStyle}>
-            <h3 style={{ marginTop: 0 }}>แก้ไขประวัติการตรวจ <span style={{ color: "#9ca3af", fontWeight: "normal" }}>#{editingItem.maintenance_id}</span></h3>
-            
-            <div style={fieldGroupStyle}>
-              <label style={labelStyle}>Serial Number</label>
-              <input
-                type="text"
-                value={editSerial}
-                onChange={(e) => setEditSerial(e.target.value)}
-                style={inputStyle}
-              />
+        <div style={modalOverlayStyle} onClick={() => setEditingItem(null)}>
+          <div style={{ ...modalStyle, maxWidth: "520px" }} onClick={(e) => e.stopPropagation()}>
+            <div style={modalHeaderStyle}>
+              <h3 style={modalTitleStyle}>
+                <Pencil size={18} color="#fbbf24" /> แก้ไขประวัติการตรวจ
+                <span style={{ color: "#9ca3af", fontWeight: "normal" }}>#{editingItem.maintenance_id}</span>
+              </h3>
+              <button onClick={() => setEditingItem(null)} style={closeBtnStyle}><X size={18} /></button>
             </div>
 
-            <div style={{ ...fieldGroupStyle, marginTop: "10px" }}>
-              <label style={labelStyle}>ประเภทการตรวจ</label>
-              <select
-                value={editType}
-                onChange={(e) => setEditType(e.target.value)}
-                style={inputStyle}
-              >
-                {typeOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div style={fieldGroupStyle}>
+                <label style={labelStyle}>Serial Number</label>
+                <input type="text" value={editSerial} onChange={(e) => setEditSerial(e.target.value)} style={inputStyle} />
+              </div>
+              <ChipPicker label="ประเภทการตรวจ" options={typeOptions} value={editType} onChange={setEditType} />
+              <ChipPicker label="ผลการตรวจ" options={resultOptions} value={editResult} onChange={setEditResult}
+                colorFor={(opt) => resultBadgeStyle(opt).color} />
+              <SelectWithManage label="สิ่งที่ต้องทำต่อ" placeholder="-- ไม่ระบุ --" options={actionOptions}
+                value={editNextAction} onChange={setEditNextAction} />
+              <div style={fieldGroupStyle}>
+                <label style={labelStyle}>รายละเอียดเพิ่มเติม</label>
+                <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} style={textAreaStyle} rows="3" />
+              </div>
             </div>
 
-            <div style={{ ...fieldGroupStyle, marginTop: "10px" }}>
-              <label style={labelStyle}>ผลตรวจ</label>
-              <select
-                value={editResult}
-                onChange={(e) => setEditResult(e.target.value)}
-                style={inputStyle}
-              >
-                {resultOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ ...fieldGroupStyle, marginTop: "10px" }}>
-              <label style={labelStyle}>สิ่งที่ต้องทำต่อ</label>
-              <select
-                value={editNextAction}
-                onChange={(e) => setEditNextAction(e.target.value)}
-                style={inputStyle}
-              >
-                {actionOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ ...fieldGroupStyle, marginTop: "10px" }}>
-              <label style={labelStyle}>รายละเอียดเพิ่มเติม</label>
-              <textarea
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                style={textAreaStyle}
-                rows="3"
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "15px" }}>
-              <button onClick={() => setEditingItem(null)} style={cancelButtonStyle}>ยกเลิก</button>
-              <button onClick={handleUpdate} style={primaryButtonStyle}>บันทึกแก้ไข</button>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "18px" }}>
+              <button onClick={() => setEditingItem(null)} style={secondaryButtonStyle}>ยกเลิก</button>
+              <button onClick={handleUpdate} style={primaryButtonStyle}><Save size={16} /> บันทึก</button>
             </div>
           </div>
         </div>
@@ -767,6 +679,73 @@ const dueCylinders = useMemo(() => {
     </Layout>
   );
 }
+
+// ========== Sub components ==========
+const StatCard = ({ icon: Icon, accent, title, value, unit, valueColor }) => (
+  <div style={{ ...statCardStyle, borderTop: `3px solid ${accent}` }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <span style={{ color: "#cbd5e1", fontSize: "14px", fontWeight: 600 }}>{title}</span>
+      <span style={{ ...statIconStyle, background: `${accent}26`, color: accent }}><Icon size={17} /></span>
+    </div>
+    <div style={{ marginTop: "10px", fontSize: "32px", fontWeight: 700, color: valueColor || "white", lineHeight: 1.1 }}>
+      {value} <span style={{ fontSize: "14px", color: "#9ca3af", fontWeight: 400 }}>{unit}</span>
+    </div>
+  </div>
+);
+
+const ChipPicker = ({ label, required, options, value, onChange, onManage, colorFor }) => (
+  <div style={fieldGroupStyle}>
+    <div style={labelRowStyle}>
+      <label style={labelStyle}>{label}{required && <span style={reqStyle}> *</span>}</label>
+      {onManage && (
+        <button type="button" onClick={onManage} style={linkBtnStyle}><Settings size={12} /> จัดการ</button>
+      )}
+    </div>
+    <div style={chipWrapStyle}>
+      {options.map((opt) => {
+        const active = value === opt;
+        const color = (colorFor && colorFor(opt)) || "#60a5fa";
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(active ? "" : opt)}
+            style={{
+              ...pickChipStyle,
+              ...(active ? { borderColor: color, color, background: `${color}1f`, fontWeight: 600 } : {}),
+            }}
+          >
+            {active && <Check size={14} />} {opt}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const SelectWithManage = ({ label, placeholder, options, value, onChange, onManage }) => (
+  <div style={fieldGroupStyle}>
+    <div style={labelRowStyle}>
+      <label style={labelStyle}>{label}</label>
+      {onManage && (
+        <button type="button" onClick={onManage} style={linkBtnStyle}><Settings size={12} /> จัดการ</button>
+      )}
+    </div>
+    <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
+      <option value="">{placeholder}</option>
+      {value && !options.includes(value) && <option value={value}>{value}</option>}
+      {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+    </select>
+  </div>
+);
+
+const SearchBox = ({ value, onChange, placeholder }) => (
+  <div style={{ position: "relative", width: "280px", maxWidth: "100%" }}>
+    <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#6b7280" }} />
+    <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+      style={{ ...inputStyle, paddingLeft: "36px" }} />
+  </div>
+);
 
 // "2026-08-01" -> "01/08/2026"
 const formatDate = (dateStr) => {
@@ -781,107 +760,56 @@ const resultBadgeStyle = (result) => {
   return { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid #f59e0b" };
 };
 
-// --- Styles Objects ---
-const summaryRowStyle = { display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "20px" };
-const summaryCardStyle = { background: "#1f2937", color: "white", padding: "18px 20px", borderRadius: "12px", minWidth: "220px", flex: "1" };
-const summaryLabelStyle = { fontSize: "14px", color: "#9ca3af", fontWeight: "bold" };
-const summaryNumberStyle = { fontSize: "32px", fontWeight: "bold", marginTop: "8px" };
-const summaryUnitStyle = { fontSize: "14px", color: "#9ca3af", fontWeight: "normal" };
-const hintStyle = { fontWeight: "normal", color: "#9ca3af", fontSize: "12px" };
+// ========== Styles ==========
+const titleStyle = { margin: 0, fontSize: "30px", color: "white" };
+const subtitleStyle = { color: "#9ca3af", fontSize: "14px", marginTop: "6px" };
 
-const sectionCardStyle = { background: "#111827", padding: "20px", borderRadius: "12px", marginBottom: "24px" };
-const sectionHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" };
-const sectionTitleStyle = { margin: 0, color: "white", fontSize: "20px", display: "flex", alignItems: "center", gap: "10px" };
-const countPillStyle = { background: "#374151", color: "#e5e7eb", fontSize: "13px", padding: "2px 10px", borderRadius: "999px" };
-const selectedRowStyle = { background: "rgba(37,99,235,0.15)" };
-const emptyCellStyle = { padding: "28px", textAlign: "center", color: "#9ca3af", fontSize: "14px" };
-const formCardStyle = { background: "#111827", padding: "20px", borderRadius: "12px", marginBottom: "20px" };
+const statGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "14px", marginBottom: "20px" };
+const statCardStyle = { background: "#1f2937", padding: "16px 18px", borderRadius: "14px", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" };
+const statIconStyle = { width: "34px", height: "34px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" };
 
-const formGridStyle = { 
-  display: "grid", 
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", 
-  gap: "16px", 
-  marginBottom: "16px"
-};
+const cardStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "14px", marginBottom: "20px", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" };
+const cardHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" };
+const cardTitleStyle = { margin: 0, fontSize: "18px", color: "white", display: "flex", alignItems: "center", gap: "10px" };
+const countPillStyle = { background: "#374151", color: "#e5e7eb", fontSize: "13px", padding: "2px 10px", borderRadius: "999px", fontWeight: "normal" };
 
-const fieldGroupStyle = { 
-  display: "flex", 
-  flexDirection: "column", 
-  justifyContent: "flex-end",
-  gap: "6px", 
-  width: "100%", 
-  boxSizing: "border-box" 
-};
+const twoColStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: "14px 20px", marginTop: "16px" };
+const fieldGroupStyle = { display: "flex", flexDirection: "column", gap: "8px" };
+const labelRowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center" };
+const labelStyle = { fontSize: "13px", fontWeight: 600, color: "#cbd5e1" };
+const reqStyle = { color: "#f87171" };
+const hintStyle = { color: "#6b7280", fontSize: "12px" };
+const inputStyle = { height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #374151", background: "#111827", color: "white", width: "100%", boxSizing: "border-box", fontSize: "14px" };
+const textAreaStyle = { minHeight: "80px", padding: "10px 12px", borderRadius: "8px", border: "1px solid #374151", width: "100%", boxSizing: "border-box", resize: "vertical", backgroundColor: "#111827", color: "white", fontSize: "14px" };
+const formFooterStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "18px", paddingTop: "16px", borderTop: "1px solid #2b3647" };
 
-const fieldGroupStyleFull = { display: "flex", flexDirection: "column", gap: "6px", gridColumn: "1 / -1" };
+const chipWrapStyle = { display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" };
+const pickChipStyle = { display: "inline-flex", alignItems: "center", gap: "4px", padding: "8px 14px", borderRadius: "999px", border: "1px solid #374151", background: "#111827", color: "#cbd5e1", fontSize: "13px", cursor: "pointer" };
+const serialChipStyle = { display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 6px 5px 12px", borderRadius: "999px", background: "rgba(59,130,246,0.15)", border: "1px solid #3b82f6", color: "#93c5fd", fontSize: "13px", fontWeight: 600 };
+const chipCloseStyle = { display: "inline-flex", padding: "3px", borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.08)", color: "#93c5fd", cursor: "pointer" };
+const linkBtnStyle = { display: "inline-flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "#60a5fa", fontSize: "12px", cursor: "pointer", padding: 0 };
 
-const labelStyle = { 
-  fontSize: "13px", 
-  fontWeight: "bold", 
-  color: "#e5e7eb",
-  lineHeight: "1.3"
-};
+const primaryButtonStyle = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", height: "40px", padding: "0 18px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: 600, fontSize: "14px", whiteSpace: "nowrap" };
+const secondaryButtonStyle = { height: "40px", padding: "0 18px", border: "1px solid #4b5563", borderRadius: "8px", background: "transparent", color: "#e5e7eb", cursor: "pointer", fontSize: "14px" };
+const iconBtnStyle = (color) => ({ display: "inline-flex", alignItems: "center", padding: "6px 9px", border: `1px solid ${color}`, borderRadius: "6px", background: `${color}1f`, color: "white", cursor: "pointer" });
 
-const inputStyle = { 
-  height: "42px", 
-  padding: "0 10px", 
-  borderRadius: "8px", 
-  border: "1px solid #4b5563", 
-  width: "100%", 
-  boxSizing: "border-box", 
-  backgroundColor: "#1f2937", 
-  color: "#fff",
-  flex: 1
-};
+const tableStyle = { width: "100%", borderCollapse: "collapse", color: "white", fontSize: "13px" };
+const thStyle = { padding: "10px 12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap", background: "#273244", color: "#cbd5e1" };
+const tdStyle = { padding: "11px 12px", textAlign: "left", borderBottom: "1px solid #2b3647", verticalAlign: "middle", whiteSpace: "nowrap" };
+const tdMutedStyle = { ...tdStyle, color: "#9ca3af" };
+const emptyCellStyle = { padding: "28px", textAlign: "center", color: "#9ca3af" };
+const selectedRowStyle = { background: "rgba(37,99,235,0.12)" };
 
-const inputWithBtnStyle = { display: "flex", gap: "6px", alignItems: "center", width: "100%" };
+const badgeStyle = { padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, whiteSpace: "nowrap", display: "inline-block" };
+const badgeRed = { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid #ef4444" };
+const actionBadgeStyle = { ...badgeStyle, fontWeight: 500, background: "rgba(59,130,246,0.12)", color: "#93c5fd", border: "1px solid #3b82f6" };
 
-const iconButtonStyle = { 
-  width: "42px",
-  height: "42px", 
-  background: "#374151", 
-  border: "1px solid #4b5563", 
-  borderRadius: "8px", 
-  cursor: "pointer", 
-  fontSize: "14px", 
-  color: "#fff",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0
-};
-
-const spacerStyle = {
-  width: "42px",
-  height: "42px",
-  flexShrink: 0
-};
-
-const textAreaStyle = { minHeight: "80px", padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", backgroundColor: "#1f2937", color: "#fff" };
-const searchInputStyle = { height: "40px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", background: "#1f2937", color: "white", width: "100%", maxWidth: "320px", boxSizing: "border-box" };
-
-const tableStyle = { width: "100%", borderCollapse: "collapse", background: "#1f2937", color: "white", borderRadius: "10px", overflow: "hidden" };
-const thStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", whiteSpace: "nowrap", background: "#273244", color: "#cbd5e1" };
-const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", verticalAlign: "middle" };
-const tdNowrapStyle = { ...tdStyle, whiteSpace: "nowrap" };
-
-const primaryButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
-const cancelButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
-const editButtonStyle = { display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 10px", border: "1px solid #f59e0b", borderRadius: "6px", background: "rgba(245,158,11,0.12)", color: "#fbbf24", cursor: "pointer", fontSize: "12px" };
-
-const badgeStyle = { padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "bold", whiteSpace: "nowrap", display: "inline-block" };
-const overdueStyle = { background: "#ef4444", color: "white" };
-const actionBadgeStyle = { background: "rgba(59,130,246,0.15)", color: "#93c5fd", border: "1px solid #3b82f6", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", whiteSpace: "nowrap", display: "inline-block" };
-
-const modalOverlayStyle = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0, 0, 0, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 };
-const modalStyle = { background: "#1f2937", color: "white", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "500px" };
-const darkModalStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", width: "90%", maxWidth: "400px", border: "1px solid #374151" };
+const modalOverlayStyle = { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "16px" };
+const modalStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "14px", width: "100%", maxWidth: "420px", maxHeight: "90vh", overflowY: "auto", border: "1px solid #374151", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", boxSizing: "border-box" };
 const modalHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" };
-const closeModalIconStyle = { background: "none", border: "none", color: "#9ca3af", fontSize: "18px", cursor: "pointer" };
-const darkInputStyle = { height: "42px", padding: "0 10px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", flex: 1, boxSizing: "border-box" };
-const blueAddButtonStyle = { height: "42px", padding: "0 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" };
-const itemListContainerStyle = { maxHeight: "250px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" };
-const itemCardStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#111827", borderRadius: "8px" };
-const redDeleteButtonStyle = { display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 8px", border: "1px solid #ef4444", borderRadius: "6px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", cursor: "pointer", fontSize: "12px" };
+const modalTitleStyle = { margin: 0, fontSize: "17px", display: "flex", alignItems: "center", gap: "8px" };
+const closeBtnStyle = { display: "flex", background: "none", border: "none", color: "#9ca3af", cursor: "pointer", padding: "4px" };
+const itemListStyle = { maxHeight: "260px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" };
+const itemRowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#111827", borderRadius: "8px", fontSize: "14px", color: "#e5e7eb" };
 
 export default MaintenancePage;
