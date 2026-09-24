@@ -84,7 +84,7 @@ function DeliveryPage() {
   });
 
   const [newBrand, setNewBrand] = useState("");
-  const [newGasType, setNewGasType] = useState("LPG");
+  const [newGasType, setNewGasType] = useState("");
   const [newSize, setNewSize] = useState("");
   const [newStaffId, setNewStaffId] = useState("");
 
@@ -124,6 +124,48 @@ function DeliveryPage() {
   const brandOptions = useMemo(() => ["ปตท.", "World Gas", "สยามแก๊ส", "ยูนิคแก๊ส", "PT Gas", "พีเอพี"], []);
   const gasTypeOptions = useMemo(() => ["LPG"], []);
   const sizeOptions = useMemo(() => ["4 กก.", "7 กก.", "11.5 กก.", "13.5 กก.", "15 กก.", "48 กก."], []);
+
+  // ---------- ตัวเลือกสร้างงาน: จากถังที่อยู่ในคลังจริง ----------
+  const specOf = (c) => ({
+    brand: (c.brand || "").trim(),
+    gasType: (c.gasType || c.gas_type || "").trim(),
+    size: (c.size || "").trim(),
+  });
+
+  const stockCylinders = useMemo(
+    () => cylinders.filter((c) => (c.status || "").trim() === "ในคลัง"),
+    [cylinders]
+  );
+
+  // งานที่สร้างแล้วแต่ยังไม่ได้สแกนถัง = จองถังสเปกนั้นไว้แล้ว 1 ใบ
+  const reservedJobs = useMemo(() => deliveries.filter((d) => d.status === "pending"), [deliveries]);
+
+  // นับ "เหลือ" = ถังในคลังที่ตรงเงื่อนไข - งานที่จองไว้ด้วยเงื่อนไขเดียวกัน
+  const buildOptions = (key, match) => {
+    const counts = {};
+    stockCylinders.forEach((c) => {
+      const s = specOf(c);
+      if (!match(s) || !s[key]) return;
+      counts[s[key]] = (counts[s[key]] || 0) + 1;
+    });
+    reservedJobs.forEach((d) => {
+      const s = { brand: (d.brand || "").trim(), gasType: (d.gasType || "").trim(), size: (d.size || "").trim() };
+      if (match(s) && counts[s[key]] !== undefined) counts[s[key]] -= 1;
+    });
+    return Object.entries(counts)
+      .map(([value, available]) => ({ value, available: Math.max(0, available) }))
+      .sort((a, b) => a.value.localeCompare(b.value, "th"));
+  };
+
+  const stockBrandOptions = useMemo(() => buildOptions("brand", () => true), [stockCylinders, reservedJobs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stockTypeOptions = useMemo(
+    () => (newBrand ? buildOptions("gasType", (s) => s.brand === newBrand) : []),
+    [stockCylinders, reservedJobs, newBrand] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const stockSizeOptions = useMemo(
+    () => (newBrand && newGasType ? buildOptions("size", (s) => s.brand === newBrand && s.gasType === newGasType) : []),
+    [stockCylinders, reservedJobs, newBrand, newGasType] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const findCustomerByPhone = (phone) =>
     customers.find((c) => (c.phone || c.customer_phone || "").trim() === phone.trim());
@@ -443,6 +485,11 @@ function DeliveryPage() {
       alert("กรุณาระบุยี่ห้อ ชนิดแก๊ส และขนาดถังให้ครบถ้วน");
       return;
     }
+    const picked = stockSizeOptions.find((o) => o.value === newSize);
+    if (!picked || picked.available <= 0) {
+      alert("ถังสเปกนี้ไม่มีเหลือในคลัง กรุณาเลือกสเปกอื่น");
+      return;
+    }
 
     const payload = {
       customer_name: newCustomerName.trim(),
@@ -471,6 +518,7 @@ function DeliveryPage() {
         setNewAddress("");
         setNewMapPin("");
         setNewBrand("");
+        setNewGasType("");
         setNewSize("");
         setNewStaffId("");
         setIsCustomerFound(false);
@@ -929,16 +977,23 @@ function DeliveryPage() {
                   />
                 </div>
 
+                {/* ตัวเลือกมาจากถังที่อยู่ในคลังจริงเท่านั้น: ยี่ห้อ -> ชนิด -> ขนาด (เหลือ = ในคลัง - งานที่จองไว้) */}
                 <div>
                   <label style={styles.label}>ยี่ห้อถังแก๊ส *</label>
                   <select
                     value={newBrand}
-                    onChange={(e) => setNewBrand(e.target.value)}
+                    onChange={(e) => {
+                      setNewBrand(e.target.value);
+                      setNewGasType("");
+                      setNewSize("");
+                    }}
                     style={styles.select}
                   >
-                    <option value="">-- เลือกยี่ห้อ --</option>
-                    {brandOptions.map((b) => (
-                      <option key={b} value={b}>{b}</option>
+                    <option value="">{stockBrandOptions.length ? "-- เลือกยี่ห้อ --" : "-- ไม่มีถังในคลัง --"}</option>
+                    {stockBrandOptions.map((o) => (
+                      <option key={o.value} value={o.value} disabled={o.available <= 0}>
+                        {o.value} (เหลือ {o.available})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -947,11 +1002,18 @@ function DeliveryPage() {
                   <label style={styles.label}>ชนิดแก๊ส *</label>
                   <select
                     value={newGasType}
-                    onChange={(e) => setNewGasType(e.target.value)}
+                    onChange={(e) => {
+                      setNewGasType(e.target.value);
+                      setNewSize("");
+                    }}
                     style={styles.select}
+                    disabled={!newBrand}
                   >
-                    {gasTypeOptions.map((g) => (
-                      <option key={g} value={g}>{g}</option>
+                    <option value="">{newBrand ? "-- เลือกชนิด --" : "เลือกยี่ห้อก่อน"}</option>
+                    {stockTypeOptions.map((o) => (
+                      <option key={o.value} value={o.value} disabled={o.available <= 0}>
+                        {o.value} (เหลือ {o.available})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -962,10 +1024,13 @@ function DeliveryPage() {
                     value={newSize}
                     onChange={(e) => setNewSize(e.target.value)}
                     style={styles.select}
+                    disabled={!newGasType}
                   >
-                    <option value="">-- เลือกขนาด --</option>
-                    {sizeOptions.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    <option value="">{newGasType ? "-- เลือกขนาด --" : "เลือกชนิดก่อน"}</option>
+                    {stockSizeOptions.map((o) => (
+                      <option key={o.value} value={o.value} disabled={o.available <= 0}>
+                        {o.value} (เหลือ {o.available})
+                      </option>
                     ))}
                   </select>
                 </div>
