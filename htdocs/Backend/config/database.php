@@ -21,8 +21,20 @@ function getDbConnection() {
     return $conn;
 }
 
+// บางไฟล์ (customer/*, delivery/update.php) เขียนด้วย PDO — สร้าง $pdo ให้ด้วย
+function getPdoConnection() {
+    $config = getDatabaseConfig();
+    $dsn = "mysql:host={$config["host"]};port={$config["port"]};dbname={$config["database"]};charset=utf8mb4";
+    return new PDO($dsn, $config["username"], $config["password"], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+}
+
 try {
     $conn = getDbConnection();
+    $pdo = getPdoConnection();
 } catch (Throwable $e) {
     header("Content-Type: application/json; charset=UTF-8");
     http_response_code(500);

@@ -9,8 +9,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// นำเข้าไฟล์เชื่อมต่อฐานข้อมูลของคุณ
-require_once "../config/database.php"; 
+ini_set('display_errors', 0);
+
+// ใช้ __DIR__ — path แบบ relative ชี้ไป models/config ซึ่งไม่มีอยู่ (เดิม error 500 ทุกครั้ง)
+require_once __DIR__ . "/../../config/database.php";
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -42,11 +44,11 @@ try {
         $pdo->beginTransaction();
 
         // อัปเดตงานจัดส่ง
-        $stmt = $pdo->prepare("UPDATE deliveries SET status = 'delivering', serial_number = :sn WHERE id = :id");
+        $stmt = $pdo->prepare("UPDATE deliveries SET status = 'delivering', serial_number = :sn WHERE delivery_id = :id");
         $stmt->execute([':sn' => $serialNumber, ':id' => $delivery_id]);
 
         // อัปเดตสถานะถังแก๊สในคลังให้เป็นกำลังจัดส่ง
-        $stmtCyl = $pdo->prepare("UPDATE gas_cylinder SET status = 'กำลังส่ง' WHERE serial_number = :sn");
+        $stmtCyl = $pdo->prepare("UPDATE gas_cylinder SET status = 'กำลังจัดส่ง' WHERE serial_number = :sn");
         $stmtCyl->execute([':sn' => $serialNumber]);
 
         $pdo->commit();
@@ -61,7 +63,7 @@ try {
     if ($action === 'complete_by_staff') {
         $proof_image_path = $data['proof_image_path'] ?? '';
 
-        $stmt = $pdo->prepare("UPDATE deliveries SET status = 'pending_approval', proof_image_path = :proof WHERE id = :id");
+        $stmt = $pdo->prepare("UPDATE deliveries SET status = 'pending_approval', proof_image_path = :proof WHERE delivery_id = :id");
         $stmt->execute([':proof' => $proof_image_path, ':id' => $delivery_id]);
 
         echo json_encode(["success" => true, "message" => "อัปเดตสถานะรออนุมัติสำเร็จ"]);
@@ -75,7 +77,7 @@ try {
         $receivedSerialNumber = trim($data['receivedSerialNumber'] ?? '');
 
         // ดึงข้อมูลงานจัดส่งเดิมเพื่อเอา Serial ถังที่ไปส่ง และ ชื่อลูกค้า
-        $stmtGet = $pdo->prepare("SELECT serial_number, customer_name FROM deliveries WHERE id = :id");
+        $stmtGet = $pdo->prepare("SELECT serial_number, customer_name FROM deliveries WHERE delivery_id = :id");
         $stmtGet->execute([':id' => $delivery_id]);
         $delivery = $stmtGet->fetch(PDO::FETCH_ASSOC);
 
@@ -90,7 +92,7 @@ try {
         $pdo->beginTransaction();
 
         // 1. อัปเดตตาราง deliveries เป็น success
-        $stmtDelivery = $pdo->prepare("UPDATE deliveries SET status = 'success' WHERE id = :id");
+        $stmtDelivery = $pdo->prepare("UPDATE deliveries SET status = 'success' WHERE delivery_id = :id");
         $stmtDelivery->execute([':id' => $delivery_id]);
 
         // 2. อัปเดตถังแก๊สใบใหม่ที่ส่งให้ลูกค้า (เช่น SN-3004) ในตาราง gas_cylinder
