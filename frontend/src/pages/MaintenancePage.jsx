@@ -184,6 +184,8 @@ const dueCylinders = useMemo(() => {
     return dueCylinders.filter((item) => {
       if (!item) return false;
       const statusText = getDueStatus(item.next_check_date);
+      // แสดงเฉพาะถังที่เลยกำหนดตรวจแล้ว
+      if (statusText !== "เลยกำหนด") return false;
       const searchText = [
         item.serial_number,
         item.brand,
