@@ -215,7 +215,8 @@ function GasPage() {
       status: item.status || "ในคลัง",
     };
     setEditingSerial(loaded.serial_number);
-    setOriginalData(loaded);
+    // import_date เก็บไว้แสดงอย่างเดียว (ไม่อยู่ใน formData จึงไม่ถูกส่งไปบันทึก)
+    setOriginalData({ ...loaded, import_date: item.import_date || "" });
     setFormData(loaded);
     // ฟอร์มอยู่ด้านบน เลื่อนขึ้นไปให้เห็น
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -582,6 +583,13 @@ function GasPage() {
 
             {renderOptionSelect("current_location", "สถานที่ปัจจุบัน", "location", "จัดการรายการสถานที่", locationOptions,
               (o) => o.location_name || o.name || o, false)}
+
+            {editingSerial && (
+              <div style={fieldGroupStyle}>
+                <label style={labelStyle}>วันที่นำเข้าคลัง <span style={hintStyle}>(อ่านอย่างเดียว)</span></label>
+                <input type="date" value={originalData?.import_date || ""} style={{ ...inputStyle, ...readOnlyStyle }} readOnly tabIndex={-1} />
+              </div>
+            )}
 
             <div style={fieldGroupStyle}>
               <label style={labelStyle}>สถานะ<span style={reqStyle}> *</span></label>
