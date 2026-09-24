@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Layout from "../components/Layout";
 import { QRCodeSVG } from "qrcode.react";
-import { Settings, Pencil, Plus, Save, Trash2, QrCode, Image as ImageIcon, Printer, TriangleAlert, CircleCheck, X } from "lucide-react";
+import { Settings, Pencil, Plus, Save, Trash2, QrCode, Image as ImageIcon, Printer, TriangleAlert, CircleCheck, X, Calculator } from "lucide-react";
 
 // path แบบ absolute — แบบ relative ("../Backend") พังเมื่อ URL มี / ต่อท้าย เช่น /gas/
 const API_BASE = "/Backend/models";
@@ -52,6 +52,7 @@ function GasPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingSerial, setEditingSerial] = useState(null);
+  const [originalData, setOriginalData] = useState(null); // ค่าเดิมตอนกดแก้ไข ใช้หาว่าช่องไหนถูกเปลี่ยน
   const [toast, setToast] = useState(null);
   const formRef = useRef(null);
 
@@ -163,26 +164,44 @@ function GasPage() {
     return { expiry, nextCheck };
   };
 
+  // เพิ่มใหม่: คำนวณวันหมดอายุ/ตรวจถัดไปให้อัตโนมัติ
+  // แก้ไข: คงค่าเดิมไว้ เติมให้เฉพาะช่องที่ยังว่าง (เปลี่ยนเองได้ หรือกด "คำนวณ")
   const handleManufactureDateChange = (e) => {
     const mfgDate = e.target.value;
     const { expiry, nextCheck } = calculateDates(mfgDate, formData.last_check_date);
-    setFormData((prev) => ({ ...prev, manufacture_date: mfgDate, expiry_date: expiry, next_check_date: nextCheck }));
+    setFormData((prev) => ({
+      ...prev,
+      manufacture_date: mfgDate,
+      expiry_date: editingSerial && prev.expiry_date ? prev.expiry_date : expiry,
+      next_check_date: editingSerial && prev.next_check_date ? prev.next_check_date : nextCheck,
+    }));
   };
 
   const handleLastCheckDateChange = (e) => {
     const lastCheck = e.target.value;
     const { nextCheck } = calculateDates(formData.manufacture_date, lastCheck);
-    setFormData((prev) => ({ ...prev, last_check_date: lastCheck, next_check_date: nextCheck }));
+    setFormData((prev) => ({
+      ...prev,
+      last_check_date: lastCheck,
+      next_check_date: editingSerial && prev.next_check_date ? prev.next_check_date : nextCheck,
+    }));
+  };
+
+  const recalcField = (field) => {
+    const { expiry, nextCheck } = calculateDates(formData.manufacture_date, formData.last_check_date);
+    const value = field === "expiry_date" ? expiry : nextCheck;
+    if (!value) return showToast("error", "กรอกวันที่ผลิตหรือวันตรวจล่าสุดก่อน");
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const clearForm = () => {
     setEditingSerial(null);
+    setOriginalData(null);
     setFormData(initialFormState);
   };
 
   const editCylinder = (item) => {
-    setEditingSerial(item.serial_number || item.serial);
-    setFormData({
+    const loaded = {
       serial_number: item.serial_number || item.serial || "",
       brand: item.brand || "",
       gas_type: item.gas_type || "",
@@ -194,7 +213,10 @@ function GasPage() {
       delivered_date: item.delivered_date || "",
       current_location: item.current_location || "",
       status: item.status || "ในคลัง",
-    });
+    };
+    setEditingSerial(loaded.serial_number);
+    setOriginalData(loaded);
+    setFormData(loaded);
     // ฟอร์มอยู่ด้านบน เลื่อนขึ้นไปให้เห็น
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -251,10 +273,19 @@ function GasPage() {
     if (!formData.brand) return showToast("error", "กรุณาเลือก ยี่ห้อ");
     if (!formData.gas_type) return showToast("error", "กรุณาเลือก ชนิดแก๊ส");
     if (!formData.size) return showToast("error", "กรุณาเลือก ขนาดถัง");
-    if (!formData.manufacture_date) return showToast("error", "กรุณาเลือก วันที่ผลิต");
+    // ถังเก่าบางใบไม่มีวันที่ผลิต — บังคับเฉพาะตอนเพิ่มใหม่
+    if (!editingSerial && !formData.manufacture_date) return showToast("error", "กรุณาเลือก วันที่ผลิต");
+
+    let payload = { ...formData, serial_number: formData.serial_number.trim() };
+    if (editingSerial && originalData) {
+      // ส่งเฉพาะช่องที่ผู้ใช้เปลี่ยน ช่องอื่นคงค่าเดิมในฐานข้อมูล
+      const changed = Object.keys(formData).filter((k) => k !== "serial_number" && formData[k] !== originalData[k]);
+      if (changed.length === 0) return showToast("error", "ยังไม่ได้เปลี่ยนข้อมูลใด");
+      payload = { serial_number: editingSerial };
+      changed.forEach((k) => { payload[k] = formData[k]; });
+    }
 
     setIsSubmitting(true);
-    const payload = { ...formData, serial_number: formData.serial_number.trim() };
     const url = editingSerial ? `${API_BASE}/update_cylinder.php` : `${API_BASE}/create_cylinder.php`;
 
     try {
@@ -400,6 +431,13 @@ function GasPage() {
     setImageModal({ open: true, imgSrc: getProofImageUrl(rawPath), rawPath, serial: serialOrId });
   };
 
+  // ช่องที่ถูกแก้จากค่าเดิม (โหมดแก้ไข) แสดงขอบสีส้ม
+  const isChanged = (field) => Boolean(editingSerial && originalData && formData[field] !== originalData[field]);
+  const changedStyle = (field) => (isChanged(field) ? { borderColor: "#f59e0b", background: "rgba(245,158,11,0.08)" } : {});
+  const changedCount = editingSerial && originalData
+    ? Object.keys(formData).filter((k) => k !== "serial_number" && isChanged(k)).length
+    : 0;
+
   if (loading) {
     return (
       <Layout>
@@ -423,7 +461,7 @@ function GasPage() {
       <select
         value={formData[field]}
         onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
-        style={inputStyle}
+        style={{ ...inputStyle, ...changedStyle(field) }}
       >
         <option value="">-- เลือก --</option>
         {/* ค่าปัจจุบันที่ไม่มีในรายการ (ข้อมูลเก่า) ให้ยังเลือกค้างไว้ได้ */}
@@ -490,23 +528,45 @@ function GasPage() {
               (o) => o.size_name || o.name || o)}
 
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>วันที่ผลิต<span style={reqStyle}> *</span></label>
-              <input type="date" value={formData.manufacture_date} onClick={openDatePicker} onChange={handleManufactureDateChange} style={inputStyle} />
+              <label style={labelStyle}>วันที่ผลิต{!editingSerial && <span style={reqStyle}> *</span>}</label>
+              <input type="date" value={formData.manufacture_date} onClick={openDatePicker} onChange={handleManufactureDateChange} style={{ ...inputStyle, ...changedStyle("manufacture_date") }} />
             </div>
 
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>วันหมดอายุ <span style={hintStyle}>(ผลิต + 10 ปี)</span></label>
-              <input type="date" value={formData.expiry_date} style={{ ...inputStyle, ...readOnlyStyle }} readOnly tabIndex={-1} />
+              <div style={labelRowStyle}>
+                <label style={labelStyle}>วันหมดอายุ <span style={hintStyle}>(ผลิต + 10 ปี)</span></label>
+                <button type="button" onClick={() => recalcField("expiry_date")} style={manageBtnStyle}>
+                  <Calculator size={12} /> คำนวณ
+                </button>
+              </div>
+              <input
+                type="date"
+                value={formData.expiry_date}
+                onClick={openDatePicker}
+                onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                style={{ ...inputStyle, ...changedStyle("expiry_date") }}
+              />
             </div>
 
             <div style={fieldGroupStyle}>
               <label style={labelStyle}>วันที่ตรวจล่าสุด</label>
-              <input type="date" value={formData.last_check_date} onClick={openDatePicker} onChange={handleLastCheckDateChange} style={inputStyle} />
+              <input type="date" value={formData.last_check_date} onClick={openDatePicker} onChange={handleLastCheckDateChange} style={{ ...inputStyle, ...changedStyle("last_check_date") }} />
             </div>
 
             <div style={fieldGroupStyle}>
-              <label style={labelStyle}>ตรวจครั้งถัดไป <span style={hintStyle}>(+ 5 ปี)</span></label>
-              <input type="date" value={formData.next_check_date} style={{ ...inputStyle, ...readOnlyStyle }} readOnly tabIndex={-1} />
+              <div style={labelRowStyle}>
+                <label style={labelStyle}>ตรวจครั้งถัดไป <span style={hintStyle}>(+ 5 ปี)</span></label>
+                <button type="button" onClick={() => recalcField("next_check_date")} style={manageBtnStyle}>
+                  <Calculator size={12} /> คำนวณ
+                </button>
+              </div>
+              <input
+                type="date"
+                value={formData.next_check_date}
+                onClick={openDatePicker}
+                onChange={(e) => setFormData({ ...formData, next_check_date: e.target.value })}
+                style={{ ...inputStyle, ...changedStyle("next_check_date") }}
+              />
             </div>
 
             <div style={fieldGroupStyle}>
@@ -516,7 +576,7 @@ function GasPage() {
                 value={formData.delivered_date}
                 onClick={openDatePicker}
                 onChange={(e) => setFormData({ ...formData, delivered_date: e.target.value })}
-                style={inputStyle}
+                style={{ ...inputStyle, ...changedStyle("delivered_date") }}
               />
             </div>
 
@@ -525,7 +585,7 @@ function GasPage() {
 
             <div style={fieldGroupStyle}>
               <label style={labelStyle}>สถานะ<span style={reqStyle}> *</span></label>
-              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} style={inputStyle}>
+              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} style={{ ...inputStyle, ...changedStyle("status") }}>
                 {!STATUS_OPTIONS.includes(formData.status) && formData.status && (
                   <option value={formData.status}>{formData.status}</option>
                 )}
@@ -536,7 +596,7 @@ function GasPage() {
 
           <div style={formActionsStyle}>
             <button type="submit" style={primaryButtonStyle} disabled={isSubmitting}>
-              {isSubmitting ? "กำลังบันทึก..." : editingSerial ? <><Save size={16} /> บันทึกการแก้ไข</> : <><Plus size={16} /> เพิ่มถัง</>}
+              {isSubmitting ? "กำลังบันทึก..." : editingSerial ? <><Save size={16} /> บันทึกการแก้ไข{changedCount > 0 && ` (${changedCount} ช่อง)`}</> : <><Plus size={16} /> เพิ่มถัง</>}
             </button>
             {(editingSerial || formData.serial_number) && (
               <button type="button" onClick={clearForm} style={secondaryButtonStyle}>
