@@ -1,40 +1,43 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+$configPath = __DIR__ . "/../../config/db.php";
+if (!file_exists($configPath)) $configPath = __DIR__ . "/../config/db.php";
+if (!file_exists($configPath)) $configPath = __DIR__ . "/../../db.php";
+
+if (file_exists($configPath)) {
+    require_once $configPath;
+} else {
+    echo json_encode(["success" => false, "message" => "ไม่พบไฟล์ db.php"]);
     exit();
 }
 
-require_once "../config/db.php";
+try {
+    $sql = "SELECT serial_number, brand, gas_type, size, next_check_date 
+            FROM gas_cylinder 
+            WHERE next_check_date IS NOT NULL 
+            ORDER BY next_check_date ASC LIMIT 5";
+    $result = $conn->query($sql);
 
-// แก้ไขจาก cylinders เป็น gas_cylinder
-$sql = "SELECT * FROM gas_cylinder";
-$result = $conn->query($sql);
-
-$data = [];
-$today = new DateTime();
-
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        if (!empty($row['next_check_date'])) {
-            $checkDate = new DateTime($row['next_check_date']);
-            $interval = $today->diff($checkDate);
-            $daysLeft = (int)$interval->format("%r%a");
-
-            if ($daysLeft <= 30) {
-                $row['days_left'] = $daysLeft;
-                $data[] = $row;
-            }
+    $data = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
         }
     }
-}
 
-echo json_encode([
-    "success" => true,
-    "data" => $data
-], JSON_UNESCAPED_UNICODE);
-?>
+    echo json_encode([
+        "success" => true,
+        "data" => $data
+    ], JSON_UNESCAPED_UNICODE);
+
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "message" => $e->getMessage()]);
+}
+$conn->close();
+?# 1. ส่งไฟล์ Backend ทั้งหมดขึ้นเซิร์ฟเวอร์
+scp -i "C:\Users\user\Downloads\gas-key.pem" -r "C:\Users\user\OneDrive\เดสก์ท็อป\dataST\DataSystem\App\htdocs\Backend" ubuntu@56.10.97.74:/var/www/html/
+
+# 2. ปรับ Permission
+ssh -i "C:\Users\user\Downloads\gas-key.pem" ubuntu@56.10.97.74 "sudo chmod -R 755 /var/www/html/Backend"

@@ -1,40 +1,35 @@
 <?php
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-    header('Access-Control-Allow-Credentials: true');
-    header('Access-Control-Max-Age: 86400');
-} else {
-    header("Access-Control-Allow-Origin: *");
+function getDatabaseConfig() {
+    return [
+        "host" => getenv("DB_HOST") ?: "127.0.0.1",
+        "port" => (int)(getenv("DB_PORT") ?: 3306),
+        "username" => getenv("DB_USERNAME") ?: "root",
+        "password" => getenv("DB_PASSWORD") ?: "",
+        "database" => getenv("DB_NAME") ?: "gas_system"
+    ];
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']))
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE, PUT");
-    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']))
-        header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
-    http_response_code(200);
-    exit(0);
-}
+function getDbConnection() {
+    $config = getDatabaseConfig();
+    $conn = @new mysqli($config["host"], $config["username"], $config["password"], $config["database"], $config["port"]);
 
-header("Content-Type: application/json; charset=UTF-8");
+    if ($conn->connect_error) {
+        throw new RuntimeException("Database connection failed: " . $conn->connect_error);
+    }
 
-$host = "127.0.0.1";
-$user = "root";
-$password = "";
-$dbname = "gas_system";
-$port = 3308;
-
-$conn = mysqli_connect($host, $user, $password, $dbname, $port);
-if (!$conn) {
-    echo json_encode(["success" => false, "message" => "MySQLi Connection failed: " . mysqli_connect_error()]);
-    exit();
+    $conn->set_charset("utf8mb4");
+    return $conn;
 }
 
 try {
-    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8", $user, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    echo json_encode(["success" => false, "message" => "PDO Connection failed: " . $e->getMessage()]);
-    exit();
+    $conn = getDbConnection();
+} catch (Throwable $e) {
+    header("Content-Type: application/json; charset=UTF-8");
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 ?>

@@ -1,12 +1,35 @@
 <?php
+// เปิด Debug Error เพื่อให้รู้สาเหตุชัดเจนกรณีมีปัญหา
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json; charset=UTF-8");
 
-require_once "../../config/db.php"; 
+// ค้นหาไฟล์ db.php แบบยืดหยุ่นเพื่อป้องกัน Path ผิด
+$configPath = __DIR__ . "/../../config/db.php";
+if (!file_exists($configPath)) {
+    $configPath = __DIR__ . "/../config/db.php";
+}
+if (!file_exists($configPath)) {
+    $configPath = __DIR__ . "/../../db.php";
+}
+
+if (file_exists($configPath)) {
+    require_once $configPath;
+} else {
+    echo json_encode(["success" => false, "message" => "ไม่พบไฟล์ db.php ในตำแหน่งที่กำหนด"]);
+    exit();
+}
+
+// เช็กการเชื่อมต่อฐานข้อมูล
+if (!isset($conn) || $conn->connect_error) {
+    echo json_encode(["success" => false, "message" => "เชื่อมต่อฐานข้อมูลล้มเหลว: " . ($conn->connect_error ?? "ไม่พบตัวแปร \$conn")]);
+    exit();
+}
 
 try {
-    // เปลี่ยนมาใช้ชื่อตาราง delivery_staff และ deliveries ให้ตรงตามฐานข้อมูลจริง
     $sql = "SELECT 
                 s.staff_id,
                 s.staff_name,
@@ -42,4 +65,6 @@ try {
         "message" => "Database Error: " . $e->getMessage()
     ], JSON_UNESCAPED_UNICODE);
 }
+
+$conn->close();
 ?>

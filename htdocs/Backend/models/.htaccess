@@ -5,7 +5,7 @@
     Header unset Access-Control-Allow-Headers
 
     # ตั้งค่า CORS Header ให้รองรับ React (localhost:5173)
-    Header always set Access-Control-Allow-Origin "http://localhost:5173"
+    Header always set Access-Control-Allow-Origin "http://suchat-gas.com"
     Header always set Access-Control-Allow-Credentials "true"
     Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
