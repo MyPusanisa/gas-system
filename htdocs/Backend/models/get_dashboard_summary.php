@@ -30,7 +30,6 @@ try {
     $sql = "SELECT
                 SUM($notDelivered) AS not_delivered,
                 SUM($inStockStatus) AS in_stock,
-                SUM($inStockStatus AND ($isDue OR $isExpired)) AS in_stock_unusable,
                 SUM($inStockStatus AND $isDue) AS maintenance_due,
                 SUM($inStockStatus AND $isExpired) AS expired
             FROM gas_cylinder";
@@ -46,7 +45,7 @@ try {
 
     $total     = (int)($row['not_delivered'] ?? 0) + $delivered;
     $in_stock  = (int)($row['in_stock'] ?? 0);
-    $unusable  = (int)($row['in_stock_unusable'] ?? 0);
+    $due       = (int)($row['maintenance_due'] ?? 0);
 
     echo json_encode([
         "success" => true,
@@ -55,9 +54,9 @@ try {
         "delivering_or_delivered" => $delivered,
         // ในคลัง = สถานะในคลัง/ทั่วไป
         "in_stock" => $in_stock,
-        // พร้อมใช้งาน = ในคลัง - (ถึงกำหนดตรวจ + หมดอายุ) นับใบละครั้ง
-        "ready_to_use" => max(0, $in_stock - $unusable),
-        "maintenance_due" => (int)($row['maintenance_due'] ?? 0),
+        // พร้อมใช้งาน = ในคลัง - ถังที่ถึงกำหนดตรวจบำรุง
+        "ready_to_use" => max(0, $in_stock - $due),
+        "maintenance_due" => $due,
         "expired" => (int)($row['expired'] ?? 0)
     ], JSON_UNESCAPED_UNICODE);
 
