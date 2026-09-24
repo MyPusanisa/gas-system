@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { Plus, Search, Pencil, Truck, Clock, Trash2, User, Phone, MapPin, LocateFixed, ScanLine, Check, Camera, PackagePlus } from "lucide-react";
+import { Plus, Search, Pencil, Truck, Clock, Trash2, User, Phone, MapPin, LocateFixed, ScanLine, Check, Camera, PackagePlus, CircleCheck, TriangleAlert } from "lucide-react";
 import API_BASE_URL from "../config";
 
 const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
@@ -47,6 +47,9 @@ function DeliveryPage() {
   const [adminApproveInputs, setAdminApproveInputs] = useState({});
 
   const [scanningJobId, setScanningJobId] = useState(null);
+  const [pendingScan, setPendingScan] = useState(null); // { jobId, serial } จากการสแกนล่าสุด
+  const [scanResults, setScanResults] = useState({}); // { [jobId]: { ok, serial, text } }
+  const [uploadingId, setUploadingId] = useState(null);
 
   const [showCylinderModal, setShowCylinderModal] = useState(false);
   const [pendingApproveId, setPendingApproveId] = useState(null);
@@ -242,6 +245,7 @@ function DeliveryPage() {
             ...prev,
             [scanningJobId]: extractedSerial,
           }));
+          setPendingScan({ jobId: scanningJobId, serial: extractedSerial });
 
           scanner.clear().catch((err) => console.error(err));
           setScanningJobId(null);
@@ -453,18 +457,18 @@ function DeliveryPage() {
     }
   };
 
-  const confirmReceiveJob = async (jobItem) => {
-    const serialNumber = confirmCylinderInputs[jobItem.id]?.trim();
-    if (!serialNumber) return alert("กรุณาสแกน QR Code ถังแก๊สเพื่อยืนยัน");
+  // สแกนแล้วตรวจสเปกและรับงานทันที — ผลตรวจแสดงในการ์ดงาน (scanResults)
+  const confirmReceiveJob = async (jobItem, scannedSerial) => {
+    const serialNumber = (scannedSerial ?? confirmCylinderInputs[jobItem.id] ?? "").trim();
+    const fail = (text) => setScanResults((prev) => ({ ...prev, [jobItem.id]: { ok: false, serial: serialNumber, text } }));
+    if (!serialNumber) return fail("อ่าน QR Code ไม่ได้ กรุณาสแกนใหม่");
 
     const cylinder = cylinders.find((c) => c.serial_number === serialNumber);
     if (!cylinder) {
-      alert(`ไม่พบถังแก๊ส Serial Number "${serialNumber}" ในระบบ`);
-      return;
+      return fail(`ไม่พบถัง "${serialNumber}" ในระบบ`);
     }
     if (cylinder.status !== "ในคลัง") {
-      alert(`ถังแก๊ส "${serialNumber}" ไม่อยู่ในคลัง (สถานะปัจจุบัน: ${cylinder.status})`);
-      return;
+      return fail(`ถัง "${serialNumber}" ไม่อยู่ในคลัง (สถานะ: ${cylinder.status})`);
     }
 
     const targetBrand = jobItem.req_brand || jobItem.brand || "";
@@ -480,12 +484,10 @@ function DeliveryPage() {
       cylGasType !== targetGasType ||
       cylSize !== targetSize
     ) {
-      alert(
-        `สเปกถังแก๊สไม่ตรงตามเงื่อนไข!\n\n` +
-          `ความต้องการงาน: ${targetBrand} | ${targetGasType} | ${targetSize}\n` +
-          `ถังที่สแกนได้: ${cylBrand} | ${cylGasType} | ${cylSize}`
+      return fail(
+        `สเปกไม่ตรง — งานต้องการ ${targetBrand} · ${targetGasType} · ${targetSize} ` +
+          `แต่ถังที่สแกนเป็น ${cylBrand || "-"} · ${cylGasType || "-"} · ${cylSize || "-"}`
       );
-      return;
     }
 
     try {
@@ -500,7 +502,10 @@ function DeliveryPage() {
       });
 
       if (res.success) {
-        alert("ตรวจสอบสเปกถูกต้อง! รับงานและผูกถังแก๊สเรียบร้อยแล้ว");
+        setScanResults((prev) => ({
+          ...prev,
+          [jobItem.id]: { ok: true, serial: serialNumber, text: `สเปกถูกต้อง รับถัง ${serialNumber} แล้ว` },
+        }));
 
         setDeliveries((prev) =>
           prev.map((d) =>
@@ -511,13 +516,22 @@ function DeliveryPage() {
         await loadData();
         setConfirmCylinderInputs((prev) => ({ ...prev, [jobItem.id]: "" }));
       } else {
-        alert(res.message || "ไม่สามารถรับงานได้");
+        fail(res.message || "ไม่สามารถรับงานได้");
       }
     } catch (error) {
       console.error(error);
-      alert("เกิดข้อผิดพลาดในการรับงาน");
+      fail("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่");
     }
   };
+
+  // สแกนเสร็จ -> ตรวจสเปกและรับงานอัตโนมัติ
+  useEffect(() => {
+    if (!pendingScan) return;
+    const job = deliveries.find((d) => d.id === pendingScan.jobId);
+    setPendingScan(null);
+    if (job) confirmReceiveJob(job, pendingScan.serial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingScan]);
 
   const handleProofUpload = async (id, file) => {
     if (!file) return;
@@ -758,7 +772,7 @@ function DeliveryPage() {
       case "pending_approval":
         return "รออนุมัติ";
       case "pending":
-        return "กำลังจัดส่ง";
+        return "รอสแกนถัง";
       case "delivering":
         return "กำลังจัดส่ง";
       case "success":
@@ -1015,90 +1029,91 @@ function DeliveryPage() {
                   {/* Action Bar ปุ่มดำเนินการ */}
                   <div style={styles.jobCardActions}>
                     
-                    {/* ปุ่มปักหมุด GPS */}
-                    {(!item.mapPin || item.mapPin === "-") ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSaveCurrentLocation(item)}
-                        disabled={gettingLocationId === item.id}
-                        style={styles.gpsPinBtn}
-                      >
-                       <LocateFixed size={15} /> {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งปัจจุบัน"}
-                      </button>
-                    ) : (
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.mapPin)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={styles.gpsLinkBtn}
-                      >
-                        <MapPin size={14} /> เปิด Google Maps <span style={{ color: "#64748b" }}>({item.mapPin})</span>
-                      </a>
-                    )}
+                    {(() => {
+                      const hasPin = item.mapPin && item.mapPin !== "-";
+                      const hasAddress = item.address && item.address.trim() !== "" && item.address !== "-";
+                      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hasPin ? item.mapPin : item.address)}`;
+                      const scan = scanResults[item.id];
+                      const isStaff = role === "staff";
+                      const spec = [item.req_brand || item.brand, item.req_gas_type || item.gasType, item.req_size || item.size]
+                        .filter((v) => v && v !== "-")
+                        .join(" · ");
 
-                    {/* Staff: รับงาน */}
-                    {role === "staff" && item.status === "pending" && (
-                      <div style={{ width: "100%", marginTop: "6px" }}>
-                        {scanningJobId === item.id ? (
+                      const mapsLink = (
+                        <a href={mapsUrl} target="_blank" rel="noreferrer" style={styles.gpsLinkBtn}>
+                          <MapPin size={15} /> เปิด Google Maps
+                          <span style={{ color: "#64748b" }}>({hasPin ? item.mapPin : "ค้นหาจากที่อยู่"})</span>
+                        </a>
+                      );
+
+                      const resultBox = scan && (
+                        <div style={scan.ok ? styles.scanOk : styles.scanFail}>
+                          {scan.ok ? <CircleCheck size={16} /> : <TriangleAlert size={16} />}
+                          <span>{scan.text}</span>
+                        </div>
+                      );
+
+                      // ขั้นที่ 1 (ก่อนสแกน): สแกน QR เพื่อตรวจสเปกถัง
+                      if (isStaff && item.status === "pending") {
+                        return scanningJobId === item.id ? (
                           <div style={{ textAlign: "center" }}>
                             <div id="qr-reader-container" style={{ width: "100%", background: "#fff", borderRadius: "8px", overflow: "hidden" }}></div>
-                            <button
-                              onClick={() => setScanningJobId(null)}
-                              style={{ ...styles.secondaryBtn, width: "100%", marginTop: "8px" }}
-                            >
+                            <button onClick={() => setScanningJobId(null)} style={{ ...styles.secondaryBtn, width: "100%", justifyContent: "center", marginTop: "8px" }}>
                               ยกเลิกการสแกน
                             </button>
                           </div>
                         ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <button onClick={() => setScanningJobId(item.id)} style={{ ...styles.secondaryBtn, justifyContent: "center" }}>
-                             <ScanLine size={16} /> สแกน QR Code ถัง
+                          <>
+                            {resultBox}
+                            <button onClick={() => setScanningJobId(item.id)} style={styles.scanBtn}>
+                              <ScanLine size={18} /> {scan && !scan.ok ? "สแกนใหม่" : "สแกน QR Code ถัง"}
                             </button>
+                            {spec && <div style={styles.stepHint}>สแกน QR บนถังเพื่อตรวจสเปก: {spec}</div>}
+                          </>
+                        );
+                      }
 
-                            {confirmCylinderInputs[item.id] && (
-                              <div style={{ background: "#0f172a", padding: "8px", borderRadius: "6px", fontSize: "12px", textAlign: "center" }}>
-                                Serial ที่สแกน: <strong style={{ color: "#4ade80" }}>{confirmCylinderInputs[item.id]}</strong>
-                              </div>
+                      // ขั้นที่ 2 (สแกนผ่านแล้ว): นำทาง + ถ่ายรูปเพื่อจบงาน
+                      if (isStaff && item.status === "delivering") {
+                        return (
+                          <>
+                            {resultBox}
+                            {hasPin || hasAddress ? (
+                              mapsLink
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCurrentLocation(item)}
+                                disabled={gettingLocationId === item.id}
+                                style={styles.gpsPinBtn}
+                              >
+                                <LocateFixed size={15} /> {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งปัจจุบัน"}
+                              </button>
                             )}
+                            <label style={{ ...styles.cameraBtn, ...(uploadingId === item.id ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
+                              <Camera size={17} /> {uploadingId === item.id ? "กำลังอัปโหลดรูป..." : "ถ่ายรูปเพื่อจบงาน"}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                style={{ display: "none" }}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  e.target.value = "";
+                                  if (!file) return;
+                                  setUploadingId(item.id);
+                                  await handleProofUpload(item.id, file);
+                                  setUploadingId(null);
+                                }}
+                              />
+                            </label>
+                          </>
+                        );
+                      }
 
-                            <button
-                              onClick={() => confirmReceiveJob(item)}
-                              disabled={!confirmCylinderInputs[item.id]}
-                              style={{
-                                ...styles.primaryBtn,
-                                opacity: confirmCylinderInputs[item.id] ? 1 : 0.5,
-                                cursor: confirmCylinderInputs[item.id] ? "pointer" : "not-allowed",
-                              }}
-                            >
-                            <Check size={16} /> ยืนยันรับงานส่ง
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Staff: ถ่ายรูปถังคืน */}
-                    {role === "staff" && item.status === "delivering" && (
-                      <div style={{ width: "100%", marginTop: "6px" }}>
-                        <button
-                          onClick={() => setSelectedProofId(selectedProofId === item.id ? null : item.id)}
-                          style={styles.cameraBtn}
-                        >
-                        <Camera size={16} /> ถ่ายรูปถังที่รับคืน
-                        </button>
-                        {selectedProofId === item.id && (
-                          <div style={{ marginTop: "8px" }}>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              onChange={(e) => handleProofUpload(item.id, e.target.files?.[0])}
-                              style={{ color: "white", fontSize: "12px", width: "100%" }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      // Admin / สถานะอื่น: แสดงลิงก์แผนที่ถ้ามีพิกัดหรือที่อยู่
+                      return role === "admin" && (hasPin || hasAddress) ? mapsLink : null;
+                    })()}
 
                     {/* Admin: อนุมัติงาน */}
                     {role === "admin" && item.status === "pending_approval" && (
@@ -1501,7 +1516,8 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     gap: "6px",
-    minHeight: "44px",
+    minHeight: "46px",
+    boxSizing: "border-box",
     padding: "10px",
     background: "#d97706",
     color: "#ffffff",
@@ -1510,6 +1526,49 @@ const styles = {
     fontSize: "14px",
     fontWeight: "600",
     cursor: "pointer",
+  },
+  scanBtn: {
+    width: "100%",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    minHeight: "46px",
+    padding: "10px",
+    background: "#2563eb",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  stepHint: {
+    fontSize: "12px",
+    color: "#94a3b8",
+    textAlign: "center",
+  },
+  scanOk: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    fontSize: "13px",
+    background: "rgba(16,185,129,0.12)",
+    border: "1px solid #10b981",
+    color: "#6ee7b7",
+  },
+  scanFail: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "8px",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    fontSize: "13px",
+    background: "rgba(239,68,68,0.12)",
+    border: "1px solid #ef4444",
+    color: "#fca5a5",
   },
   emptyCard: {
     background: "#1f2937",
