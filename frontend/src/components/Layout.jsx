@@ -88,7 +88,7 @@ function Layout({ children }) {
       />
 
       {/* แถบเปิดเมนูสำหรับอุปกรณ์มือถือ */}
-      <div style={mobileHeaderBarContainerStyle}>
+      <div style={mobileHeaderBarContainerStyle} className="mobile-menu-bar">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           style={mobileMenuToggleBtnStyle}
@@ -158,6 +158,10 @@ function Layout({ children }) {
         @media (min-width: 769px) {
           .responsive-sidebar {
             display: block !important;
+          }
+          /* แถบเปิดเมนูใช้เฉพาะบนมือถือ */
+          .mobile-menu-bar {
+            display: none !important;
           }
         }
       `}</style>
