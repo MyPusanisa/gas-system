@@ -560,11 +560,34 @@ function DeliveryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingScan]);
 
+  // ย่อรูปจากกล้องมือถือ (3–5 MB) ให้เหลือด้านยาวไม่เกิน 1600px เป็น JPEG
+  // เซิร์ฟเวอร์รับไฟล์ได้ไม่เกิน 2 MB และอัปโหลดผ่านเน็ตมือถือได้เร็วขึ้น
+  const compressImage = (file, maxSize = 1600, quality = 0.8) =>
+    new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", quality);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file); // อ่านรูปไม่ได้ ส่งไฟล์เดิม
+      };
+      img.src = url;
+    });
+
   const handleProofUpload = async (id, file) => {
     if (!file) return;
+    const image = await compressImage(file);
     const formData = new FormData();
     formData.append("delivery_id", id);
-    formData.append("proof", file);
+    formData.append("proof", image, image === file ? file.name : "proof.jpg");
 
     try {
       const res = await fetch(`${API_BASE_URL}/delivery/upload_proof.php`, {

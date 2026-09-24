@@ -64,17 +64,21 @@ try {
     $file = $_FILES['proof'];
 
     if ($file['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode([
-            "success" => false,
-            "message" => "เกิดข้อผิดพลาดในการอัปโหลดไฟล์ (Code: " . $file['error'] . ")"
-        ]);
+        $msg = in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+            ? "รูปมีขนาดใหญ่เกินไป กรุณาถ่ายใหม่"
+            : "เกิดข้อผิดพลาดในการอัปโหลดไฟล์ (Code: " . $file['error'] . ")";
+        echo json_encode(["success" => false, "message" => $msg], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-    if (!$ext) {
-        $ext = 'jpg';
+    // รับเฉพาะไฟล์รูปภาพจริง — เดิมใช้นามสกุลตามที่ส่งมา ทำให้อัปโหลด .php เข้าโฟลเดอร์ที่เปิดผ่านเว็บได้
+    $imageTypes = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif'];
+    $info = @getimagesize($file['tmp_name']);
+    if (!$info || !isset($imageTypes[$info[2]])) {
+        echo json_encode(["success" => false, "message" => "ไฟล์ต้องเป็นรูปภาพ (JPG, PNG, WEBP)"], JSON_UNESCAPED_UNICODE);
+        exit;
     }
+    $ext = $imageTypes[$info[2]];
 
     $fileName = uniqid("proof_", true) . "." . $ext;
     $targetPath = $uploadDir . $fileName;
