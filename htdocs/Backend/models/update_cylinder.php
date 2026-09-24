@@ -1,55 +1,63 @@
 <?php
-require_once '../config/db.php';
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
+require_once '../config/db.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+$data = json_decode(file_get_contents('php://input'), true) ?: [];
 
-$serial_number = isset($data['serial_number']) ? trim($data['serial_number']) : null;
-
-// เปลี่ยนมาเช็ค serial_number เป็นหลัก
-if (!$serial_number) {
-    echo json_encode(['success' => false, 'message' => 'Invalid data: ไม่พบ Serial Number']);
+$serial_number = trim($data['serial_number'] ?? '');
+if ($serial_number === '') {
+    echo json_encode(['success' => false, 'message' => 'ไม่พบ Serial Number'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-$brand            = $data['brand'] ?? $data['brand_id'] ?? '';
-$gas_type         = $data['gas_type'] ?? $data['gas_type_id'] ?? 'LPG';
-$size             = $data['size'] ?? $data['size_id'] ?? '';
-$manufacture_date = !empty($data['manufacture_date']) ? $data['manufacture_date'] : null;
-$expiry_date      = !empty($data['expiry_date']) ? $data['expiry_date'] : (!empty($data['expire_date']) ? $data['expire_date'] : null);
-$qr_code          = $data['qr_code'] ?? '';
-$last_check_date  = !empty($data['last_check_date']) ? $data['last_check_date'] : (!empty($data['last_checked']) ? $data['last_checked'] : null);
-$next_check_date  = !empty($data['next_check_date']) ? $data['next_check_date'] : (!empty($data['next_check']) ? $data['next_check'] : null);
-$delivered_date   = !empty($data['delivered_date']) ? $data['delivered_date'] : (!empty($data['delivery_date']) ? $data['delivery_date'] : null);
-$current_location = $data['current_location'] ?? $data['location_id'] ?? '';
-$status           = $data['status'] ?? 'ในคลัง';
+// ค่าว่างให้เป็น NULL (คอลัมน์วันที่รับ '' ไม่ได้)
+$v = function ($key) use ($data) {
+    $val = isset($data[$key]) ? trim((string)$data[$key]) : '';
+    return $val === '' ? null : $val;
+};
 
-// อัปเดตข้อมูลโดยระบุ WHERE serial_number = ?
-$stmt = $conn->prepare("UPDATE gas_cylinder SET 
-    brand=?, gas_type=?, size=?, manufacture_date=?, expiry_date=?, 
-    qr_code=?, last_check_date=?, next_check_date=?, delivered_date=?, current_location=?, status=?
+$brand            = $v('brand');
+$gas_type         = $v('gas_type');
+$size             = $v('size');
+$manufacture_date = $v('manufacture_date');
+$expiry_date      = $v('expiry_date');
+$last_check_date  = $v('last_check_date');
+$next_check_date  = $v('next_check_date');
+$delivered_date   = $v('delivered_date');
+$current_location = $v('current_location');
+$status           = $v('status') ?? 'ในคลัง';
+
+// qr_code ไม่ได้ส่งมาจากฟอร์ม จึงไม่แตะ (เดิมถูกล้างเป็นค่าว่างทุกครั้งที่แก้ไข)
+$stmt = $conn->prepare("UPDATE gas_cylinder SET
+    brand=?, gas_type=?, size=?, manufacture_date=?, expiry_date=?,
+    last_check_date=?, next_check_date=?, delivered_date=?, current_location=?, status=?
     WHERE serial_number=?");
-
-// ใช้ "ssssssssssss" (String ทั้งหมด 12 ตัว)
-$stmt->bind_param("ssssssssssss", 
-    $brand, $gas_type, $size, $manufacture_date, $expiry_date, 
-    $qr_code, $last_check_date, $next_check_date, $delivered_date, $current_location, $status,
+$stmt->bind_param("sssssssssss",
+    $brand, $gas_type, $size, $manufacture_date, $expiry_date,
+    $last_check_date, $next_check_date, $delivered_date, $current_location, $status,
     $serial_number
 );
 
-if ($stmt->execute()) {
-    echo json_encode(['success' => true, 'message' => 'Updated successfully']);
+if (!$stmt->execute()) {
+    echo json_encode(['success' => false, 'message' => 'บันทึกไม่สำเร็จ: ' . $stmt->error], JSON_UNESCAPED_UNICODE);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
+    $exists = $conn->prepare("SELECT 1 FROM gas_cylinder WHERE serial_number = ?");
+    $exists->bind_param("s", $serial_number);
+    $exists->execute();
+    if ($exists->get_result()->num_rows === 0) {
+        echo json_encode(['success' => false, 'message' => "ไม่พบถัง $serial_number ในระบบ"], JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode(['success' => true, 'message' => 'แก้ไขข้อมูลสำเร็จ'], JSON_UNESCAPED_UNICODE);
+    }
 }
-
-$stmt->close();
 $conn->close();
-?>

@@ -1,22 +1,20 @@
 <?php
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
 require_once "../config/db.php";
 
-// ค้นหาถังที่มีสถานะ 'ในคลัง'
-$sql = "SELECT * FROM gas_cylinder WHERE TRIM(status) = 'ในคลัง' ORDER BY serial_number DESC";
-$result = mysqli_query($conn, $sql);
+// ถังทุกใบ (หน้าเว็บกรองตามสถานะเอง) — เดิมดึงเฉพาะ 'ในคลัง'
+// ทำให้ถังที่แก้สถานะเป็น ชำรุด/ปกติ หายไปจากหน้าจอ
+$sql = "SELECT * FROM gas_cylinder ORDER BY created_at DESC, serial_number DESC";
+$result = $conn->query($sql);
 
-$data = array();
 if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
-    }
-    echo json_encode(["success" => true, "data" => $data], JSON_UNESCAPED_UNICODE);
+    echo json_encode(["success" => true, "data" => $result->fetch_all(MYSQLI_ASSOC)], JSON_UNESCAPED_UNICODE);
 } else {
-    echo json_encode(["success" => false, "message" => mysqli_error($conn)], JSON_UNESCAPED_UNICODE);
+    echo json_encode(["success" => false, "message" => $conn->error], JSON_UNESCAPED_UNICODE);
 }
-
-mysqli_close($conn);
-?>
+$conn->close();
