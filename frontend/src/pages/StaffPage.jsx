@@ -218,7 +218,7 @@ function StaffPage() {
       staff_name: staff.staff_name || "",
       staff_phone: staff.staff_phone || "",
       username: staff.username || "",
-      password: staff.password && staff.password.startsWith("$2y$") ? "" : (staff.password || ""),
+      password: "",
       address: staff.address || "",
       status: staff.status || "active",
     });
@@ -256,7 +256,6 @@ function StaffPage() {
       (staff.staff_name && staff.staff_name.toLowerCase().includes(term)) ||
       (staff.staff_phone && staff.staff_phone.includes(term)) ||
       (staff.username && staff.username.toLowerCase().includes(term)) ||
-      (staff.password && staff.password.toLowerCase().includes(term)) ||
       (staff.address && staff.address.toLowerCase().includes(term));
 
     const matchesStatus =
@@ -385,7 +384,7 @@ function StaffPage() {
         <div style={{ flex: 1, minWidth: "220px" }}>
           <input
             type="text"
-            placeholder="ค้นหา (ชื่อ, เบอร์โทร, Username, Password, ที่อยู่)..."
+            placeholder="ค้นหา (ชื่อ, เบอร์โทร, Username, ที่อยู่)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={inputStyle}
@@ -413,7 +412,6 @@ function StaffPage() {
               <th style={{ ...thStyle, width: "120px" }}>ชื่อ</th>
               <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
               <th style={{ ...thStyle, width: "100px" }}>Username</th>
-              <th style={{ ...thStyle, width: "100px" }}>Password</th>
               <th style={{ ...thStyle, width: "180px" }}>ที่อยู่</th>
               <th style={{ ...thStyle, width: "100px" }}>สถานะงาน</th>
               <th style={{ ...thStyle, width: "90px" }}>จำนวนงาน</th>
@@ -435,7 +433,6 @@ function StaffPage() {
                     </td>
                     <td style={tdStyle}>{removeEmojis(item.staff_phone) || "-"}</td>
                     <td style={tdStyle}>{removeEmojis(item.username)}</td>
-                    <td style={tdStyle}>{removeEmojis(item.password) || "-"}</td>
                     <td style={tdStyle}>{removeEmojis(item.address) || "-"}</td>
                     
                     {/* แสดงสถานะงาน: กำลังส่ง / ว่าง */}
@@ -475,7 +472,7 @@ function StaffPage() {
               })
             ) : (
               <tr>
-                <td style={{ ...tdStyle, textAlign: "center" }} colSpan="9">
+                <td style={{ ...tdStyle, textAlign: "center" }} colSpan="8">
                   ไม่พบข้อมูลพนักงานที่ค้นหา
                 </td>
               </tr>

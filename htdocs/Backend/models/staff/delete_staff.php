@@ -6,17 +6,18 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once "../../config/db.php";
 
 $data = json_decode(file_get_contents("php://input"), true);
-$staff_id = $data['staff_id'] ?? '';
+$staff_id = (int)($data['staff_id'] ?? 0);
 
-if (empty($staff_id)) {
+if ($staff_id <= 0) {
     echo json_encode(["success" => false, "message" => "ไม่พบ Staff ID"]);
     exit();
 }
 
-$sql = "DELETE FROM delivery_staff WHERE staff_id = '$staff_id'";
+$stmt = $conn->prepare("DELETE FROM delivery_staff WHERE staff_id = ?");
+$stmt->bind_param("i", $staff_id);
 
-if ($conn->query($sql)) {
+if ($stmt->execute()) {
     echo json_encode(["success" => true, "message" => "ลบพนักงานสำเร็จ"]);
 } else {
-    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาด: " . $conn->error]);
+    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาดในการลบข้อมูล"]);
 }

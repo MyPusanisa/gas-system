@@ -1,6 +1,6 @@
 <?php
-// เปิด Debug Error เพื่อให้รู้สาเหตุชัดเจนกรณีมีปัญหา
-ini_set('display_errors', 1);
+// ไม่แสดง PHP Error ออกหน้าเว็บ (กันข้อมูลระบบรั่ว)
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 header("Access-Control-Allow-Origin: *");
@@ -35,7 +35,6 @@ try {
                 s.staff_name,
                 s.staff_phone,
                 s.username,
-                s.password,
                 s.address,
                 s.status,
                 COUNT(CASE WHEN d.status = 'pending' THEN 1 END) AS pending_jobs

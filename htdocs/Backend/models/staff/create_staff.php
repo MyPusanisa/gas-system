@@ -12,25 +12,35 @@ if (!$data) {
     exit();
 }
 
-$staff_name = $data['staff_name'] ?? '';
-$staff_phone = $data['staff_phone'] ?? '';
-$username = $data['username'] ?? '';
-$password = $conn->real_escape_string($data['password'] ?? '');
-$address = $data['address'] ?? '';
-$status = $data['status'] ?? 'active';
+$staff_name = trim($data['staff_name'] ?? '');
+$staff_phone = trim($data['staff_phone'] ?? '');
+$username = trim($data['username'] ?? '');
+$password = trim($data['password'] ?? '');
+$address = trim($data['address'] ?? '');
+$status = ($data['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active';
+
+if ($staff_name === '' || $username === '' || strlen($password) < 4) {
+    echo json_encode(["success" => false, "message" => "กรุณากรอกข้อมูลให้ครบ (รหัสผ่านอย่างน้อย 4 ตัว)"]);
+    exit();
+}
 
 // ตรวจสอบว่า username ซ้ำหรือไม่
-$checkSql = "SELECT staff_id FROM delivery_staff WHERE username = '$username'";
-if ($conn->query($checkSql)->num_rows > 0) {
+$check = $conn->prepare("SELECT staff_id FROM delivery_staff WHERE username = ?");
+$check->bind_param("s", $username);
+$check->execute();
+if ($check->get_result()->num_rows > 0) {
     echo json_encode(["success" => false, "message" => "Username นี้ถูกใช้งานแล้ว"]);
     exit();
 }
 
-$sql = "INSERT INTO delivery_staff (staff_name, staff_phone, username, password, address, status) 
-        VALUES ('$staff_name', '$staff_phone', '$username', '$password', '$address', '$status')";
+// เก็บรหัสผ่านแบบเข้ารหัส (login.php ตรวจด้วย password_verify)
+$hash = password_hash($password, PASSWORD_DEFAULT);
 
-if ($conn->query($sql)) {
+$stmt = $conn->prepare("INSERT INTO delivery_staff (staff_name, staff_phone, username, password, address, status) VALUES (?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("ssssss", $staff_name, $staff_phone, $username, $hash, $address, $status);
+
+if ($stmt->execute()) {
     echo json_encode(["success" => true, "message" => "เพิ่มพนักงานสำเร็จ"]);
 } else {
-    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาด: " . $conn->error]);
+    echo json_encode(["success" => false, "message" => "เกิดข้อผิดพลาดในการบันทึกข้อมูล"]);
 }
