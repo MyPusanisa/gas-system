@@ -191,13 +191,20 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {nearDueCylinders.map((row, i) => (
+                {nearDueCylinders.map((row, i) => {
+                  const daysLeft = row.days_left ?? row.remaining_days ?? row.days;
+                  // เลยกำหนดแล้ว (ติดลบ) แสดงเป็นสีแดง
+                  const isOverdue = Number(daysLeft) < 0;
+                  return (
                   <tr key={i}>
                     <td style={tdStyle}>{row.serial_number || row.cylinder_code || row.code || `CYL-${row.id}`}</td>
                     <td style={tdStyle}>{row.next_check_date || row.check_date || "-"}</td>
-                    <td style={tdStyle}>{row.days_left ?? row.remaining_days ?? row.days ?? "-"}</td>
+                    <td style={isOverdue ? { ...tdStyle, color: "#ef4444", fontWeight: "bold" } : tdStyle}>
+                      {daysLeft ?? "-"}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
