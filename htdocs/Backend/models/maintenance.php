@@ -26,7 +26,7 @@ function MaintenancePage({
 
   const fetchMaintenances = async () => {
   try {
-    const res = await fetch("http://localhost:8080/Backend/models/get_maintenance.php");
+    const res = await fetch("https://suchat-gas.com/Backend/models/get_maintenance.php");
     const data = await res.json();
     if (data.success) {
       const sorted = data.data.sort((a, b) => 
@@ -42,7 +42,7 @@ function MaintenancePage({
   const fetchCylinders = async () => {
   try {
     setLoading(true);
-    const res = await fetch("http://localhost:8080/Backend/models/get_due_cylinders.php");
+    const res = await fetch("https://suchat-gas.com/Backend/models/get_due_cylinders.php");
     const data = await res.json();
     if (data.success) {
       const enrichedData = data.data.map(item => ({
@@ -93,7 +93,7 @@ function MaintenancePage({
     return "ใกล้ถึงกำหนด";
   };
 
-  const res = await fetch("http://localhost:8080/Backend/models/save_maintenance.php", {
+  const res = await fetch("https://suchat-gas.com/Backend/models/save_maintenance.php", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
@@ -111,7 +111,7 @@ function MaintenancePage({
 
     setSaving(true);
     try {
-      const res = await fetch("http://localhost/Backend/models/save_maintenance.php", {
+      const res = await fetch("https://suchat-gas.com/Backend/models/save_maintenance.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

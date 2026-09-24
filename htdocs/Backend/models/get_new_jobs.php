@@ -1,5 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: http://suchat-gas.com");
+header("Access-Control-Allow-Origin: https://suchat-gas.com");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");

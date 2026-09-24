@@ -34,7 +34,7 @@ $manufacture_date = $data['manufacture_date'] ?? '';
 $expiry_date      = $data['expiry_date'] ?? ($manufacture_date ? calculateExpiryDate($manufacture_date) : null);
 
 // สร้าง URL สำหรับ QR Code หากไม่ได้ส่งมา
-$qr_code          = $data['qr_code'] ?? ($serial_number ? "http://192.168.1.176:5173/cylinder/{$serial_number}" : '');
+$qr_code          = $data['qr_code'] ?? ($serial_number ? "https://suchat-gas.com/cylinder/{$serial_number}" : '');
 
 $last_check_date  = !empty($data['last_check_date']) ? $data['last_check_date'] : null;
 $next_check_date  = $data['next_check_date'] ?? ($manufacture_date ? calculateNextCheckDate($manufacture_date) : null);

@@ -5,7 +5,7 @@ while (ob_get_level()) {
 }
 
 // 2. ตั้งค่า CORS Headers ให้รองรับ Frontend
-header("Access-Control-Allow-Origin: http://suchat-gas.com");
+header("Access-Control-Allow-Origin: https://suchat-gas.com");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
