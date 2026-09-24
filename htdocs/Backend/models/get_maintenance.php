@@ -1,26 +1,33 @@
 <?php
-ob_start();
-error_reporting(0);
 ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
-require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . "/../config/db.php";
 
-// ดึงประวัติการตรวจ เรียงจาก ID ล่าสุดลงไป
-$sql = "SELECT * FROM maintenance ORDER BY maintenance_id DESC";
-$result = $conn->query($sql);
+// ประวัติการตรวจจริงจากตาราง maintenance (ล่าสุดขึ้นก่อน)
+$sql = "SELECT maintenance_id, serial_number, maintenance_date, maintenance_type,
+               result, next_action, next_maintenance_date, description
+        FROM maintenance
+        ORDER BY maintenance_date DESC, maintenance_id DESC";
 
-$data = [];
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
-    }
+$res = $conn->query($sql);
+if (!$res) {
+    echo json_encode(["success" => false, "message" => $conn->error, "data" => []], JSON_UNESCAPED_UNICODE);
+    exit();
 }
 
-ob_end_clean();
-http_response_code(200);
-echo json_encode(["success" => true, "data" => $data]);
-exit();
-?>
+$data = [];
+while ($row = $res->fetch_assoc()) {
+    // รายการเก่าเก็บ "สิ่งที่ต้องทำต่อ" ไว้ใน description
+    if (empty($row['next_action']) && preg_match('/\[สิ่งที่ต้องทำต่อ: ([^\]]+)\]/u', (string)$row['description'], $m)) {
+        $row['next_action'] = $m[1];
+    }
+    $row['description'] = trim(preg_replace('/\[สิ่งที่ต้องทำต่อ: [^\]]+\]/u', '', (string)$row['description']));
+    $data[] = $row;
+}
+
+echo json_encode(["success" => true, "data" => $data], JSON_UNESCAPED_UNICODE);
+$conn->close();

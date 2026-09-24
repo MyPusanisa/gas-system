@@ -261,7 +261,6 @@ const dueCylinders = useMemo(() => {
     }
 
     const fullDescription = [
-      nextAction ? `[สิ่งที่ต้องทำต่อ: ${nextAction}]` : "",
       selectedNote ? `[หมายเหตุ: ${selectedNote}]` : "",
       description
     ].filter(Boolean).join(" ");
@@ -270,6 +269,7 @@ const dueCylinders = useMemo(() => {
       serial_numbers: targetSerials,
       maintenance_type: maintenanceType,
       result: result,
+      next_action: nextAction,
       description: fullDescription,
     };
 
