@@ -109,6 +109,91 @@ tbody tr:hover {
   background-color: rgba(148, 163, 184, 0.06);
 }
 
+/* ===== มือถือ ===== */
+@media (max-width: 768px) {
+  .app-main {
+    padding: 14px 12px 32px !important;
+  }
+  .app-main h1 {
+    font-size: 24px !important;
+  }
+  .app-main h2 {
+    font-size: 17px !important;
+  }
+}
+
+/* จอแคบ: ตารางแสดงเป็นการ์ดทีละแถว (data-label ใส่อัตโนมัติจาก Layout) */
+@media (max-width: 640px) {
+  .app-main table,
+  .app-main tbody,
+  .app-main tr,
+  .app-main td {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+  .app-main table {
+    background: transparent !important;
+    white-space: normal !important;
+  }
+  .app-main thead {
+    display: none;
+  }
+  .app-main tbody tr {
+    margin-bottom: 10px;
+    padding: 6px 0;
+    border: 1px solid #2b3647;
+    border-radius: 12px;
+    background: #182130;
+  }
+  .app-main td {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 14px !important;
+    border: none !important;
+    white-space: normal !important;
+    text-align: right !important;
+    word-break: break-word;
+  }
+  .app-main td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 45%;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+  }
+  .app-main td[data-label=""]::before,
+  .app-main td:not([data-label])::before {
+    display: none;
+  }
+  .app-main td[data-label=""] {
+    justify-content: flex-end;
+  }
+  /* แถว "ไม่พบข้อมูล" */
+  .app-main td[colspan] {
+    justify-content: center;
+    text-align: center !important;
+  }
+
+  /* ช่องค้นหา/ตัวกรองเต็มความกว้าง */
+  .app-main input[type="text"],
+  .app-main select {
+    max-width: 100% !important;
+  }
+
+  /* กล่องแจ้งเตือนไม่ชิดขอบจอ */
+  body > #root [style*="position: fixed"][style*="bottom: 24px"] {
+    left: 12px;
+    right: 12px !important;
+    bottom: 12px !important;
+  }
+}
+
 /* ===== แถบเลื่อน ===== */
 * {
   scrollbar-width: thin;

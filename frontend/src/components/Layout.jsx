@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
   Cylinder,
@@ -8,7 +8,6 @@ import {
   ClipboardCheck,
   Truck,
   LogOut,
-  Menu,
   X,
   Flame,
 } from "lucide-react";
@@ -97,32 +96,48 @@ function Layout({ children }) {
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
   const menu = role === "admin" ? [...ADMIN_MENU, ...COMMON_MENU] : COMMON_MENU;
 
+  // มือถือ: ตารางแสดงเป็นการ์ด (CSS ใน index.css) — ใส่ data-label ให้ทุกช่องจากหัวตารางอัตโนมัติ
+  const mainRef = useRef(null);
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const labelTables = () => {
+      main.querySelectorAll("table").forEach((table) => {
+        const headers = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+        table.querySelectorAll("tbody tr").forEach((tr) => {
+          [...tr.children].forEach((td, i) => {
+            if (td.colSpan > 1) return;
+            const label = headers[i] || "";
+            if (td.getAttribute("data-label") !== label) td.setAttribute("data-label", label);
+          });
+        });
+      });
+    };
+    labelTables();
+    const observer = new MutationObserver(labelTables);
+    observer.observe(main, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div style={{ minHeight: "100vh", background: "#0f172a" }}>
-      {/* แถบเปิดเมนูสำหรับอุปกรณ์มือถือ */}
-      <div style={mobileHeaderBarContainerStyle} className="mobile-menu-bar">
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          style={mobileMenuToggleBtnStyle}
-        >
-          {isMobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
-          {isMobileMenuOpen ? "ปิดเมนู" : "เมนู"}
-        </button>
-        <span style={{ color: "white", fontSize: "14px", fontWeight: 600 }}>GAS SYS</span>
-      </div>
+      <div style={layoutBodyStyle}>
+        {/* พื้นหลังมืดตอนเปิดเมนูบนมือถือ — แตะเพื่อปิด */}
+        {isMobileMenuOpen && <div className="sidebar-backdrop" onClick={() => setIsMobileMenuOpen(false)} />}
 
-      <div style={layoutBodyStyle} className="layout-body">
         {/* Sidebar Navigation */}
-        <aside style={{
-          ...asideStyle,
-          display: isMobileMenuOpen ? "flex" : undefined
-        }} className="responsive-sidebar">
-          <div style={brandStyle}>
-            <span style={brandIconStyle}><Flame size={20} /></span>
-            <div>
-              <div style={{ fontSize: "18px", fontWeight: 700, lineHeight: 1.1 }}>GAS SYS</div>
-              <div style={{ fontSize: "12px", color: "#9ca3af" }}>ระบบจัดการถังแก๊ส</div>
+        <aside style={asideStyle} className={`responsive-sidebar${isMobileMenuOpen ? " open" : ""}`}>
+          <div style={{ ...brandStyle, justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={brandIconStyle}><Flame size={20} /></span>
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 700, lineHeight: 1.1 }}>GAS SYS</div>
+                <div style={{ fontSize: "12px", color: "#9ca3af" }}>ระบบจัดการถังแก๊ส</div>
+              </div>
             </div>
+            <button type="button" className="sidebar-close" onClick={() => setIsMobileMenuOpen(false)} style={closeBtnStyle} title="ปิดเมนู">
+              <X size={20} />
+            </button>
           </div>
 
           <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -156,23 +171,37 @@ function Layout({ children }) {
             username={username}
             gasLevel={gasLevel}
             deliverySuccessItems={deliverySuccessItems}
+            onMenuClick={() => setIsMobileMenuOpen(true)}
           />
-          <main style={mainStyle}>{children}</main>
+          <main ref={mainRef} style={mainStyle} className="app-main">{children}</main>
         </div>
       </div>
 
-      {/* Style แทรก responsive media query */}
       <style>{`
+        .sidebar-close { display: none; }
         @media (max-width: 768px) {
-          .layout-body {
-            flex-direction: column;
-          }
           .responsive-sidebar {
-            display: ${isMobileMenuOpen ? "flex" : "none"} !important;
-            width: 100% !important;
-            min-width: 100% !important;
-            box-sizing: border-box !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 272px !important;
+            max-width: 85vw;
+            z-index: 300;
+            display: flex !important;
+            transform: translateX(-100%);
+            transition: transform 0.22s ease;
+            overflow-y: auto;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.5);
           }
+          .responsive-sidebar.open { transform: translateX(0); }
+          .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 250;
+          }
+          .sidebar-close { display: flex; }
         }
         @media (min-width: 769px) {
           .responsive-sidebar {
@@ -181,15 +210,20 @@ function Layout({ children }) {
             top: 0;
             height: 100vh;
           }
-          /* แถบเปิดเมนูใช้เฉพาะบนมือถือ */
-          .mobile-menu-bar {
-            display: none !important;
-          }
         }
       `}</style>
     </div>
   );
 }
+
+const closeBtnStyle = {
+  background: "none",
+  border: "none",
+  color: "#9ca3af",
+  cursor: "pointer",
+  padding: "6px",
+  alignItems: "center",
+};
 
 const layoutBodyStyle = {
   display: "flex",
@@ -201,29 +235,6 @@ const contentColumnStyle = {
   minWidth: 0,
   display: "flex",
   flexDirection: "column",
-};
-
-const mobileHeaderBarContainerStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "10px 16px",
-  background: "#1e293b",
-  borderBottom: "1px solid #334155",
-};
-
-const mobileMenuToggleBtnStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "6px",
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "8px",
-  fontSize: "14px",
-  fontWeight: 600,
-  cursor: "pointer",
 };
 
 const asideStyle = {

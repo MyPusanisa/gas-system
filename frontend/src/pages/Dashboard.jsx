@@ -370,15 +370,16 @@ const headerStyle = { display: "flex", justifyContent: "space-between", alignIte
 const titleStyle = { fontSize: "32px", margin: 0 };
 const subtitleStyle = { color: "#9ca3af", fontSize: "14px", marginTop: "6px" };
 
-const cardGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "20px" };
+// มือถือ: การ์ดสรุป 2 ใบต่อแถว
+const cardGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "20px" };
 const summaryCardStyle = { background: "#1f2937", padding: "18px 20px", borderRadius: "14px", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" };
 const statHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center" };
 const statTitleStyle = { color: "#cbd5e1", fontSize: "15px", fontWeight: 600 };
 const statIconStyle = { width: "36px", height: "36px", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" };
-const statValueStyle = { fontSize: "36px", fontWeight: "bold", lineHeight: 1.1, marginTop: "12px" };
+const statValueStyle = { fontSize: "clamp(26px, 7vw, 36px)", fontWeight: "bold", lineHeight: 1.1, marginTop: "12px" };
 const statCaptionStyle = { color: "#6b7280", fontSize: "12px", marginTop: "6px" };
 
-const twoColGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" };
+const twoColGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: "20px" };
 const panelStyle = { background: "#1f2937", padding: "20px", borderRadius: "14px", marginBottom: "20px", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" };
 const panelHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "12px", marginBottom: "16px", flexWrap: "wrap" };
 const panelTitleStyle = { margin: 0, fontSize: "18px" };

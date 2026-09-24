@@ -384,7 +384,7 @@ const infoGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, 
 const resultActionStyle = { display: "flex", alignItems: "flex-end", gap: "12px", flexWrap: "wrap", marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.1)" };
 
 const emptyBoxStyle = { padding: "36px", background: "#1f2937", borderRadius: "14px", textAlign: "center", color: "#9ca3af", display: "flex", flexDirection: "column", alignItems: "center" };
-const approvalGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" };
+const approvalGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: "16px" };
 const approvalCardStyle = { background: "#1f2937", borderRadius: "14px", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid #2b3647" };
 const proofImgStyle = { width: "100%", height: "180px", objectFit: "cover", display: "block", background: "#111827" };
 const noImageStyle = { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b7280" };

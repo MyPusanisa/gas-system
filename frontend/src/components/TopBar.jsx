@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 
 const getGasStatus = (level) => {
   if (level <= 520) return { text: "ปกติ", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
@@ -12,6 +12,7 @@ function TopBar({
   username: propsUsername,
   gasLevel = 0,
   deliverySuccessItems = [],
+  onMenuClick,
 }) {
   const navigate = useNavigate();
 
@@ -27,13 +28,22 @@ function TopBar({
   const initial = String(localUsername).trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <header style={barStyle}>
+    <header style={barStyle} className="topbar">
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+        {/* ปุ่มเมนู (เฉพาะมือถือ) */}
+        {onMenuClick && (
+          <button type="button" onClick={onMenuClick} className="topbar-menu-btn" style={menuBtnStyle} title="เมนู">
+            <Menu size={20} />
+          </button>
+        )}
+
       {/* แก๊สในคลัง */}
-      <div style={{ ...gasPillStyle, borderColor: `${status.color}55` }} title="ค่าแก๊สในคลัง (อัปเดตอัตโนมัติ)">
+      <div style={{ ...gasPillStyle, borderColor: `${status.color}55` }} className="topbar-gas" title="ค่าแก๊สในคลัง (อัปเดตอัตโนมัติ)">
         <span style={{ ...dotStyle, background: status.color, boxShadow: `0 0 0 4px ${status.bg}` }} />
-        <span style={{ color: "#9ca3af", fontSize: "13px" }}>แก๊สในคลัง</span>
+        <span className="topbar-hide-sm" style={{ color: "#9ca3af", fontSize: "13px" }}>แก๊สในคลัง</span>
         <strong style={{ fontSize: "16px", color: "white" }}>{gasLevel}</strong>
         <span style={{ ...statusChipStyle, color: status.color, background: status.bg }}>{status.text}</span>
+      </div>
       </div>
 
       <div style={rightGroupStyle}>
@@ -65,13 +75,32 @@ function TopBar({
       </div>
 
       <style>{`
+        .topbar-menu-btn { display: none !important; }
+        @media (max-width: 768px) {
+          .topbar-menu-btn { display: inline-flex !important; }
+          .topbar { padding: 10px 12px !important; }
+        }
         @media (max-width: 600px) {
           .topbar-hide-sm { display: none !important; }
+          .topbar-gas { padding: 6px 10px !important; gap: 8px !important; }
         }
       `}</style>
     </header>
   );
 }
+
+const menuBtnStyle = {
+  alignItems: "center",
+  justifyContent: "center",
+  width: "40px",
+  height: "40px",
+  flexShrink: 0,
+  background: "#111827",
+  border: "1px solid #374151",
+  borderRadius: "10px",
+  color: "#e5e7eb",
+  cursor: "pointer",
+};
 
 const barStyle = {
   position: "sticky",
