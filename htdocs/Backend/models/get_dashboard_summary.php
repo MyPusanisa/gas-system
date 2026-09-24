@@ -18,23 +18,47 @@ if (file_exists($configPath)) {
 }
 
 try {
-    // 1. ถังทั้งหมด
-    $res1 = $conn->query("SELECT COUNT(*) AS total FROM gas_cylinder");
-    $total = $res1 ? ($res1->fetch_assoc()['total'] ?? 0) : 0;
+    // สถานะที่นับว่า "อยู่ในคลัง"
+    $inStockStatus = "status IN ('ในคลัง', 'ทั่วไป', 'ปกติ')";
+    // ตารางมีคอลัมน์วันที่ซ้ำ 2 ชุด ใช้ชุดที่มีค่า
+    $isDue     = "COALESCE(next_check_date, next_inspection_date) <= CURDATE()";
+    $isExpired = "COALESCE(expiry_date, expire_date) <= CURDATE()";
 
-    // 2. ในคลัง
-    $res2 = $conn->query("SELECT COUNT(*) AS in_stock FROM gas_cylinder WHERE status = 'ในคลัง'");
-    $in_stock = $res2 ? ($res2->fetch_assoc()['in_stock'] ?? 0) : 0;
+    // ถังที่ยังอยู่กับร้าน (ในคลัง / นอกระบบ) = ทุกสถานะที่ไม่ใช่การจัดส่ง
+    $notDelivered = "COALESCE(status, '') NOT IN ('กำลังจัดส่ง', 'จัดส่งสำเร็จ')";
 
-    // 3. พร้อมใช้งาน
-    $res3 = $conn->query("SELECT COUNT(*) AS ready FROM gas_cylinder WHERE status IN ('ปกติ', 'ในคลัง')");
-    $ready = $res3 ? ($res3->fetch_assoc()['ready'] ?? 0) : 0;
+    $sql = "SELECT
+                SUM($notDelivered) AS not_delivered,
+                SUM($inStockStatus) AS in_stock,
+                SUM($inStockStatus AND ($isDue OR $isExpired)) AS in_stock_unusable,
+                SUM($inStockStatus AND $isDue) AS maintenance_due,
+                SUM($inStockStatus AND $isExpired) AS expired
+            FROM gas_cylinder";
+
+    $res = $conn->query($sql);
+    if (!$res) throw new Exception($conn->error);
+    $row = $res->fetch_assoc();
+
+    // ถังที่กำลังจัดส่ง / จัดส่งสำเร็จ นับจากตารางออเดอร์
+    $resDel = $conn->query("SELECT COUNT(*) AS n FROM deliveries WHERE status IN ('pending', 'success')");
+    if (!$resDel) throw new Exception($conn->error);
+    $delivered = (int)($resDel->fetch_assoc()['n'] ?? 0);
+
+    $total     = (int)($row['not_delivered'] ?? 0) + $delivered;
+    $in_stock  = (int)($row['in_stock'] ?? 0);
+    $unusable  = (int)($row['in_stock_unusable'] ?? 0);
 
     echo json_encode([
         "success" => true,
-        "total_cylinders" => (int)$total,
-        "in_stock" => (int)$in_stock,
-        "ready_to_use" => (int)$ready
+        // ถังทั้งหมด = ในคลัง/นอกระบบ + กำลังจัดส่ง/จัดส่งสำเร็จ (ทุกใบในระบบ)
+        "total_cylinders" => $total,
+        "delivering_or_delivered" => $delivered,
+        // ในคลัง = สถานะในคลัง/ทั่วไป
+        "in_stock" => $in_stock,
+        // พร้อมใช้งาน = ในคลัง - (ถึงกำหนดตรวจ + หมดอายุ) นับใบละครั้ง
+        "ready_to_use" => max(0, $in_stock - $unusable),
+        "maintenance_due" => (int)($row['maintenance_due'] ?? 0),
+        "expired" => (int)($row['expired'] ?? 0)
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {

@@ -16,9 +16,9 @@ import {
 
 function Dashboard() {
   const [summary, setSummary] = useState({
-    total_cylinders: 48,
-    in_stock: 19,
-    ready: 15,
+    total_cylinders: 0,
+    in_stock: 0,
+    ready: 0,
   });
 
   const [topbarStats, setTopbarStats] = useState({
@@ -61,29 +61,14 @@ function Dashboard() {
   };
 
   const fetchSummary = async () => {
-    const maintData = await safeFetchJson(`${API_BASE}/get_maintenance.php`);
-    let historyCount = 19;
-    if (maintData && maintData.success && Array.isArray(maintData.data)) {
-      historyCount = maintData.data.length;
-    }
-
+    // คำนวณจากฐานข้อมูลใน get_dashboard_summary.php
     const summaryData = await safeFetchJson(`${API_BASE}/get_dashboard_summary.php`);
-
-    const totalCylinders = 48;
-    const inStock = historyCount; // ใช้ตัวแปรเดียวกับประวัติการตรวจทั้งหมด (19)
-    const readyToUse = Math.max(0, inStock - 4); // 19 - 4 = 15
-
-    setSummary({
-      total_cylinders: totalCylinders,
-      in_stock: inStock,
-      ready: readyToUse,
-    });
-
     if (summaryData && summaryData.success) {
-      const data = summaryData.data || summaryData;
-      if (data.items || data.maintenance_list) {
-        setNearDueCylinders(data.items || data.maintenance_list);
-      }
+      setSummary({
+        total_cylinders: summaryData.total_cylinders ?? 0,
+        in_stock: summaryData.in_stock ?? 0,
+        ready: summaryData.ready_to_use ?? 0,
+      });
     }
   };
 
