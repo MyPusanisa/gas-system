@@ -364,13 +364,17 @@ const dueCylinders = useMemo(() => {
       </h1>
 
       <div style={summaryRowStyle}>
-        <div style={summaryCardStyle}>
-          <h3>ถังที่เลยกำหนดตรวจ</h3>
-          <p style={summaryNumberStyle}>{dueCylinders.length}</p>
+        <div style={{ ...summaryCardStyle, borderLeft: "4px solid #ef4444" }}>
+          <div style={summaryLabelStyle}>ถังที่เลยกำหนดตรวจ</div>
+          <div style={{ ...summaryNumberStyle, color: dueCylinders.length > 0 ? "#f87171" : "white" }}>
+            {dueCylinders.length} <span style={summaryUnitStyle}>ถัง</span>
+          </div>
         </div>
-        <div style={summaryCardStyle}>
-          <h3>ประวัติการตรวจทั้งหมด</h3>
-          <p style={summaryNumberStyle}>{maintenances.length}</p>
+        <div style={{ ...summaryCardStyle, borderLeft: "4px solid #3b82f6" }}>
+          <div style={summaryLabelStyle}>ประวัติการตรวจทั้งหมด</div>
+          <div style={summaryNumberStyle}>
+            {maintenances.length} <span style={summaryUnitStyle}>รายการ</span>
+          </div>
         </div>
       </div>
 
@@ -381,7 +385,7 @@ const dueCylinders = useMemo(() => {
         <div style={formGridStyle}>
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
-              เลือกถังแบบเดี่ยว<br />(หรือติ๊กเลือกหลายรายการจากตารางด้านล่าง)
+              เลือกถัง <span style={hintStyle}>(หรือติ๊กหลายรายการจากตารางด้านล่าง)</span>
             </label>
             <div style={inputWithBtnStyle}>
               <select
@@ -396,7 +400,7 @@ const dueCylinders = useMemo(() => {
                 <option value="">-- เลือกถังที่เลยกำหนดตรวจ --</option>
                 {dueCylinders.map((cyl) => (
                   <option key={cyl.serial_number} value={cyl.serial_number}>
-                    {cyl.serial_number} - {cyl.brand || "LPG"} ({cyl.size}) [กำหนดตรวจ: {cyl.next_check_date}]
+                    {cyl.serial_number} · {cyl.brand || "-"} {cyl.size || ""} · กำหนดตรวจ {formatDate(cyl.next_check_date)}
                   </option>
                 ))}
               </select>
@@ -525,17 +529,21 @@ const dueCylinders = useMemo(() => {
         </button>
       </div>
 
-      <div style={{ marginBottom: "16px" }}>
+      <div style={sectionCardStyle}>
+      <div style={sectionHeaderStyle}>
+        <h2 style={sectionTitleStyle}>
+          ถังที่เลยกำหนดตรวจ <span style={countPillStyle}>{filteredDueCylinders.length}</span>
+        </h2>
         <input
           type="text"
-          placeholder="🔍 ค้นหาถังที่เลยกำหนดตรวจ..."
+          placeholder="🔍 ค้นหา Serial, ยี่ห้อ, ขนาด..."
           value={dueSearchTerm}
           onChange={(e) => setDueSearchTerm(e.target.value)}
           style={searchInputStyle}
         />
       </div>
 
-      <div style={{ overflowX: "auto", marginBottom: "32px" }}>
+      <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -552,15 +560,18 @@ const dueCylinders = useMemo(() => {
               <th style={thStyle}>Serial Number</th>
               <th style={thStyle}>ยี่ห้อ</th>
               <th style={thStyle}>ขนาด</th>
-              <th style={thStyle}>วันตรวจครั้งถัดไป</th>
-              <th style={thStyle}>สถานะกำหนด</th>
-              <th style={thStyle}>สถานะปัจจุบัน</th>
+              <th style={thStyle}>กำหนดตรวจ</th>
+              <th style={thStyle}>เลยกำหนด</th>
+              <th style={thStyle}>สถานะถัง</th>
             </tr>
           </thead>
           <tbody>
             {filteredDueCylinders.length > 0 ? (
               filteredDueCylinders.map((item) => (
-                <tr key={item.serial_number}>
+                <tr
+                  key={item.serial_number}
+                  style={selectedSerialNumbers.includes(item.serial_number) ? selectedRowStyle : undefined}
+                >
                   <td style={tdStyle}>
                     <input
                       type="checkbox"
@@ -571,29 +582,30 @@ const dueCylinders = useMemo(() => {
                   <td style={tdStyle}><strong>{item.serial_number}</strong></td>
                   <td style={tdStyle}>{item.brand || "-"}</td>
                   <td style={tdStyle}>{item.size || "-"}</td>
-                  <td style={tdStyle}>{item.next_check_date || "-"}</td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      ...badgeStyle,
-                      ...(getDueStatus(item.next_check_date) === "เลยกำหนด" ? overdueStyle :
-                         getDueStatus(item.next_check_date) === "ถึงกำหนดวันนี้" ? dueTodayStyle : normalStyle),
-                    }}>
-                      {getDueStatus(item.next_check_date)}
+                  <td style={tdNowrapStyle}>{formatDate(item.next_check_date)}</td>
+                  <td style={tdNowrapStyle}>
+                    <span style={{ ...badgeStyle, ...overdueStyle }}>
+                      {item.days_left != null ? `เลย ${Math.abs(item.days_left)} วัน` : getDueStatus(item.next_check_date)}
                     </span>
                   </td>
-                  <td style={tdStyle}>{item.status || "-"}</td>
+                  <td style={tdNowrapStyle}>{item.status || "-"}</td>
                 </tr>
               ))
             ) : (
-              <tr><td style={tdStyle} colSpan="7" align="center">ไม่พบข้อมูลที่ค้นหาในถังที่เลยกำหนดตรวจ</td></tr>
+              <tr><td style={emptyCellStyle} colSpan="7">
+                {dueSearchTerm ? "ไม่พบถังที่ค้นหา" : "✅ ไม่มีถังที่เลยกำหนดตรวจ"}
+              </td></tr>
             )}
           </tbody>
         </table>
       </div>
+      </div>
 
-      <h2 style={{ color: "white", marginBottom: "16px" }}>ประวัติการตรวจล่าสุด</h2>
-      
-      <div style={{ marginBottom: "16px" }}>
+      <div style={sectionCardStyle}>
+      <div style={sectionHeaderStyle}>
+        <h2 style={sectionTitleStyle}>
+          ประวัติการตรวจล่าสุด <span style={countPillStyle}>{filteredMaintenances.length}</span>
+        </h2>
         <input
           type="text"
           placeholder="🔍 ค้นหาประวัติการตรวจ..."
@@ -607,41 +619,46 @@ const dueCylinders = useMemo(() => {
         <table style={tableStyle}>
           <thead>
             <tr>
-              <th style={thStyle}>ID</th>
-              <th style={thStyle}>Serial Number</th>
               <th style={thStyle}>วันที่ตรวจ</th>
+              <th style={thStyle}>Serial Number</th>
               <th style={thStyle}>ประเภท</th>
               <th style={thStyle}>ผลตรวจ</th>
               <th style={thStyle}>สิ่งที่ต้องทำต่อ</th>
-              <th style={thStyle}>วันตรวจครั้งถัดไป</th>
-              <th style={thStyle}>รายละเอียด/หมายเหตุ</th>
-              <th style={thStyle}>จัดการ</th>
+              <th style={thStyle}>ตรวจครั้งถัดไป</th>
+              <th style={thStyle}>หมายเหตุ</th>
+              <th style={thStyle}></th>
             </tr>
           </thead>
           <tbody>
             {filteredMaintenances.length > 0 ? (
               filteredMaintenances.map((item, index) => (
                 <tr key={item.maintenance_id ? `${item.maintenance_id}-${index}` : index}>
-                  <td style={tdStyle}>{item.maintenance_id}</td>
-                  <td style={tdStyle}><strong>{item.serial_number || item.cylinder_id || "-"}</strong></td>
-                  <td style={tdStyle}>{item.maintenance_date || "-"}</td>
-                  <td style={tdStyle}>{item.maintenance_type || "-"}</td>
-                  <td style={tdStyle}>{item.result || "-"}</td>
-                  <td style={tdStyle}><span style={actionBadgeStyle}>{item.next_action || "-"}</span></td>
-                  <td style={tdStyle}>{calculateNextCheckDate(item)}</td>
-                  <td style={tdStyle}>{item.description || "-"}</td>
-                  <td style={tdStyle}>
+                  <td style={tdNowrapStyle}>{formatDate(item.maintenance_date)}</td>
+                  <td style={tdNowrapStyle}><strong>{item.serial_number || item.cylinder_id || "-"}</strong></td>
+                  <td style={tdNowrapStyle}>{item.maintenance_type || "-"}</td>
+                  <td style={tdNowrapStyle}>
+                    {item.result ? <span style={{ ...badgeStyle, ...resultBadgeStyle(item.result) }}>{item.result}</span> : "-"}
+                  </td>
+                  <td style={tdNowrapStyle}>
+                    {item.next_action ? <span style={actionBadgeStyle}>{item.next_action}</span> : "-"}
+                  </td>
+                  <td style={tdNowrapStyle}>{formatDate(calculateNextCheckDate(item))}</td>
+                  <td style={{ ...tdStyle, color: "#9ca3af", minWidth: "180px" }}>{item.description || "-"}</td>
+                  <td style={tdNowrapStyle}>
                     <button onClick={() => handleEditClick(item)} style={editButtonStyle}>
-                      แก้ไข
+                      ✏️ แก้ไข
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
-              <tr><td style={tdStyle} colSpan="9" align="center">ไม่พบข้อมูลที่ค้นหาในประวัติการตรวจ</td></tr>
+              <tr><td style={emptyCellStyle} colSpan="8">
+                {historySearchTerm ? "ไม่พบประวัติที่ค้นหา" : "ยังไม่มีประวัติการตรวจ"}
+              </td></tr>
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
       {activeModal && (
@@ -750,10 +767,33 @@ const dueCylinders = useMemo(() => {
   );
 }
 
+// "2026-08-01" -> "01/08/2026"
+const formatDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== "string") return "-";
+  const [y, m, d] = dateStr.slice(0, 10).split("-");
+  return y && m && d ? `${d}/${m}/${y}` : dateStr;
+};
+
+const resultBadgeStyle = (result) => {
+  if (result === "ผ่าน") return { background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid #10b981" };
+  if (result === "ไม่ผ่าน") return { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid #ef4444" };
+  return { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid #f59e0b" };
+};
+
 // --- Styles Objects ---
 const summaryRowStyle = { display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "20px" };
-const summaryCardStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "12px", minWidth: "220px", flex: "1" };
-const summaryNumberStyle = { fontSize: "28px", fontWeight: "bold", marginTop: "10px" };
+const summaryCardStyle = { background: "#1f2937", color: "white", padding: "18px 20px", borderRadius: "12px", minWidth: "220px", flex: "1" };
+const summaryLabelStyle = { fontSize: "14px", color: "#9ca3af", fontWeight: "bold" };
+const summaryNumberStyle = { fontSize: "32px", fontWeight: "bold", marginTop: "8px" };
+const summaryUnitStyle = { fontSize: "14px", color: "#9ca3af", fontWeight: "normal" };
+const hintStyle = { fontWeight: "normal", color: "#9ca3af", fontSize: "12px" };
+
+const sectionCardStyle = { background: "#111827", padding: "20px", borderRadius: "12px", marginBottom: "24px" };
+const sectionHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" };
+const sectionTitleStyle = { margin: 0, color: "white", fontSize: "20px", display: "flex", alignItems: "center", gap: "10px" };
+const countPillStyle = { background: "#374151", color: "#e5e7eb", fontSize: "13px", padding: "2px 10px", borderRadius: "999px" };
+const selectedRowStyle = { background: "rgba(37,99,235,0.15)" };
+const emptyCellStyle = { padding: "28px", textAlign: "center", color: "#9ca3af", fontSize: "14px" };
 const formCardStyle = { background: "#111827", padding: "20px", borderRadius: "12px", marginBottom: "20px" };
 
 const formGridStyle = { 
@@ -817,21 +857,20 @@ const spacerStyle = {
 };
 
 const textAreaStyle = { minHeight: "80px", padding: "10px", borderRadius: "8px", border: "1px solid #4b5563", width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", backgroundColor: "#1f2937", color: "#fff" };
-const searchInputStyle = { height: "42px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", background: "#111827", color: "white", width: "100%", boxSizing: "border-box" };
+const searchInputStyle = { height: "40px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", background: "#1f2937", color: "white", width: "100%", maxWidth: "320px", boxSizing: "border-box" };
 
-const tableStyle = { width: "100%", borderCollapse: "collapse", background: "#1f2937", color: "white", borderRadius: "12px", overflow: "hidden" };
-const thStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", whiteSpace: "nowrap" };
-const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px" };
+const tableStyle = { width: "100%", borderCollapse: "collapse", background: "#1f2937", color: "white", borderRadius: "10px", overflow: "hidden" };
+const thStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", whiteSpace: "nowrap", background: "#273244", color: "#cbd5e1" };
+const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", verticalAlign: "middle" };
+const tdNowrapStyle = { ...tdStyle, whiteSpace: "nowrap" };
 
 const primaryButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
 const cancelButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
 const editButtonStyle = { padding: "6px 10px", border: "none", borderRadius: "6px", background: "#f59e0b", color: "white", cursor: "pointer" };
 
-const badgeStyle = { padding: "4px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: "bold" };
+const badgeStyle = { padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "bold", whiteSpace: "nowrap", display: "inline-block" };
 const overdueStyle = { background: "#ef4444", color: "white" };
-const dueTodayStyle = { background: "#f59e0b", color: "black" };
-const normalStyle = { background: "#10b981", color: "white" };
-const actionBadgeStyle = { background: "#3b82f6", color: "white", padding: "3px 8px", borderRadius: "4px", fontSize: "12px" };
+const actionBadgeStyle = { background: "rgba(59,130,246,0.15)", color: "#93c5fd", border: "1px solid #3b82f6", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", whiteSpace: "nowrap", display: "inline-block" };
 
 const modalOverlayStyle = { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0, 0, 0, 0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 };
 const modalStyle = { background: "#1f2937", color: "white", padding: "24px", borderRadius: "12px", width: "90%", maxWidth: "500px" };
