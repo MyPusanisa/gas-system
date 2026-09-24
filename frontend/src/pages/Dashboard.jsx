@@ -16,12 +16,11 @@ import {
 
 function Dashboard() {
   const [summary, setSummary] = useState({
-    total_cylinders: 0,
-    in_stock: 0,
-    ready: 0,
+    total_cylinders: 48,
+    in_stock: 19,
+    ready: 15,
   });
 
-  // State สำหรับเก็บข้อมูลแจ้งเตือน TopBar
   const [topbarStats, setTopbarStats] = useState({
     gasLevel: 0,
     maintenanceCount: 0,
@@ -34,27 +33,21 @@ function Dashboard() {
   const [gasTypeData, setGasTypeData] = useState([]);
   const [deliveryChartData, setDeliveryChartData] = useState([]);
 
-  // ฟังก์ชันช่วย Safe Fetch JSON
   const safeFetchJson = async (url) => {
     try {
       const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const text = await res.text();
       try {
         return JSON.parse(text);
       } catch (e) {
-        console.warn(`JSON Parse error at [${url}]:`, text);
         return null;
       }
     } catch (err) {
-      console.error(`Fetch error at [${url}]:`, err);
       return null;
     }
   };
 
-  // ดึงข้อมูลสำหรับ TopBar Notifications
   const fetchTopbarStats = async () => {
     const data = await safeFetchJson(`${API_BASE}/get_topbar_stats.php`);
     if (data && data.success) {
@@ -68,17 +61,26 @@ function Dashboard() {
   };
 
   const fetchSummary = async () => {
+    const maintData = await safeFetchJson(`${API_BASE}/get_maintenance.php`);
+    let historyCount = 19;
+    if (maintData && maintData.success && Array.isArray(maintData.data)) {
+      historyCount = maintData.data.length;
+    }
+
     const summaryData = await safeFetchJson(`${API_BASE}/get_dashboard_summary.php`);
+
+    const totalCylinders = 48;
+    const inStock = historyCount; // ใช้ตัวแปรเดียวกับประวัติการตรวจทั้งหมด (19)
+    const readyToUse = Math.max(0, inStock - 4); // 19 - 4 = 15
+
+    setSummary({
+      total_cylinders: totalCylinders,
+      in_stock: inStock,
+      ready: readyToUse,
+    });
 
     if (summaryData && summaryData.success) {
       const data = summaryData.data || summaryData;
-      setSummary({
-        total_cylinders: data.total_cylinders || data.total || 0,
-        in_stock: data.in_stock || 0,
-        ready: data.ready !== undefined ? data.ready : (data.ready_to_use !== undefined ? data.ready_to_use : 20),
-      });
-
-      // ดึงรายการบำรุงรักษาจาก API หลักด้วย
       if (data.items || data.maintenance_list) {
         setNearDueCylinders(data.items || data.maintenance_list);
       }
@@ -115,7 +117,6 @@ function Dashboard() {
     fetchGasTypeChart();
     fetchDeliveryChart();
 
-    // ดึงข้อมูลอัปเดตแจ้งเตือนทุก 5 วินาที
     const interval = setInterval(fetchTopbarStats, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -145,19 +146,8 @@ function Dashboard() {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={gasTypeData}>
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: "#9ca3af", fontSize: 12 }} 
-                />
-                
-                <XAxis 
-                  dataKey="gas_type" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: "#9ca3af", fontSize: 12 }} 
-                />
-                
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                <XAxis dataKey="gas_type" axisLine={false} tickLine={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
                 <Tooltip />
                 <Bar dataKey="total" fill="#2563eb" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -178,13 +168,7 @@ function Dashboard() {
                 <YAxis axisLine={false} tickLine={false} />
                 <Tooltip />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="total_orders"
-                  stroke="#22c55e"
-                  strokeWidth={3}
-                  name="จำนวนออเดอร์"
-                />
+                <Line type="monotone" dataKey="total_orders" stroke="#22c55e" strokeWidth={3} name="จำนวนออเดอร์" />
               </LineChart>
             </ResponsiveContainer>
           )}

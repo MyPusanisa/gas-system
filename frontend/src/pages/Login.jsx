@@ -1,206 +1,229 @@
-import React, { useState } from 'react';
-import { API_BASE_URL } from '../config';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchAPI } from "../services/api";
 
-const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+function Login() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
+
+    if (!username.trim() || !password) {
+      setError("กรุณากรอก Username และ Password ให้ครบถ้วน");
+      return;
+    }
+
+    setError("");
     setLoading(true);
 
     try {
-      const response = await fetch('/Backend/models/login.php', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ username, password })
-});
+      const data = await fetchAPI("/login.php", {
+        method: "POST",
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password,
+        }),
+      });
 
-      const result = await response.json();
+      if (data && data.success) {
+        const role = String(data.role || "").trim().toLowerCase();
 
-      if (result && result.success) {
-        const displayName = result.name || result.staff_name || result.username;
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("role", role);
+        localStorage.setItem("name", data.name || "");
+        localStorage.setItem("username", data.username || username.trim());
+        localStorage.setItem("admin_id", data.admin_id || "");
+        localStorage.setItem("staff_id", data.staff_id || "");
 
-        const userData = {
-          ...result,
-          name: displayName,
-          staff_name: displayName
-        };
-
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('userName', displayName);
-        localStorage.setItem('name', displayName);
-        localStorage.setItem('role', result.role);
-        localStorage.setItem('isLoggedIn', 'true');
-        
-        if (result.role === 'admin') {
-          window.location.href = '/staff';
+        if (role === "admin") {
+          navigate("/dashboard");
+        } else if (role === "staff") {
+          navigate("/delivery");
         } else {
-          window.location.href = '/delivery';
+          setError("ไม่พบสิทธิ์การใช้งานของคุณในระบบ");
+          localStorage.clear();
         }
       } else {
-        setErrorMessage(result.message || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
+        setError(data?.message || "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
       }
-    } catch (error) {
-      console.error('Login Error:', error);
-      setErrorMessage('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+    } catch (err) {
+      setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <div style={styles.icon}>🔥</div>
-          <h2 style={styles.title}>Gas Management System</h2>
-          <p style={styles.subtitle}>เข้าสู่ระบบเพื่อจัดการคลังและระบบจัดส่งแก๊ส</p>
+    <div style={containerStyle}>
+      <div style={cardStyle}>
+        {/* โลโก้แก๊ส */}
+        <div style={logoWrapperStyle}>
+          <div style={logoCircleStyle}>
+            <span style={{ fontSize: "28px" }}>🔥</span>
+          </div>
         </div>
 
-        {errorMessage && (
-          <div style={styles.errorBanner}>
-            ⚠️ {errorMessage}
-          </div>
-        )}
+        <h2 style={titleStyle}>Gas Management System</h2>
+        <p style={subtitleStyle}>เข้าสู่ระบบเพื่อจัดการคลังและระบบจัดส่งแก๊ส</p>
 
-        <form onSubmit={handleLogin} style={styles.form}>
-          <div style={styles.formGroup}>
-            <label htmlFor="username" style={styles.label}>ชื่อผู้ใช้งาน (Username)</label>
+        <form onSubmit={handleLogin}>
+          {/* ช่อง Username */}
+          <div style={inputGroupStyle}>
+            <label style={labelStyle}>ชื่อผู้ใช้งาน (Username)</label>
             <input
-              id="username"
               type="text"
+              placeholder="กรอกชื่อผู้ใช้ เช่น somchai หรือ admin"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="ระบุ Username"
-              required
-              style={styles.input}
+              style={inputStyle}
+              disabled={loading}
             />
           </div>
 
-          <div style={styles.formGroup}>
-            <label htmlFor="password" style={styles.label}>รหัสผ่าน (Password)</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="ระบุ Password"
-              required
-              style={styles.input}
-            />
+          {/* ช่อง Password + ปุ่มซ่อน/แสดงรหัสผ่าน */}
+          <div style={inputGroupStyle}>
+            <label style={labelStyle}>รหัสผ่าน (Password)</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="กรอกรหัสผ่าน"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ ...inputStyle, paddingRight: "40px" }}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={togglePasswordStyle}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+          {/* ข้อความแจ้งเตือน Error */}
+          {error && <div style={errorStyle}>⚠️ {error}</div>}
+
+          {/* ปุ่ม Login */}
+          <button type="submit" style={buttonStyle} disabled={loading}>
+            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </button>
         </form>
       </div>
     </div>
   );
+}
+
+const containerStyle = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: "100vh",
+  backgroundColor: "#f1f5f9",
+  fontFamily: "'Kanit', 'Prompt', sans-serif",
 };
 
-const styles = {
-  wrapper: {
-    minHeight: '100vh',
-    width: '100vw',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-    margin: 0,
-    padding: '1rem',
-    boxSizing: 'border-box',
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    fontFamily: 'sans-serif'
-  },
-  card: {
-    background: '#ffffff',
-    width: '100%',
-    maxWidth: '400px',
-    borderRadius: '16px',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-    padding: '2.5rem 2rem',
-    boxSizing: 'border-box'
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '1.5rem'
-  },
-  icon: {
-    fontSize: '2.5rem',
-    background: '#ffedd5',
-    width: '64px',
-    height: '64px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 1rem auto'
-  },
-  title: {
-    color: '#0f172a',
-    fontSize: '1.4rem',
-    fontWeight: '600',
-    margin: '0 0 0.5rem 0'
-  },
-  subtitle: {
-    color: '#64748b',
-    fontSize: '0.875rem',
-    margin: 0
-  },
-  errorBanner: {
-    backgroundColor: '#fef2f2',
-    borderLeft: '4px solid #ef4444',
-    color: '#991b1b',
-    padding: '0.75rem 1rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    marginBottom: '1.25rem'
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.25rem'
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.4rem',
-    textAlign: 'left'
-  },
-  label: {
-    color: '#334155',
-    fontSize: '0.875rem',
-    fontWeight: '500'
-  },
-  input: {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: '8px',
-    fontSize: '1rem',
-    outline: 'none',
-    boxSizing: 'border-box',
-    backgroundColor: '#f8fafc'
-  },
-  button: {
-    width: '100%',
-    padding: '0.875rem',
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '1rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    marginTop: '0.5rem'
-  }
+const cardStyle = {
+  width: "100%",
+  maxWidth: "420px",
+  padding: "36px 32px",
+  backgroundColor: "#ffffff",
+  borderRadius: "16px",
+  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)",
+  textAlign: "center",
+};
+
+const logoWrapperStyle = {
+  display: "flex",
+  justifyContent: "center",
+  marginBottom: "16px",
+};
+
+const logoCircleStyle = {
+  width: "60px",
+  height: "60px",
+  borderRadius: "50%",
+  backgroundColor: "#ffedd5",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const titleStyle = {
+  fontSize: "22px",
+  fontWeight: "700",
+  color: "#1e293b",
+  marginBottom: "6px",
+};
+
+const subtitleStyle = {
+  fontSize: "14px",
+  color: "#64748b",
+  marginBottom: "24px",
+};
+
+const inputGroupStyle = {
+  marginBottom: "18px",
+  textAlign: "left",
+};
+
+const labelStyle = {
+  display: "block",
+  fontSize: "13px",
+  fontWeight: "600",
+  color: "#475569",
+  marginBottom: "6px",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: "8px",
+  border: "1px solid #cbd5e1",
+  fontSize: "14px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const togglePasswordStyle = {
+  position: "absolute",
+  right: "10px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  fontSize: "16px",
+};
+
+const buttonStyle = {
+  width: "100%",
+  padding: "12px",
+  backgroundColor: "#2563eb",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: "8px",
+  fontSize: "15px",
+  fontWeight: "600",
+  cursor: "pointer",
+  marginTop: "10px",
+};
+
+const errorStyle = {
+  marginBottom: "16px",
+  padding: "10px 14px",
+  borderRadius: "8px",
+  backgroundColor: "#fef2f2",
+  color: "#991b1b",
+  fontSize: "13px",
+  textAlign: "left",
+  border: "1px solid #fecaca",
 };
 
 export default Login;
