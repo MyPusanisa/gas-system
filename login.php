@@ -15,11 +15,6 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit;
 }
 
-/*
-|--------------------------------------------------------------------------
-| ตั้งค่าฐานข้อมูล
-|--------------------------------------------------------------------------
-*/
 $dbHost = "localhost";
 $dbName = "gas_system";
 $dbUser = "root";
@@ -42,11 +37,6 @@ try {
     exit;
 }
 
-/*
-|--------------------------------------------------------------------------
-| รับข้อมูล JSON
-|--------------------------------------------------------------------------
-*/
 $rawInput = file_get_contents("php://input");
 $input = json_decode($rawInput, true);
 
@@ -59,8 +49,7 @@ if ($username === "" || $password === "") {
     exit;
 }
 
-function passwordMatches($plainPassword, $storedPassword)
-{
+function passwordMatches($plainPassword, $storedPassword) {
     if (password_verify($plainPassword, $storedPassword)) return true;
     if ($plainPassword === $storedPassword) return true;
     if (md5($plainPassword) === $storedPassword) return true;
@@ -68,7 +57,7 @@ function passwordMatches($plainPassword, $storedPassword)
 }
 
 try {
-    // 1. ตรวจสอบจากตาราง delivery_staff (สำหรับ พนักงานส่งแก๊ส)
+    // 1. ตรวจสอบพนักงานส่งแก๊ส (delivery_staff)
     $staffSql = "SELECT * FROM delivery_staff WHERE username = :username LIMIT 1";
     $staffStmt = $pdo->prepare($staffSql);
     $staffStmt->execute([":username" => $username]);
@@ -87,7 +76,7 @@ try {
         exit;
     }
 
-    // 2. ตรวจสอบจากตาราง admin (สำหรับ ผู้ดูแลระบบ)
+    // 2. ตรวจสอบผู้ดูแลระบบ (admin)
     $adminSql = "SELECT * FROM admin WHERE username = :username LIMIT 1";
     $adminStmt = $pdo->prepare($adminSql);
     $adminStmt->execute([":username" => $username]);
@@ -106,7 +95,6 @@ try {
         exit;
     }
 
-    // Login ไม่สำเร็จ
     http_response_code(401);
     echo json_encode(["success" => false, "message" => "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"], JSON_UNESCAPED_UNICODE);
 
