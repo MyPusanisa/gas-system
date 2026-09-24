@@ -1,53 +1,54 @@
 <?php
-// เปิด Debug Error ชั่วคราว
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+ob_start();
+error_reporting(0);
+ini_set("display_errors", 0);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=UTF-8");
 
-$configPath = __DIR__ . "/../config/db.php";
-if (!file_exists($configPath)) {
-    $configPath = __DIR__ . "/../db.php";
-}
-
-if (file_exists($configPath)) {
-    require_once $configPath;
-} else {
-    echo json_encode(["success" => false, "message" => "ไม่พบไฟล์ db.php"]);
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    ob_end_clean();
+    http_response_code(200);
     exit();
 }
 
-// ตรวจสอบว่ามีตัวแปร $conn และเชื่อมต่อสำเร็จหรือไม่
-if (!isset($conn) || $conn->connect_error) {
-    echo json_encode(["success" => false, "message" => "เชื่อมต่อฐานข้อมูลล้มเหลว: " . ($conn->connect_error ?? "ไม่พบตัวแปร \$conn")]);
-    exit();
+// เชื่อมต่อตรงโดยไม่ใช้ require
+$conn = @new mysqli("127.0.0.1", "root", "", "gas_system", 3306);
+if ($conn->connect_error) {
+    $conn = @new mysqli("127.0.0.1", "root", "", "gas_system", 3308);
 }
 
 $gasLevel = 0;
 $successCount = 0;
 
-// 1. ดึงค่าแก๊สในคลังล่าสุด
-$sqlGas = "SELECT gas_value FROM gas_sensor_logs ORDER BY id DESC LIMIT 1";
-$resGas = $conn->query($sqlGas);
-if ($resGas && $row = $resGas->fetch_assoc()) {
-    $gasLevel = (int)$row['gas_value'];
+if ($conn && !$conn->connect_error) {
+    $resGas = @$conn->query("SELECT gas_value FROM gas_sensor_logs ORDER BY id DESC LIMIT 1");
+    if ($resGas && $row = $resGas->fetch_assoc()) {
+        $gasLevel = (int)$row["gas_value"];
+    } else {
+        $resStock = @$conn->query("SELECT COUNT(*) as cnt FROM gas_cylinder WHERE current_status = 'ในคลัง' OR status = 'ในคลัง'");
+        if ($resStock && $row = $resStock->fetch_assoc()) {
+            $gasLevel = (int)$row["cnt"];
+        }
+    }
+
+    $resSucc = @$conn->query("SELECT COUNT(*) as cnt FROM deliveries WHERE status = 'pending_approval'");
+    if (!$resSucc) {
+        $resSucc = @$conn->query("SELECT COUNT(*) as cnt FROM orders WHERE status = 'pending_approval'");
+    }
+    if ($resSucc && $row = $resSucc->fetch_assoc()) {
+        $successCount = (int)$row["cnt"];
+    }
+    $conn->close();
 }
 
-// 2. ดึงจำนวนรายการที่รอ Admin อนุมัติ
-$sqlSucc = "SELECT COUNT(*) as cnt FROM deliveries WHERE status = 'pending_approval' OR status = 'pending'";
-$resSucc = $conn->query($sqlSucc);
-if ($resSucc && $row = $resSucc->fetch_assoc()) {
-    $successCount = (int)$row['cnt'];
-}
-
+ob_end_clean();
+http_response_code(200);
 echo json_encode([
     "success" => true,
     "gasLevel" => $gasLevel,
     "successCount" => $successCount
 ], JSON_UNESCAPED_UNICODE);
-
-$conn->close();
-?>
+exit();

@@ -63,7 +63,8 @@ try {
     if ($action === 'complete_by_staff') {
         $proof_image_path = $data['proof_image_path'] ?? '';
 
-        $stmt = $pdo->prepare("UPDATE deliveries SET status = 'pending_approval', proof_image_path = :proof WHERE delivery_id = :id");
+        // ไม่ทับชื่อรูปด้วยค่าว่าง (upload_proof.php บันทึกชื่อรูปไว้แล้ว)
+        $stmt = $pdo->prepare("UPDATE deliveries SET status = 'pending_approval', proof_image_path = COALESCE(NULLIF(:proof, ''), proof_image_path) WHERE delivery_id = :id");
         $stmt->execute([':proof' => $proof_image_path, ':id' => $delivery_id]);
 
         echo json_encode(["success" => true, "message" => "อัปเดตสถานะรออนุมัติสำเร็จ"]);

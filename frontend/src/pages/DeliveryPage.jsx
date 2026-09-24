@@ -598,7 +598,8 @@ function DeliveryPage() {
       const data = await res.json();
 
       if (data.success) {
-        const uploadedPath = data.filePath || data.filename || data.path || "";
+        // upload_proof.php ส่งชื่อไฟล์กลับมาใน "file"
+        const uploadedPath = data.file || data.filePath || data.filename || data.path || "";
 
         const completeRes = await apiFetch(`${API_BASE_URL}/delivery/update.php`, {
           method: "PUT",

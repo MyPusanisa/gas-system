@@ -31,7 +31,8 @@ try {
                    COALESCE(s.staff_name, CONCAT('พนักงาน ID: ', d.staff_id)) as staff_name 
             FROM deliveries d 
             LEFT JOIN delivery_staff s ON d.staff_id = s.staff_id 
-            WHERE d.status = 'pending_approval' OR d.status = 'pending'
+            -- เฉพาะงานที่พนักงานส่งรูปแล้ว (งาน pending ยังไม่ได้ออกส่ง ไม่ควรกดอนุมัติได้)
+            WHERE d.status = 'pending_approval'
             ORDER BY d.delivery_id DESC";
 
     $result = $conn->query($sql);
