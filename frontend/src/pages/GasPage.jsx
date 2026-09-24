@@ -61,7 +61,7 @@ function GasPage() {
     const cleanId = String(cylinderIdentifier || "").trim();
 
     if (cleanId && cleanId !== "0" && cleanId !== "undefined" && cleanId !== "null") {
-      return `http://${window.location.hostname}:5173/cylinder/${encodeURIComponent(cleanId)}`;
+      return `http://${window.location.hostname}/cylinder/${encodeURIComponent(cleanId)}`;
     }
 
     return "#";

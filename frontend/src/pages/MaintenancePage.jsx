@@ -125,14 +125,10 @@ function MaintenancePage({
     fetchMaintenances();
   }, []);
 
-  const dueCylinders = useMemo(() => {
-    if (!Array.isArray(allCylinders)) return [];
-    return allCylinders.filter((item) => {
-      if (!item || !item.next_check_date) return false;
-      const dueDate = parseLocalDate(item.next_check_date);
-      return dueDate && dueDate <= todayDate;
-    });
-  }, [allCylinders, todayDate]);
+const dueCylinders = useMemo(() => {
+  if (!Array.isArray(allCylinders)) return [];
+  return allCylinders;
+}, [allCylinders]);
 
   const getDueStatus = (nextCheckDateStr) => {
     if (!nextCheckDateStr) return "ไม่มีกำหนด";
