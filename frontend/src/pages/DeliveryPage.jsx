@@ -315,8 +315,9 @@ function DeliveryPage() {
           });
 
           if (res && res.success) {
-            alert(`บันทึกพิกัด GPS สำเร็จ: ${mapPinString}`);
-            await loadData();
+            // แสดงผลในการ์ด (กล่อง "ปักหมุดที่จัดส่งแล้ว") ทันที ไม่ต้องรอโหลดใหม่
+            setDeliveries((prev) => prev.map((d) => (d.phone === item.phone ? { ...d, mapPin: mapPinString } : d)));
+            await loadData(true);
           } else {
             alert(res.message || "บันทึกพิกัด GPS ไม่สำเร็จ");
           }
@@ -1160,16 +1161,31 @@ function DeliveryPage() {
                         return (
                           <>
                             {resultBox}
-                            {hasPin || hasAddress ? (
-                              mapsLink
+                            {/* ปักหมุดตำแหน่งจัดส่ง (พิกัด GPS ปัจจุบันของพนักงาน ณ จุดส่ง) */}
+                            {hasPin ? (
+                              <div style={styles.pinnedBox}>
+                                <MapPin size={16} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600 }}>ปักหมุดที่จัดส่งแล้ว</div>
+                                  <div style={{ fontSize: "12px", color: "#6ee7b7", wordBreak: "break-all" }}>{item.mapPin}</div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveCurrentLocation(item)}
+                                  disabled={gettingLocationId === item.id}
+                                  style={styles.repinBtn}
+                                >
+                                  {gettingLocationId === item.id ? "กำลังปัก..." : "ปักใหม่"}
+                                </button>
+                              </div>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => handleSaveCurrentLocation(item)}
                                 disabled={gettingLocationId === item.id}
-                                style={styles.gpsPinBtn}
+                                style={styles.pinBtn}
                               >
-                                <LocateFixed size={15} /> {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งปัจจุบัน"}
+                                <LocateFixed size={17} /> {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งจัดส่ง"}
                               </button>
                             )}
                             <label style={{ ...styles.cameraBtn, ...(uploadingId === item.id ? { opacity: 0.6, pointerEvents: "none" } : {}) }}>
@@ -1622,6 +1638,44 @@ const styles = {
     border: "none",
     borderRadius: "8px",
     fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  pinBtn: {
+    width: "100%",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    minHeight: "46px",
+    padding: "10px",
+    background: "#2563eb",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  pinnedBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    fontSize: "13px",
+    background: "rgba(16,185,129,0.12)",
+    border: "1px solid #10b981",
+    color: "#a7f3d0",
+  },
+  repinBtn: {
+    flexShrink: 0,
+    padding: "6px 12px",
+    background: "transparent",
+    color: "#6ee7b7",
+    border: "1px solid #10b981",
+    borderRadius: "6px",
+    fontSize: "12px",
     fontWeight: "600",
     cursor: "pointer",
   },
