@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Layout from "../components/Layout";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { Plus, Search, Pencil, Truck, Clock, Trash2, User, Phone, MapPin, LocateFixed, ScanLine, Check, Camera, PackagePlus, CircleCheck, TriangleAlert } from "lucide-react";
 import API_BASE_URL from "../config";
 
@@ -50,6 +50,7 @@ function DeliveryPage() {
   const [pendingScan, setPendingScan] = useState(null); // { jobId, serial } จากการสแกนล่าสุด
   const [scanResults, setScanResults] = useState({}); // { [jobId]: { ok, serial, text } }
   const [uploadingId, setUploadingId] = useState(null);
+  const [cameraError, setCameraError] = useState("");
 
   const [showCylinderModal, setShowCylinderModal] = useState(false);
   const [pendingApproveId, setPendingApproveId] = useState(null);
@@ -221,45 +222,71 @@ function DeliveryPage() {
     return () => clearInterval(interval);
   }, [loadData]);
 
-  useEffect(() => {
-    let scanner = null;
-    if (scanningJobId) {
-      scanner = new Html5QrcodeScanner(
-        "qr-reader-container",
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        false
-      );
-
-      scanner.render(
-        (decodedText) => {
-          let extractedSerial = decodedText.split("/").pop().trim();
-
-          try {
-            const parsed = JSON.parse(extractedSerial);
-            if (parsed && parsed.serial_number) {
-              extractedSerial = String(parsed.serial_number).trim();
-            }
-          } catch (e) {}
-
-          setConfirmCylinderInputs((prev) => ({
-            ...prev,
-            [scanningJobId]: extractedSerial,
-          }));
-          setPendingScan({ jobId: scanningJobId, serial: extractedSerial });
-
-          scanner.clear().catch((err) => console.error(err));
-          setScanningJobId(null);
-        },
-        () => {}
-      );
+  // QR ถังเป็น URL ".../cylinder/<serial>" หรือ JSON { serial_number }
+  const extractSerial = (decodedText) => {
+    let serial = decodeURIComponent(String(decodedText).split("/").pop().trim());
+    try {
+      const parsed = JSON.parse(serial);
+      if (parsed && parsed.serial_number) serial = String(parsed.serial_number).trim();
+    } catch {
+      /* ไม่ใช่ JSON */
     }
+    return serial;
+  };
+
+  const handleDecoded = (jobId, decodedText) => {
+    const serial = extractSerial(decodedText);
+    setConfirmCylinderInputs((prev) => ({ ...prev, [jobId]: serial }));
+    setPendingScan({ jobId, serial });
+    setScanningJobId(null);
+  };
+
+  // เปิดกล้องหลังทันทีที่กดสแกน (ไม่ต้องผ่านหน้าจอขออนุญาตของไลบรารี)
+  useEffect(() => {
+    if (!scanningJobId) return;
+    const jobId = scanningJobId;
+    const qr = new Html5Qrcode("qr-reader-container");
+    let done = false;
+    setCameraError("");
+
+    qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.7); return { width: s, height: s }; } },
+      (decodedText) => {
+        if (done) return;
+        done = true;
+        handleDecoded(jobId, decodedText);
+      },
+      () => {}
+    ).catch((err) => {
+      console.error("Camera start error:", err);
+      setCameraError("เปิดกล้องไม่ได้ — อนุญาตการใช้กล้องในเบราว์เซอร์ หรือกด \"ถ่ายรูป QR\" แทน");
+    });
 
     return () => {
-      if (scanner) {
-        scanner.clear().catch((err) => console.error(err));
+      done = true;
+      if (qr.isScanning) {
+        qr.stop().then(() => qr.clear()).catch(() => {});
+      } else {
+        try { qr.clear(); } catch { /* ยังไม่เริ่ม */ }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanningJobId]);
+
+  // สำรอง: ถ่ายรูป QR ด้วยกล้องของเครื่องแล้วอ่านจากรูป
+  const scanFromPhoto = async (jobId, file) => {
+    if (!file) return;
+    const reader = new Html5Qrcode("qr-file-reader");
+    try {
+      const text = await reader.scanFile(file, false);
+      handleDecoded(jobId, text);
+    } catch {
+      setScanResults((prev) => ({ ...prev, [jobId]: { ok: false, text: "อ่าน QR จากรูปไม่ได้ ถ่ายให้ชัดและใกล้ขึ้นแล้วลองใหม่" } }));
+    } finally {
+      try { reader.clear(); } catch { /* ignore */ }
+    }
+  };
 
   const handleSaveCurrentLocation = (item) => {
     if (!navigator.geolocation) {
@@ -801,6 +828,8 @@ function DeliveryPage() {
       newAssignedJobItems={[]}
     >
       <div style={{ maxWidth: "860px", margin: "0 auto", paddingBottom: "40px" }}>
+        {/* ใช้สำหรับอ่าน QR จากรูปถ่าย (Html5Qrcode ต้องมี element) */}
+        <div id="qr-file-reader" style={{ display: "none" }} />
         <div style={{ marginBottom: "20px" }}>
           <h1 style={{ margin: 0, fontSize: "30px", color: "white" }}>งานจัดส่ง</h1>
           <div style={{ color: "#9ca3af", fontSize: "14px", marginTop: "6px" }}>
@@ -1055,13 +1084,43 @@ function DeliveryPage() {
 
                       // ขั้นที่ 1 (ก่อนสแกน): สแกน QR เพื่อตรวจสเปกถัง
                       if (isStaff && item.status === "pending") {
+                        const photoScanBtn = (
+                          <label style={styles.photoScanBtn}>
+                            <Camera size={16} /> ถ่ายรูป QR
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              style={{ display: "none" }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                e.target.value = "";
+                                setScanningJobId(null);
+                                scanFromPhoto(item.id, file);
+                              }}
+                            />
+                          </label>
+                        );
+
                         return scanningJobId === item.id ? (
-                          <div style={{ textAlign: "center" }}>
-                            <div id="qr-reader-container" style={{ width: "100%", background: "#fff", borderRadius: "8px", overflow: "hidden" }}></div>
-                            <button onClick={() => setScanningJobId(null)} style={{ ...styles.secondaryBtn, width: "100%", justifyContent: "center", marginTop: "8px" }}>
-                              ยกเลิกการสแกน
-                            </button>
-                          </div>
+                          <>
+                            <div style={styles.cameraBox}>
+                              <div id="qr-reader-container" style={{ width: "100%" }}></div>
+                              {!cameraError && <div style={styles.cameraHint}>เล็ง QR Code บนถังให้อยู่ในกรอบ</div>}
+                            </div>
+                            {cameraError && (
+                              <div style={styles.scanFail}>
+                                <TriangleAlert size={16} />
+                                <span>{cameraError}</span>
+                              </div>
+                            )}
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button onClick={() => setScanningJobId(null)} style={{ ...styles.secondaryBtn, flex: 1, justifyContent: "center" }}>
+                                ยกเลิก
+                              </button>
+                              {photoScanBtn}
+                            </div>
+                          </>
                         ) : (
                           <>
                             {resultBox}
@@ -1540,6 +1599,42 @@ const styles = {
     border: "none",
     borderRadius: "8px",
     fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+  cameraBox: {
+    position: "relative",
+    width: "100%",
+    minHeight: "240px",
+    background: "#000",
+    borderRadius: "10px",
+    overflow: "hidden",
+  },
+  cameraHint: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: "10px",
+    textAlign: "center",
+    fontSize: "13px",
+    color: "#e5e7eb",
+    textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+    pointerEvents: "none",
+  },
+  photoScanBtn: {
+    flex: 1,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    minHeight: "40px",
+    padding: "8px 16px",
+    boxSizing: "border-box",
+    background: "rgba(59,130,246,0.12)",
+    color: "#93c5fd",
+    border: "1px solid #3b82f6",
+    borderRadius: "8px",
+    fontSize: "13px",
     fontWeight: "600",
     cursor: "pointer",
   },
