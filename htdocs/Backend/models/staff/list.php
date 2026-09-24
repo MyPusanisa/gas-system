@@ -35,6 +35,7 @@ try {
                 s.staff_name,
                 s.staff_phone,
                 s.username,
+                s.password,
                 s.address,
                 s.status,
                 COUNT(CASE WHEN d.status = 'pending' THEN 1 END) AS pending_jobs

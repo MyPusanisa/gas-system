@@ -20,10 +20,9 @@ if ($staff_id <= 0) {
 }
 
 if ($password !== '') {
-    // เก็บรหัสผ่านแบบเข้ารหัส (login.php ตรวจด้วย password_verify)
-    $hash = password_hash($password, PASSWORD_DEFAULT);
+    // เก็บรหัสผ่านเป็นตัวอักษรธรรมดาเพื่อให้ admin ดูได้ในหน้าพนักงาน (ตามที่เจ้าของระบบเลือก)
     $stmt = $conn->prepare("UPDATE delivery_staff SET staff_name=?, staff_phone=?, password=?, address=?, status=? WHERE staff_id=?");
-    $stmt->bind_param("sssssi", $staff_name, $staff_phone, $hash, $address, $status, $staff_id);
+    $stmt->bind_param("sssssi", $staff_name, $staff_phone, $password, $address, $status, $staff_id);
 } else {
     $stmt = $conn->prepare("UPDATE delivery_staff SET staff_name=?, staff_phone=?, address=?, status=? WHERE staff_id=?");
     $stmt->bind_param("ssssi", $staff_name, $staff_phone, $address, $status, $staff_id);

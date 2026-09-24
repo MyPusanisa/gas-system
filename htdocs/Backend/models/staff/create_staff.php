@@ -33,11 +33,9 @@ if ($check->get_result()->num_rows > 0) {
     exit();
 }
 
-// เก็บรหัสผ่านแบบเข้ารหัส (login.php ตรวจด้วย password_verify)
-$hash = password_hash($password, PASSWORD_DEFAULT);
-
+// เก็บรหัสผ่านเป็นตัวอักษรธรรมดาเพื่อให้ admin ดูได้ในหน้าพนักงาน (ตามที่เจ้าของระบบเลือก)
 $stmt = $conn->prepare("INSERT INTO delivery_staff (staff_name, staff_phone, username, password, address, status) VALUES (?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("ssssss", $staff_name, $staff_phone, $username, $hash, $address, $status);
+$stmt->bind_param("ssssss", $staff_name, $staff_phone, $username, $password, $address, $status);
 
 if ($stmt->execute()) {
     echo json_encode(["success" => true, "message" => "เพิ่มพนักงานสำเร็จ"]);

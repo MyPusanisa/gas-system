@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Pencil, Trash2, Plus, Save, UserPlus, Phone, MapPin, CircleCheck, TriangleAlert } from "lucide-react";
+import { Pencil, Trash2, Plus, Save, UserPlus, Phone, MapPin, CircleCheck, TriangleAlert, Eye, EyeOff } from "lucide-react";
 import Layout from "../components/Layout";
 
 // ใช้ path แบบ relative เพื่อให้เรียกผ่าน http/https เดียวกับหน้าเว็บ (กัน mixed content)
@@ -24,6 +24,7 @@ function StaffPage() {
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const formRef = useRef(null);
+  const [visiblePasswords, setVisiblePasswords] = useState({}); // { [staff_id]: true } แถวที่กดแสดงรหัส
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -259,6 +260,7 @@ function StaffPage() {
       (staff.staff_name && staff.staff_name.toLowerCase().includes(term)) ||
       (staff.staff_phone && staff.staff_phone.includes(term)) ||
       (staff.username && staff.username.toLowerCase().includes(term)) ||
+      (staff.password && !String(staff.password).startsWith("$2y$") && String(staff.password).toLowerCase().includes(term)) ||
       (staff.address && staff.address.toLowerCase().includes(term));
 
     const matchesStatus =
@@ -383,7 +385,7 @@ function StaffPage() {
           <div style={filterContainerStyle}>
             <input
               type="text"
-              placeholder="ค้นหาชื่อ, เบอร์โทร, Username, ที่อยู่..."
+              placeholder="ค้นหาชื่อ, เบอร์โทร, Username, รหัสผ่าน, ที่อยู่..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ ...inputStyle, width: "260px", maxWidth: "100%" }}
@@ -402,6 +404,7 @@ function StaffPage() {
               <tr>
                 <th style={thStyle}>พนักงาน</th>
                 <th style={thStyle}>เบอร์โทร</th>
+                <th style={thStyle}>รหัสผ่าน</th>
                 <th style={thStyle}>ที่อยู่</th>
                 <th style={thStyle}>สถานะงาน</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>งานค้าง</th>
@@ -432,6 +435,27 @@ function StaffPage() {
                       <td style={tdMutedStyle}>
                         <span style={iconTextStyle}><Phone size={13} /> {removeEmojis(item.staff_phone) || "-"}</span>
                       </td>
+                      <td style={tdStyle}>
+                        {!item.password ? (
+                          <span style={{ color: "#6b7280" }}>-</span>
+                        ) : String(item.password).startsWith("$2y$") ? (
+                          <span style={{ color: "#6b7280", fontSize: "12px" }}>เข้ารหัสไว้ — ตั้งใหม่เพื่อดู</span>
+                        ) : (
+                          <span style={passwordCellStyle}>
+                            <code style={passwordTextStyle}>
+                              {visiblePasswords[item.staff_id] ? item.password : "••••••"}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => setVisiblePasswords((prev) => ({ ...prev, [item.staff_id]: !prev[item.staff_id] }))}
+                              style={eyeBtnStyle}
+                              title={visiblePasswords[item.staff_id] ? "ซ่อน" : "แสดง"}
+                            >
+                              {visiblePasswords[item.staff_id] ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </span>
+                        )}
+                      </td>
                       <td style={{ ...tdMutedStyle, whiteSpace: "normal", minWidth: "160px" }}>
                         {item.address ? <span style={iconTextStyle}><MapPin size={13} /> {removeEmojis(item.address)}</span> : "-"}
                       </td>
@@ -458,7 +482,7 @@ function StaffPage() {
                 })
               ) : (
                 <tr>
-                  <td style={emptyCellStyle} colSpan="6">ไม่พบข้อมูลพนักงานที่ค้นหา</td>
+                  <td style={emptyCellStyle} colSpan="7">ไม่พบข้อมูลพนักงานที่ค้นหา</td>
                 </tr>
               )}
             </tbody>
@@ -505,6 +529,9 @@ const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #
 const tdMutedStyle = { ...tdStyle, color: "#9ca3af", fontSize: "13px" };
 const emptyCellStyle = { padding: "28px", textAlign: "center", color: "#9ca3af" };
 const iconTextStyle = { display: "inline-flex", alignItems: "center", gap: "6px" };
+const passwordCellStyle = { display: "inline-flex", alignItems: "center", gap: "6px" };
+const passwordTextStyle = { background: "#111827", border: "1px solid #374151", borderRadius: "6px", padding: "2px 8px", fontSize: "13px", color: "#e5e7eb", minWidth: "60px", display: "inline-block" };
+const eyeBtnStyle = { display: "inline-flex", padding: "4px", background: "none", border: "none", color: "#9ca3af", cursor: "pointer" };
 
 const avatarStyle = { width: "34px", height: "34px", borderRadius: "50%", background: "#2563eb", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, flexShrink: 0 };
 const inactiveTagStyle = { marginLeft: "8px", fontSize: "11px", padding: "1px 8px", borderRadius: "999px", background: "#374151", color: "#9ca3af", fontWeight: "normal" };
