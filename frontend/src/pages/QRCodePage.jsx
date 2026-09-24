@@ -59,8 +59,7 @@ function QRCodePage() {
           return;
         }
 
-        const host = window.location.hostname;
-        const apiUrl = `http://${host}:8080/Backend/models/get_cylinder_by_id.php?id=${encodeURIComponent(cleanId)}`;
+        const apiUrl = `/Backend/models/get_cylinder_by_id.php?id=${encodeURIComponent(cleanId)}`;
 
         const res = await fetch(apiUrl, {
           method: 'GET',

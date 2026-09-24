@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://suchat-gas.com";
+// ใช้ path แบบ relative เพื่อให้เรียกผ่าน http/https เดียวกับหน้าเว็บ (กัน mixed content)
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_BASE = `${BASE_URL}/Backend/models/staff`;
 
 // ฟังก์ชันสำหรับลบอิโมจิและสัญลักษณ์พิเศษออกจากข้อความ
