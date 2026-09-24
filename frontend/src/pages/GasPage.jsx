@@ -225,7 +225,11 @@ function GasPage() {
   // ---------- กรองรายการถัง ----------
   const term = searchTerm.toLowerCase().trim();
 
-  const filteredCylinders = cylinders.filter((item) => {
+  // ถังที่ออกไปส่งแล้วแสดงในตาราง "รายการจัดส่ง" ด้านล่างแทน
+  const DELIVERY_STATUSES = ["กำลังจัดส่ง", "จัดส่งสำเร็จ", "pending", "success", "delivering"];
+  const stockCylinders = cylinders.filter((c) => !DELIVERY_STATUSES.includes((c.status || "").trim()));
+
+  const filteredCylinders = stockCylinders.filter((item) => {
     const status = (item.status || "").trim();
     if (statusFilter !== "all" && status !== statusFilter) return false;
     if (!term) return true;
@@ -260,7 +264,7 @@ function GasPage() {
       return 0;
     });
 
-  const statusCounts = cylinders.reduce((acc, c) => {
+  const statusCounts = stockCylinders.reduce((acc, c) => {
     const s = (c.status || "").trim() || "-";
     acc[s] = (acc[s] || 0) + 1;
     return acc;
@@ -483,14 +487,16 @@ function GasPage() {
         <div style={headerRowStyle}>
           <div>
             <h1 style={titleStyle}>จัดการถังแก๊ส</h1>
-            <div style={subtitleStyle}>ถังทั้งหมด {cylinders.length} ใบ · รายการจัดส่ง {deliveries.length} รายการ</div>
+            <div style={subtitleStyle}>
+              ถังที่ร้าน {stockCylinders.length} ใบ · ออกไปส่งแล้ว {cylinders.length - stockCylinders.length} ใบ · รายการจัดส่ง {deliveries.length} รายการ
+            </div>
           </div>
         </div>
 
         {/* สรุปตามสถานะ (กดเพื่อกรอง) */}
         <div style={chipRowStyle}>
           <button type="button" onClick={() => setStatusFilter("all")} style={filterChipStyle(statusFilter === "all", "#64748b")}>
-            ทั้งหมด <strong>{cylinders.length}</strong>
+            ทั้งหมด <strong>{stockCylinders.length}</strong>
           </button>
           {Object.entries(statusCounts).map(([s, n]) => (
             <button key={s} type="button" onClick={() => setStatusFilter(s)} style={filterChipStyle(statusFilter === s, STATUS_COLORS[s] || "#6b7280")}>
@@ -627,7 +633,7 @@ function GasPage() {
         <div style={cardStyle}>
           <div style={cardHeaderStyle}>
             <h2 style={cardTitleStyle}>
-              รายการถังแก๊ส {statusFilter !== "all" && <span style={{ color: "#9ca3af", fontWeight: "normal" }}>· {statusFilter}</span>}
+              ถังแก๊สในคลัง / ทั่วไป {statusFilter !== "all" && <span style={{ color: "#9ca3af", fontWeight: "normal" }}>· {statusFilter}</span>}
               <span style={countPillStyle}>{filteredCylinders.length}</span>
             </h2>
           </div>
