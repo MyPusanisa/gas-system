@@ -1,9 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap');
 
+/* ===== Design tokens (ใช้ร่วมกันทุกหน้า) ===== */
+:root {
+  --bg: #0f172a;
+  --surface: #1f2937;
+  --surface-2: #111827;
+  --border: #374151;
+  --text: #f8fafc;
+  --text-muted: #9ca3af;
+  --primary: #3b82f6;
+  --primary-strong: #2563eb;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  background-color: #0f172a; /* กำหนดพื้นหลังเข้มมาตรฐาน */
-  color: #f8fafc; /* กำหนดสีข้อความหลักเป็นสีขาว/สว่าง */
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -26,7 +43,86 @@ button, input, select, textarea {
   font-family: 'Prompt', sans-serif !important;
 }
 
-/* คืนค่าสีสว่างให้หัวข้อและข้อความหลัก */
 h1, h2, h3, h4, h5, h6 {
   color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+/* ไอคอน lucide ให้อยู่กึ่งกลางบรรทัดกับตัวอักษร */
+svg.lucide {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* ===== ปุ่ม ===== */
+button {
+  transition: filter 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+button:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+}
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ===== ช่องกรอก ===== */
+input,
+select,
+textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+::placeholder {
+  color: #6b7280;
+  opacity: 1;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.75);
+  cursor: pointer;
+}
+input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* ===== ตาราง ===== */
+tbody tr {
+  transition: background-color 0.12s ease;
+}
+tbody tr:hover {
+  background-color: rgba(148, 163, 184, 0.06);
+}
+
+/* ===== แถบเลื่อน ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

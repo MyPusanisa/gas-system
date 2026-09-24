@@ -1,6 +1,7 @@
 import { API_BASE } from "../config";
 import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import { Cylinder, Warehouse, CircleCheck, TriangleAlert, Trophy } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -154,28 +155,28 @@ function Dashboard() {
         {/* ========== SUMMARY CARDS ========== */}
         <div style={cardGridStyle}>
           <StatCard
-            icon="🛢️"
+            icon={Cylinder}
             accent="#3b82f6"
             title="ถังทั้งหมด"
             value={summary.total_cylinders}
             caption={`ในคลัง ${summary.in_stock} + จัดส่ง ${summary.delivered}`}
           />
           <StatCard
-            icon="🏬"
+            icon={Warehouse}
             accent="#8b5cf6"
             title="ในคลัง"
             value={summary.in_stock}
             caption="ถังสถานะในคลัง"
           />
           <StatCard
-            icon="✅"
+            icon={CircleCheck}
             accent="#10b981"
             title="พร้อมใช้งาน"
             value={summary.ready}
             caption="ในคลัง − ถึงกำหนดตรวจ"
           />
           <StatCard
-            icon="⚠️"
+            icon={TriangleAlert}
             accent="#ef4444"
             title="ถึงกำหนดตรวจ"
             value={summary.maintenance_due}
@@ -217,7 +218,7 @@ function Dashboard() {
                     <div key={item.staff_name || idx}>
                       <div style={rankRowStyle}>
                         <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <span style={rankBadgeStyle(idx)}>{idx === 0 && count > 0 ? "🏆" : idx + 1}</span>
+                          <span style={rankBadgeStyle(idx)}>{idx === 0 && count > 0 ? <Trophy size={14} /> : idx + 1}</span>
                           <span style={{ fontWeight: 600 }}>{item.staff_name}</span>
                         </span>
                         <span style={{ color: "#e5e7eb", fontWeight: "bold" }}>
@@ -322,11 +323,11 @@ function Dashboard() {
 }
 
 // ========== Sub components ==========
-const StatCard = ({ icon, accent, title, value, caption, valueColor }) => (
+const StatCard = ({ icon: Icon, accent, title, value, caption, valueColor }) => (
   <div style={{ ...summaryCardStyle, borderTop: `3px solid ${accent}` }}>
     <div style={statHeaderStyle}>
       <span style={statTitleStyle}>{title}</span>
-      <span style={{ ...statIconStyle, background: `${accent}26` }}>{icon}</span>
+      <span style={{ ...statIconStyle, background: `${accent}26`, color: accent }}><Icon size={18} /></span>
     </div>
     <div style={{ ...statValueStyle, color: valueColor || "white" }}>{value}</div>
     {caption && <div style={statCaptionStyle}>{caption}</div>}
@@ -364,7 +365,7 @@ const DaysBadge = ({ days }) => {
 };
 
 // ========== Styles ==========
-const pageStyle = { padding: "24px", color: "white" };
+const pageStyle = { color: "white" };
 const headerStyle = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "24px", flexWrap: "wrap", gap: "12px" };
 const titleStyle = { fontSize: "32px", margin: 0 };
 const subtitleStyle = { color: "#9ca3af", fontSize: "14px", marginTop: "6px" };

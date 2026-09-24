@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Flame, Phone, CircleX } from "lucide-react";
 
-const formatDate = (date) => date || "-";
+// "2026-08-01" -> "01/08/2026"
+const formatDate = (date) => {
+  if (!date || typeof date !== "string") return "-";
+  const [y, m, d] = date.slice(0, 10).split("-");
+  return y && m && d ? `${d}/${m}/${y}` : date;
+};
 
 // 1. ฟังก์ชันจัดการสีและข้อความของป้ายสถานะ
 const getInspectionStatus = (status) => {
@@ -104,7 +110,7 @@ function QRCodePage() {
       <div style={pageStyle}>
         <div style={cardStyle}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "16px" }}>
-            <span style={{ fontSize: "28px" }}>❌</span>
+            <CircleX size={26} color="#ef4444" />
             <h1 style={{ margin: 0, fontSize: "20px", color: "#ef4444", fontWeight: "bold" }}>ไม่พบข้อมูลถังแก๊ส</h1>
           </div>
           <p style={{ color: "#9ca3af", margin: 0, textAlign: "center", fontSize: "14px" }}>สาเหตุ: {error}</p>
@@ -134,9 +140,13 @@ function QRCodePage() {
         
         {/* หัวข้อข้อมูลถังแก๊ส + ป้ายสถานะ */}
         <div style={headerStyle}>
-          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "bold", color: "#e2e8f0" }}>
-            ข้อมูลถังแก๊ส
-          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={logoStyle}><Flame size={22} /></span>
+            <div>
+              <h1 style={{ margin: 0, fontSize: "20px", fontWeight: "bold", color: "#f8fafc" }}>ข้อมูลถังแก๊ส</h1>
+              <div style={{ fontSize: "13px", color: "#94a3b8" }}>{cylinder.serial_number || cylinder.serial || "-"}</div>
+            </div>
+          </div>
           <span style={{ ...statusBadgeStyle, backgroundColor: inspectionStatus.color }}>
             {inspectionStatus.text}
           </span>
@@ -191,7 +201,7 @@ function QRCodePage() {
         {/* ปุ่มโทรติดต่อร้านค้า */}
         <div style={{ marginTop: "28px" }}>
           <a href="tel:024643519" style={phoneButtonStyle}>
-            📞 โทรติดต่อร้านค้า 02-464-3519
+            <Phone size={18} /> โทรติดต่อร้านค้า 02-464-3519
           </a>
         </div>
 
@@ -210,13 +220,26 @@ const pageStyle = {
   color: "#f3f4f6",
   padding: "16px",
   boxSizing: "border-box",
-  fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+  backgroundImage: "radial-gradient(circle at 20% 0%, rgba(59,130,246,0.15), transparent 45%)"
+};
+
+const logoStyle = {
+  width: "42px",
+  height: "42px",
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, #f97316, #ef4444)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "white",
+  flexShrink: 0
 };
 
 const cardStyle = {
   width: "100%",
   maxWidth: "400px",
-  background: "#1e293b",
+  background: "#1f2937",
+  border: "1px solid #374151",
   borderRadius: "20px",
   padding: "24px",
   boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
@@ -244,7 +267,7 @@ const rowStyle = {
   alignItems: "center",
   paddingBottom: "14px",
   marginBottom: "14px",
-  borderBottom: "1px solid #334155"
+  borderBottom: "1px solid #2b3647"
 };
 
 const stackedRowStyle = {
@@ -259,7 +282,7 @@ const stackedRowStyle = {
 };
 
 const labelStyle = {
-  fontSize: "15px",
+  fontSize: "14px",
   color: "#94a3b8",
   fontWeight: "500"
 };
@@ -277,7 +300,10 @@ const phoneButtonStyle = {
   borderRadius: "14px",
   fontWeight: "bold",
   textDecoration: "none",
-  display: "block",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "8px",
   fontSize: "16px",
   border: "none",
   textAlign: "center",

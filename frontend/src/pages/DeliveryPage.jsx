@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { Plus, Search, Pencil, Truck, Clock, Trash2, User, Phone, MapPin, LocateFixed, ScanLine, Check, Camera, PackagePlus } from "lucide-react";
 import API_BASE_URL from "../config";
 
 const UPLOADS_BASE_URL = API_BASE_URL.replace(/\/models\/?$/, "/uploads");
@@ -771,7 +772,7 @@ function DeliveryPage() {
     return (
       <Layout>
         <div style={{ color: "white", textAlign: "center", padding: "60px 20px" }}>
-          ⏳ กำลังโหลดข้อมูลงานจัดส่ง...
+          กำลังโหลดข้อมูลงานจัดส่ง...
         </div>
       </Layout>
     );
@@ -785,14 +786,19 @@ function DeliveryPage() {
       deliverySuccessItems={deliverySuccessItems}
       newAssignedJobItems={[]}
     >
-      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 12px 40px 12px" }}>
-        
+      <div style={{ maxWidth: "860px", margin: "0 auto", paddingBottom: "40px" }}>
+        <div style={{ marginBottom: "20px" }}>
+          <h1 style={{ margin: 0, fontSize: "30px", color: "white" }}>งานจัดส่ง</h1>
+          <div style={{ color: "#9ca3af", fontSize: "14px", marginTop: "6px" }}>
+            {role === "admin" ? "สร้างงานจัดส่งและติดตามสถานะ" : "งานที่ได้รับมอบหมาย"}
+          </div>
+        </div>
         {/* Card สร้างงานจัดส่ง (Admin) */}
         {role === "admin" && (
           <div style={styles.cardContainer}>
             <div style={styles.cardHeader}>
-              <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: "600", color: "#f8fafc" }}>
-                สร้างงานจัดส่งใหม่
+              <h2 style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#f8fafc", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Plus size={18} color="#60a5fa" /> สร้างงานจัดส่งใหม่
               </h2>
             </div>
 
@@ -811,11 +817,11 @@ function DeliveryPage() {
                     style={{ ...styles.input, flex: 1, minWidth: "180px" }}
                   />
                   <button type="button" onClick={handleSearchCustomer} style={styles.primaryBtn}>
-                    🔍 ค้นหา
+                    <Search size={15} /> ค้นหา
                   </button>
                   {isCustomerFound && (
                     <button type="button" onClick={handleOpenEditCustomer} style={styles.warningBtn}>
-                      ✏️ แก้ไข
+                      <Pencil size={15} /> แก้ไข
                     </button>
                   )}
                 </div>
@@ -914,8 +920,8 @@ function DeliveryPage() {
               </div>
 
               <div style={{ marginTop: "16px" }}>
-                <button onClick={createDeliveryJob} style={{ ...styles.primaryBtn, width: "100%", padding: "10px", fontSize: "14px" }}>
-                  สร้างงานจัดส่ง 
+                <button onClick={createDeliveryJob} style={{ ...styles.primaryBtn, width: "100%", height: "44px", justifyContent: "center", fontSize: "15px" }}>
+                  <Truck size={17} /> สร้างงานจัดส่ง
                 </button>
               </div>
             </div>
@@ -924,13 +930,14 @@ function DeliveryPage() {
 
         {role === "staff" && currentStaffActiveJob && (
           <div style={styles.activeJobBanner}>
+            <Clock size={16} />
             คุณกำลังจัดส่งงาน #{currentStaffActiveJob.id} กรุณาส่งรูปหลักฐานเพื่อปิดงาน
           </div>
         )}
 
         {/* รายการงานจัดส่ง */}
-        <h2 style={{ fontSize: "1.1rem", color: "#f8fafc", marginBottom: "14px", fontWeight: "600" }}>
-          รายการงานจัดส่งทั้งหมด ({visibleDeliveries.length})
+        <h2 style={{ fontSize: "18px", color: "#f8fafc", margin: "8px 0 14px", fontWeight: "600", display: "flex", alignItems: "center", gap: "10px" }}>
+          รายการงานจัดส่ง <span style={styles.countPill}>{visibleDeliveries.length}</span>
         </h2>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -949,7 +956,7 @@ function DeliveryPage() {
 
                   {role === "admin" && (item.status === "pending" || item.status === "delivering") && (
                     <button onClick={() => handleDelete(item)} style={styles.dangerBtn}>
-                      🗑️ ลบ
+                      <Trash2 size={13} /> ลบ
                     </button>
                   )}
                 </div>
@@ -959,26 +966,26 @@ function DeliveryPage() {
                   
                   {/* ลูกค้า */}
                   <div style={styles.infoRow}>
-                    <span style={styles.iconSpan}> </span>
+                    <User size={16} style={styles.infoIcon} />
                     <div>
                       <div style={{ color: "#ffffff", fontWeight: "600", fontSize: "15px" }}>
                         {item.customerName}
                       </div>
-                      <div style={{ color: "#94a3b8", fontSize: "13px" }}>{item.phone}</div>
+                      <a href={`tel:${item.phone}`} style={{ color: "#94a3b8", fontSize: "13px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}><Phone size={12} /> {item.phone}</a>
                     </div>
                   </div>
 
                   {/* ที่อยู่ */}
                   <div style={styles.infoRow}>
-                    <span style={styles.iconSpan}> </span>
-                    <div style={{ color: "#cbd5e1", fontSize: "13px", lineHeight: "1.4" }}>
+                    <MapPin size={16} style={styles.infoIcon} />
+                    <div style={{ color: "#cbd5e1", fontSize: "13px", lineHeight: "1.5" }}>
                       {item.address}
                     </div>
                   </div>
 
                   {/* สเปกแก๊ส & Serial */}
                   <div style={styles.specBox}>
-                    <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "4px" }}>สเปกแก๊ส:</div>
+                    <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "6px" }}>สเปกแก๊ส</div>
                     <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
                       <span style={styles.specBadge}>
                         {(item.req_brand || item.brand || "-")}
@@ -986,7 +993,7 @@ function DeliveryPage() {
                       <span style={styles.specBadge}>
                         {(item.req_gas_type || item.gasType || item.gas_type || "LPG")}
                       </span>
-                      <span style={{ ...styles.specBadge, background: "#0284c7", color: "#fff" }}>
+                      <span style={{ ...styles.specBadge, background: "rgba(59,130,246,0.15)", border: "1px solid #3b82f6", color: "#93c5fd" }}>
                         {(item.req_size || item.size || "-")}
                       </span>
                     </div>
@@ -1001,7 +1008,7 @@ function DeliveryPage() {
 
                   {/* พนักงานผู้รับผิดชอบ */}
                   <div style={{ fontSize: "13px", color: "#94a3b8", display: "flex", alignItems: "center", gap: "6px" }}>
-                    
+                    <Truck size={14} />
                     <span>ผู้รับผิดชอบ: <strong style={{ color: "#e2e8f0" }}>{item.assignedStaff || "ไม่ระบุชื่อ"}</strong></span>
                   </div>
 
@@ -1016,7 +1023,7 @@ function DeliveryPage() {
                         disabled={gettingLocationId === item.id}
                         style={styles.gpsPinBtn}
                       >
-                       {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งปัจจุบัน"}
+                       <LocateFixed size={15} /> {gettingLocationId === item.id ? "กำลังบันทึกพิกัด..." : "ปักหมุดตำแหน่งปัจจุบัน"}
                       </button>
                     ) : (
                       <a
@@ -1025,7 +1032,7 @@ function DeliveryPage() {
                         rel="noreferrer"
                         style={styles.gpsLinkBtn}
                       >
-                        เปิด Google Maps ({item.mapPin})
+                        <MapPin size={14} /> เปิด Google Maps <span style={{ color: "#64748b" }}>({item.mapPin})</span>
                       </a>
                     )}
 
@@ -1044,8 +1051,8 @@ function DeliveryPage() {
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <button onClick={() => setScanningJobId(item.id)} style={{ ...styles.secondaryBtn, background: "#0284c7" }}>
-                             สแกน QR Code ถัง
+                            <button onClick={() => setScanningJobId(item.id)} style={{ ...styles.secondaryBtn, justifyContent: "center" }}>
+                             <ScanLine size={16} /> สแกน QR Code ถัง
                             </button>
 
                             {confirmCylinderInputs[item.id] && (
@@ -1063,7 +1070,7 @@ function DeliveryPage() {
                                 cursor: confirmCylinderInputs[item.id] ? "pointer" : "not-allowed",
                               }}
                             >
-                            ยืนยันรับงานส่ง
+                            <Check size={16} /> ยืนยันรับงานส่ง
                             </button>
                           </div>
                         )}
@@ -1077,7 +1084,7 @@ function DeliveryPage() {
                           onClick={() => setSelectedProofId(selectedProofId === item.id ? null : item.id)}
                           style={styles.cameraBtn}
                         >
-                        ถ่ายรูปถังที่รับคืน
+                        <Camera size={16} /> ถ่ายรูปถังที่รับคืน
                         </button>
                         {selectedProofId === item.id && (
                           <div style={{ marginTop: "8px" }}>
@@ -1115,8 +1122,8 @@ function DeliveryPage() {
                           }
                           style={styles.input}
                         />
-                        <button onClick={() => approveDelivery(item.id)} style={{ ...styles.primaryBtn, background: "#16a34a" }}>
-                          อนุมัติงานส่ง
+                        <button onClick={() => approveDelivery(item.id)} style={{ ...styles.primaryBtn, background: "#059669", justifyContent: "center" }}>
+                          <Check size={16} /> อนุมัติงานส่ง
                         </button>
                       </div>
                     )}
@@ -1187,7 +1194,7 @@ function DeliveryPage() {
         {showCylinderModal && (
           <div style={styles.modalOverlay}>
             <div style={styles.modalBody}>
-              <h3 style={{ marginTop: 0, color: "#fff", fontSize: "16px" }}>➕ เพิ่มถังใหม่เข้าระบบ</h3>
+              <h3 style={{ marginTop: 0, color: "#fff", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}><PackagePlus size={18} color="#60a5fa" /> เพิ่มถังใหม่เข้าระบบ</h3>
               <p style={{ fontSize: "13px", color: "#94a3b8" }}>
                 ไม่พบ Serial Number <strong style={{ color: "#facc15" }}>{newCylinderForApproval.serial_number}</strong> ในฐานข้อมูล
               </p>
@@ -1276,17 +1283,17 @@ function DeliveryPage() {
 
 const styles = {
   cardContainer: {
-    background: "#1e293b",
-    border: "1px solid #334155",
-    borderRadius: "12px",
+    background: "#1f2937",
+    border: "1px solid #2b3647",
+    borderRadius: "14px",
     overflow: "hidden",
     marginBottom: "20px",
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
   },
   cardHeader: {
-    padding: "12px 16px",
-    background: "#0f172a",
-    borderBottom: "1px solid #334155",
+    padding: "14px 18px",
+    background: "#1a2230",
+    borderBottom: "1px solid #2b3647",
   },
   formGrid: {
     display: "grid",
@@ -1295,36 +1302,42 @@ const styles = {
   },
   label: {
     display: "block",
-    fontSize: "12px",
-    fontWeight: "500",
-    color: "#94a3b8",
-    marginBottom: "4px",
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#cbd5e1",
+    marginBottom: "6px",
   },
   input: {
     width: "100%",
-    padding: "8px 12px",
-    borderRadius: "6px",
-    border: "1px solid #334155",
-    background: "#0f172a",
+    minHeight: "40px",
+    padding: "9px 12px",
+    borderRadius: "8px",
+    border: "1px solid #374151",
+    background: "#111827",
     color: "#f8fafc",
-    fontSize: "13px",
+    fontSize: "14px",
     boxSizing: "border-box",
     outline: "none",
   },
   select: {
     width: "100%",
-    padding: "8px 12px",
-    borderRadius: "6px",
-    border: "1px solid #334155",
-    background: "#0f172a",
+    height: "40px",
+    padding: "0 12px",
+    borderRadius: "8px",
+    border: "1px solid #374151",
+    background: "#111827",
     color: "#f8fafc",
-    fontSize: "13px",
+    fontSize: "14px",
     boxSizing: "border-box",
     cursor: "pointer",
   },
   primaryBtn: {
-    padding: "8px 14px",
-    background: "#0284c7",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    minHeight: "40px",
+    padding: "8px 16px",
+    background: "#2563eb",
     color: "#ffffff",
     border: "none",
     borderRadius: "6px",
@@ -1334,10 +1347,14 @@ const styles = {
     whiteSpace: "nowrap",
   },
   secondaryBtn: {
-    padding: "8px 14px",
-    background: "#475569",
-    color: "#ffffff",
-    border: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    minHeight: "40px",
+    padding: "8px 16px",
+    background: "transparent",
+    color: "#e5e7eb",
+    border: "1px solid #4b5563",
     borderRadius: "6px",
     fontSize: "13px",
     fontWeight: "600",
@@ -1345,10 +1362,15 @@ const styles = {
     whiteSpace: "nowrap",
   },
   warningBtn: {
-    padding: "8px 14px",
-    background: "#d97706",
-    color: "#ffffff",
-    border: "none",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    minHeight: "40px",
+    padding: "8px 16px",
+    background: "rgba(245,158,11,0.15)",
+    color: "#fbbf24",
+    border: "1px solid #f59e0b",
     borderRadius: "6px",
     fontSize: "13px",
     fontWeight: "600",
@@ -1356,7 +1378,10 @@ const styles = {
     whiteSpace: "nowrap",
   },
   dangerBtn: {
-    padding: "4px 8px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "4px 10px",
     background: "rgba(239, 68, 68, 0.2)",
     color: "#f87171",
     border: "1px solid #ef4444",
@@ -1366,37 +1391,36 @@ const styles = {
     cursor: "pointer",
   },
   badge: {
-    fontFamily: "'Prompt', sans-serif",
-    padding: "2px 8px",
-    borderRadius: "12px",
-    fontSize: "11px",
+    padding: "2px 10px",
+    borderRadius: "999px",
+    fontSize: "12px",
     fontWeight: "bold",
   },
   jobCard: {
-    background: "#1e293b",
-    border: "1px solid #334155",
-    borderRadius: "12px",
+    background: "#1f2937",
+    border: "1px solid #2b3647",
+    borderRadius: "14px",
     overflow: "hidden",
     boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
   },
   jobCardHeader: {
-    padding: "10px 14px",
-    background: "#0f172a",
-    borderBottom: "1px solid #334155",
+    padding: "12px 16px",
+    background: "#1a2230",
+    borderBottom: "1px solid #2b3647",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
   jobTag: {
-    fontSize: "13px",
+    fontSize: "14px",
     fontWeight: "bold",
-    color: "#38bdf8",
-    background: "rgba(56, 189, 248, 0.1)",
+    color: "#fbbf24",
+    background: "rgba(245, 158, 11, 0.1)",
     padding: "2px 8px",
     borderRadius: "4px",
   },
   jobCardBody: {
-    padding: "14px",
+    padding: "16px",
     display: "flex",
     flexDirection: "column",
     gap: "12px",
@@ -1406,21 +1430,30 @@ const styles = {
     gap: "10px",
     alignItems: "flex-start",
   },
-  iconSpan: {
-    fontSize: "16px",
-    lineHeight: "1.2",
+  infoIcon: {
+    color: "#6b7280",
+    marginTop: "2px",
+  },
+  countPill: {
+    background: "#374151",
+    color: "#e5e7eb",
+    fontSize: "13px",
+    padding: "2px 10px",
+    borderRadius: "999px",
+    fontWeight: "normal",
   },
   specBox: {
-    background: "#0f172a",
-    padding: "10px",
-    borderRadius: "8px",
-    border: "1px solid #1e293b",
+    background: "#111827",
+    padding: "12px",
+    borderRadius: "10px",
+    border: "1px solid #2b3647",
   },
   specBadge: {
-    background: "#334155",
-    color: "#f8fafc",
-    padding: "3px 8px",
-    borderRadius: "4px",
+    background: "#1f2937",
+    border: "1px solid #374151",
+    color: "#e5e7eb",
+    padding: "3px 10px",
+    borderRadius: "6px",
     fontSize: "12px",
     fontWeight: "500",
   },
@@ -1432,53 +1465,71 @@ const styles = {
   },
   gpsPinBtn: {
     width: "100%",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    minHeight: "40px",
     padding: "8px 12px",
-    background: "#0284c7",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "6px",
+    background: "transparent",
+    color: "#93c5fd",
+    border: "1px dashed #3b82f6",
+    borderRadius: "8px",
     fontSize: "13px",
     fontWeight: "600",
     cursor: "pointer",
     textAlign: "center",
   },
   gpsLinkBtn: {
-    display: "block",
-    textAlign: "center",
-    padding: "6px 10px",
-    background: "rgba(56, 189, 248, 0.1)",
-    color: "#38bdf8",
-    border: "1px solid #0284c7",
-    borderRadius: "6px",
-    fontSize: "12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    minHeight: "40px",
+    padding: "8px 12px",
+    background: "rgba(59, 130, 246, 0.1)",
+    color: "#93c5fd",
+    border: "1px solid #3b82f6",
+    borderRadius: "8px",
+    fontSize: "13px",
     textDecoration: "none",
     fontWeight: "500",
   },
   cameraBtn: {
     width: "100%",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    minHeight: "44px",
     padding: "10px",
     background: "#d97706",
     color: "#ffffff",
     border: "none",
-    borderRadius: "6px",
-    fontSize: "13px",
+    borderRadius: "8px",
+    fontSize: "14px",
     fontWeight: "600",
     cursor: "pointer",
   },
   emptyCard: {
-    background: "#1e293b",
-    padding: "24px",
-    borderRadius: "10px",
+    background: "#1f2937",
+    padding: "36px",
+    borderRadius: "14px",
     textAlign: "center",
-    color: "#94a3b8",
-    fontSize: "13px",
-    border: "1px solid #334155",
+    color: "#9ca3af",
+    fontSize: "14px",
+    border: "1px solid #2b3647",
   },
   activeJobBanner: {
-    background: "#9a3412",
-    color: "#ffedd5",
-    padding: "10px 14px",
-    borderRadius: "8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    background: "rgba(245,158,11,0.12)",
+    border: "1px solid #f59e0b",
+    color: "#fcd34d",
+    padding: "12px 14px",
+    borderRadius: "10px",
     marginBottom: "14px",
     fontSize: "13px",
     fontWeight: "bold",
@@ -1505,10 +1556,10 @@ const styles = {
     padding: "16px",
   },
   modalBody: {
-    background: "#1e293b",
-    border: "1px solid #334155",
-    borderRadius: "12px",
-    padding: "18px",
+    background: "#1f2937",
+    border: "1px solid #374151",
+    borderRadius: "14px",
+    padding: "20px",
     width: "100%",
     maxWidth: "400px",
     maxHeight: "90vh",

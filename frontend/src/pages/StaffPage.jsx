@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Pencil, Trash2, Plus, Save, UserPlus, Phone, MapPin, CircleCheck, TriangleAlert } from "lucide-react";
 import Layout from "../components/Layout";
 
 // ใช้ path แบบ relative เพื่อให้เรียกผ่าน http/https เดียวกับหน้าเว็บ (กัน mixed content)
@@ -22,6 +23,7 @@ function StaffPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const formRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -224,6 +226,7 @@ function StaffPage() {
     });
     setEditingStaffId(staff.staff_id);
     setMessage({ type: "", text: "" });
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const deleteStaff = async (staffId, staffName) => {
@@ -264,44 +267,36 @@ function StaffPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const busyCount = staffs.filter((s) => Number(s.pending_jobs || 0) > 0).length;
+
   if (loading) {
     return (
       <Layout>
-        <div style={{ color: "white", textAlign: "center", padding: "50px" }}>
-          กำลังโหลดข้อมูล...
-        </div>
+        <div style={{ color: "#9ca3af", textAlign: "center", padding: "50px" }}>กำลังโหลดข้อมูล...</div>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <h1 style={{ marginBottom: "20px", color: "white" }}>จัดการพนักงานส่ง</h1>
-
-      {message.text && (
-        <div
-          style={{
-            padding: "10px 15px",
-            borderRadius: "8px",
-            marginBottom: "15px",
-            backgroundColor: message.type === "success" ? "#22c55e" : "#ef4444",
-            color: "white",
-            fontWeight: "bold",
-          }}
-        >
-          {message.text}
+      <div style={headerRowStyle}>
+        <h1 style={titleStyle}>จัดการพนักงานส่ง</h1>
+        <div style={subtitleStyle}>
+          พนักงานทั้งหมด {staffs.length} คน · กำลังส่ง {busyCount} · ว่าง {staffs.length - busyCount}
         </div>
-      )}
+      </div>
 
       {/* Form Card */}
-      <form onSubmit={saveStaff} style={formCardStyle}>
-        <h2 style={{ marginTop: 0, color: "white" }}>
-          {editingStaffId ? "แก้ไขพนักงาน" : "เพิ่มพนักงานใหม่"}
+      <form ref={formRef} onSubmit={saveStaff} style={{ ...cardStyle, ...(editingStaffId ? editingCardStyle : {}) }}>
+        <h2 style={cardTitleStyle}>
+          {editingStaffId
+            ? <><Pencil size={18} color="#fbbf24" /> แก้ไขพนักงาน <span style={{ color: "#fbbf24" }}>{formData.username}</span></>
+            : <><UserPlus size={18} color="#60a5fa" /> เพิ่มพนักงานใหม่</>}
         </h2>
-        
+
         <div style={formGridStyle}>
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>ชื่อพนักงาน *</label>
+            <label style={labelStyle}>ชื่อพนักงาน<span style={reqStyle}> *</span></label>
             <input
               value={formData.staff_name}
               onChange={(e) => setFormData({ ...formData, staff_name: e.target.value })}
@@ -311,21 +306,22 @@ function StaffPage() {
           </div>
 
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>เบอร์โทร *</label>
+            <label style={labelStyle}>เบอร์โทร<span style={reqStyle}> *</span></label>
             <input
               value={formData.staff_phone}
               onChange={(e) => setFormData({ ...formData, staff_phone: e.target.value })}
               style={inputStyle}
               placeholder="0812345678"
+              inputMode="tel"
             />
           </div>
 
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>Username *</label>
+            <label style={labelStyle}>Username<span style={reqStyle}> *</span></label>
             <input
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              style={inputStyle}
+              style={{ ...inputStyle, ...(editingStaffId ? readOnlyStyle : {}) }}
               placeholder="username"
               disabled={!!editingStaffId}
             />
@@ -333,14 +329,15 @@ function StaffPage() {
 
           <div style={fieldGroupStyle}>
             <label style={labelStyle}>
-              {editingStaffId ? "รหัสผ่าน (เว้นว่างไว้ไม่เปลี่ยน)" : "รหัสผ่าน *"}
+              รหัสผ่าน{editingStaffId ? <span style={hintStyle}> (เว้นว่าง = ไม่เปลี่ยน)</span> : <span style={reqStyle}> *</span>}
             </label>
             <input
               type="text"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               style={inputStyle}
-              placeholder={editingStaffId ? "รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)" : "รหัสผ่าน (อย่างน้อย 4 ตัว)"}
+              placeholder="อย่างน้อย 4 ตัวอักษร"
+              autoComplete="new-password"
             />
           </div>
 
@@ -355,256 +352,171 @@ function StaffPage() {
           </div>
 
           <div style={fieldGroupStyle}>
-            <label style={labelStyle}>สถานะ</label>
+            <label style={labelStyle}>สถานะบัญชี</label>
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               style={inputStyle}
             >
               <option value="active">ใช้งาน</option>
-              <option value="inactive">ไม่ใช้งาน</option>
+              <option value="inactive">ปิดใช้งาน</option>
             </select>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+        <div style={formActionsStyle}>
           <button type="submit" style={primaryButtonStyle} disabled={isSubmitting}>
-            {isSubmitting ? "กำลังบันทึก..." : editingStaffId ? "บันทึก" : "เพิ่ม"}
+            {isSubmitting ? "กำลังบันทึก..." : editingStaffId ? <><Save size={16} /> บันทึกการแก้ไข</> : <><Plus size={16} /> เพิ่มพนักงาน</>}
           </button>
           {editingStaffId && (
-            <button type="button" onClick={clearForm} style={secondaryButtonStyle}>
-              ยกเลิก
-            </button>
+            <button type="button" onClick={clearForm} style={secondaryButtonStyle}>ยกเลิก</button>
           )}
         </div>
       </form>
 
-      {/* Filter Container */}
-      <div style={filterContainerStyle}>
-        <div style={{ flex: 1, minWidth: "220px" }}>
-          <input
-            type="text"
-            placeholder="ค้นหา (ชื่อ, เบอร์โทร, Username, ที่อยู่)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={inputStyle}
-          />
+      {/* ตารางพนักงาน */}
+      <div style={cardStyle}>
+        <div style={tableHeaderStyle}>
+          <h2 style={{ ...cardTitleStyle, margin: 0 }}>
+            รายชื่อพนักงาน <span style={countPillStyle}>{filteredStaffs.length}</span>
+          </h2>
+          <div style={filterContainerStyle}>
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อ, เบอร์โทร, Username, ที่อยู่..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ ...inputStyle, width: "260px", maxWidth: "100%" }}
+            />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ ...inputStyle, width: "140px" }}>
+              <option value="all">ทุกสถานะ</option>
+              <option value="active">ใช้งาน</option>
+              <option value="inactive">ปิดใช้งาน</option>
+            </select>
+          </div>
         </div>
-        <div style={{ width: "160px" }}>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="all">สถานะทั้งหมด</option>
-            <option value="active">ใช้งาน</option>
-            <option value="inactive">ไม่ใช้งาน</option>
-          </select>
-        </div>
-      </div>
 
-      {/* Table */}
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle, width: "50px" }}>ID</th>
-              <th style={{ ...thStyle, width: "120px" }}>ชื่อ</th>
-              <th style={{ ...thStyle, width: "110px" }}>เบอร์โทร</th>
-              <th style={{ ...thStyle, width: "100px" }}>Username</th>
-              <th style={{ ...thStyle, width: "180px" }}>ที่อยู่</th>
-              <th style={{ ...thStyle, width: "100px" }}>สถานะงาน</th>
-              <th style={{ ...thStyle, width: "90px" }}>จำนวนงาน</th>
-              <th style={{ ...thStyle, width: "140px" }}>จัดการ</th>
-            </tr>
-          </thead>
-        
-          <tbody>
-            {filteredStaffs.length > 0 ? (
-              filteredStaffs.map((item, index) => {
-                const pendingCount = Number(item.pending_jobs || 0);
-                const isWorking = pendingCount > 0;
-
-                return (
-                  <tr key={`${item.staff_id || 'staff'}-${index}`}>
-                    <td style={tdStyle}>{item.staff_id}</td>
-                    <td style={tdStyle}>
-                      <strong>{removeEmojis(item.staff_name)}</strong>
-                    </td>
-                    <td style={tdStyle}>{removeEmojis(item.staff_phone) || "-"}</td>
-                    <td style={tdStyle}>{removeEmojis(item.username)}</td>
-                    <td style={tdStyle}>{removeEmojis(item.address) || "-"}</td>
-                    
-                    {/* แสดงสถานะงาน: กำลังส่ง / ว่าง */}
-                    <td style={tdStyle}>
-                      <span
-                        style={{
-                          ...badgeStyle,
-                          backgroundColor: isWorking ? "#f59e0b" : "#10b981",
-                          color: "white",
-                        }}
-                      >
-                        {isWorking ? "กำลังส่ง" : "ว่าง"}
-                      </span>
-                    </td>
-
-                    {/* แสดงจำนวนงานที่รอส่ง */}
-                    <td style={tdStyle}>
-                      <span style={{ fontWeight: "bold", color: isWorking ? "#f59e0b" : "#9ca3af" }}>
-                        {pendingCount} งาน
-                      </span>
-                    </td>
-
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
-                      <button type="button" onClick={() => editStaff(item)} style={editButtonStyle}>
-                        แก้ไข
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteStaff(item.staff_id, item.staff_name)}
-                        style={deleteButtonStyle}
-                      >
-                        ลบ
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={tableStyle}>
+            <thead>
               <tr>
-                <td style={{ ...tdStyle, textAlign: "center" }} colSpan="8">
-                  ไม่พบข้อมูลพนักงานที่ค้นหา
-                </td>
+                <th style={thStyle}>พนักงาน</th>
+                <th style={thStyle}>เบอร์โทร</th>
+                <th style={thStyle}>ที่อยู่</th>
+                <th style={thStyle}>สถานะงาน</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>งานค้าง</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>จัดการ</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredStaffs.length > 0 ? (
+                filteredStaffs.map((item, index) => {
+                  const pendingCount = Number(item.pending_jobs || 0);
+                  const isWorking = pendingCount > 0;
+                  const name = removeEmojis(item.staff_name);
+                  const inactive = item.status === "inactive";
+                  return (
+                    <tr key={`${item.staff_id || "staff"}-${index}`} style={editingStaffId === item.staff_id ? { background: "rgba(245,158,11,0.08)" } : undefined}>
+                      <td style={tdStyle}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ ...avatarStyle, opacity: inactive ? 0.4 : 1 }}>{name.charAt(0) || "?"}</span>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>
+                              {name}
+                              {inactive && <span style={inactiveTagStyle}>ปิดใช้งาน</span>}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#9ca3af" }}>@{removeEmojis(item.username)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={tdMutedStyle}>
+                        <span style={iconTextStyle}><Phone size={13} /> {removeEmojis(item.staff_phone) || "-"}</span>
+                      </td>
+                      <td style={{ ...tdMutedStyle, whiteSpace: "normal", minWidth: "160px" }}>
+                        {item.address ? <span style={iconTextStyle}><MapPin size={13} /> {removeEmojis(item.address)}</span> : "-"}
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ ...badgeStyle, ...(isWorking ? badgeAmber : badgeGreen) }}>
+                          {isWorking ? "กำลังส่ง" : "ว่าง"}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: isWorking ? "#fbbf24" : "#6b7280" }}>
+                        {pendingCount} งาน
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: "6px" }}>
+                          <button type="button" onClick={() => editStaff(item)} style={iconBtnStyle("#f59e0b")} title="แก้ไข">
+                            <Pencil size={14} />
+                          </button>
+                          <button type="button" onClick={() => deleteStaff(item.staff_id, item.staff_name)} style={iconBtnStyle("#ef4444")} title="ลบ">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td style={emptyCellStyle} colSpan="6">ไม่พบข้อมูลพนักงานที่ค้นหา</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* แจ้งผล */}
+      {message.text && (
+        <div style={{ ...toastStyle, borderColor: message.type === "success" ? "#10b981" : "#ef4444" }}>
+          {message.type === "success" ? <CircleCheck size={18} color="#10b981" /> : <TriangleAlert size={18} color="#f87171" />}
+          <span>{message.text}</span>
+        </div>
+      )}
     </Layout>
   );
 }
 
 // ========== Styles ==========
-const formCardStyle = {
-  background: "#1f2937",
-  color: "white",
-  padding: "20px",
-  borderRadius: "12px",
-  marginBottom: "20px",
-};
+const headerRowStyle = { marginBottom: "20px" };
+const titleStyle = { margin: 0, fontSize: "30px", color: "white" };
+const subtitleStyle = { color: "#9ca3af", fontSize: "14px", marginTop: "6px" };
 
-const formGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "12px",
-  marginBottom: "16px",
-};
+const cardStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "14px", marginBottom: "20px", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" };
+const editingCardStyle = { boxShadow: "0 0 0 2px #f59e0b" };
+const cardTitleStyle = { margin: "0 0 16px", fontSize: "18px", color: "white", display: "flex", alignItems: "center", gap: "10px" };
+const countPillStyle = { background: "#374151", color: "#e5e7eb", fontSize: "13px", padding: "2px 10px", borderRadius: "999px", fontWeight: "normal" };
 
-const fieldGroupStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "6px",
-};
+const formGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px 16px" };
+const fieldGroupStyle = { display: "flex", flexDirection: "column", gap: "6px" };
+const labelStyle = { fontSize: "13px", fontWeight: 600, color: "#cbd5e1" };
+const reqStyle = { color: "#f87171" };
+const hintStyle = { color: "#6b7280", fontWeight: "normal" };
+const inputStyle = { height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #374151", background: "#111827", color: "white", width: "100%", boxSizing: "border-box", fontSize: "14px" };
+const readOnlyStyle = { background: "#1a2230", color: "#9ca3af", cursor: "not-allowed" };
+const formActionsStyle = { display: "flex", gap: "10px", marginTop: "18px" };
 
-const labelStyle = {
-  fontSize: "13px",
-  fontWeight: "bold",
-  color: "#e5e7eb",
-};
+const tableHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" };
+const filterContainerStyle = { display: "flex", gap: "10px", flexWrap: "wrap" };
 
-const inputStyle = {
-  padding: "10px",
-  borderRadius: "8px",
-  border: "1px solid #4b5563",
-  background: "#111827",
-  color: "white",
-  width: "100%",
-  boxSizing: "border-box",
-};
+const tableStyle = { width: "100%", borderCollapse: "collapse", color: "white", fontSize: "14px" };
+const thStyle = { padding: "10px 12px", textAlign: "left", borderBottom: "1px solid #374151", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap", background: "#273244", color: "#cbd5e1" };
+const tdStyle = { padding: "12px", textAlign: "left", borderBottom: "1px solid #2b3647", verticalAlign: "middle", whiteSpace: "nowrap" };
+const tdMutedStyle = { ...tdStyle, color: "#9ca3af", fontSize: "13px" };
+const emptyCellStyle = { padding: "28px", textAlign: "center", color: "#9ca3af" };
+const iconTextStyle = { display: "inline-flex", alignItems: "center", gap: "6px" };
 
-const filterContainerStyle = {
-  display: "flex",
-  gap: "12px",
-  marginBottom: "16px",
-  flexWrap: "wrap",
-};
+const avatarStyle = { width: "34px", height: "34px", borderRadius: "50%", background: "#2563eb", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, flexShrink: 0 };
+const inactiveTagStyle = { marginLeft: "8px", fontSize: "11px", padding: "1px 8px", borderRadius: "999px", background: "#374151", color: "#9ca3af", fontWeight: "normal" };
 
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse",
-  background: "#1f2937",
-  color: "white",
-  borderRadius: "12px",
-  overflow: "hidden",
-  tableLayout: "fixed", 
-};
+const primaryButtonStyle = { display: "inline-flex", alignItems: "center", gap: "6px", height: "40px", padding: "0 18px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: 600, fontSize: "14px" };
+const secondaryButtonStyle = { height: "40px", padding: "0 18px", border: "1px solid #4b5563", borderRadius: "8px", background: "transparent", color: "#e5e7eb", cursor: "pointer", fontSize: "14px" };
+const iconBtnStyle = (color) => ({ display: "inline-flex", alignItems: "center", padding: "6px 9px", border: `1px solid ${color}`, borderRadius: "6px", background: `${color}1f`, color: "white", cursor: "pointer" });
 
-const thStyle = {
-  padding: "12px 10px",
-  textAlign: "left",
-  borderBottom: "1px solid #374151",
-  fontSize: "13px",
-  fontWeight: "bold",
-  whiteSpace: "nowrap",
-  backgroundColor: "#2d3a4a",
-};
+const badgeStyle = { padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, whiteSpace: "nowrap", display: "inline-block" };
+const badgeAmber = { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid #f59e0b" };
+const badgeGreen = { background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid #10b981" };
 
-const tdStyle = {
-  padding: "10px",
-  textAlign: "left",
-  borderBottom: "1px solid #374151",
-  fontSize: "13px",
-  wordBreak: "break-word",    
-  whiteSpace: "normal",       
-  verticalAlign: "middle",   
-};
-
-const primaryButtonStyle = {
-  padding: "10px 14px",
-  border: "none",
-  borderRadius: "8px",
-  background: "#2563eb",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold",
-};
-
-const secondaryButtonStyle = {
-  padding: "10px 14px",
-  border: "none",
-  borderRadius: "8px",
-  background: "#6b7280",
-  color: "white",
-  cursor: "pointer",
-};
-
-const editButtonStyle = {
-  marginRight: "8px",
-  padding: "6px 10px",
-  border: "none",
-  borderRadius: "6px",
-  background: "#f59e0b",
-  color: "white",
-  cursor: "pointer",
-};
-
-const deleteButtonStyle = {
-  padding: "6px 10px",
-  border: "none",
-  borderRadius: "6px",
-  background: "#dc2626",
-  color: "white",
-  cursor: "pointer",
-};
-
-const badgeStyle = {
-  padding: "4px 10px",
-  borderRadius: "999px",
-  fontSize: "12px",
-  fontWeight: "bold",
-  whiteSpace: "nowrap",
-  display: "inline-block",
-  textAlign: "center",
-};
+const toastStyle = { position: "fixed", right: "24px", bottom: "24px", zIndex: 1100, display: "flex", gap: "10px", alignItems: "center", padding: "12px 16px", background: "#111827", color: "white", border: "1px solid", borderRadius: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", fontSize: "14px" };
 
 export default StaffPage;

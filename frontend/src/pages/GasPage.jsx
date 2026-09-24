@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Layout from "../components/Layout";
 import { QRCodeSVG } from "qrcode.react";
+import { Settings, Pencil, Plus, Save, Trash2, QrCode, Image as ImageIcon, Printer, TriangleAlert, CircleCheck, X } from "lucide-react";
 
 // path แบบ absolute — แบบ relative ("../Backend") พังเมื่อ URL มี / ต่อท้าย เช่น /gas/
 const API_BASE = "/Backend/models";
@@ -416,7 +417,7 @@ function GasPage() {
       <div style={labelRowStyle}>
         <label style={labelStyle}>{label}{required && <span style={reqStyle}> *</span>}</label>
         <button type="button" onClick={() => openOptionModal(type, title)} style={manageBtnStyle}>
-          ⚙️ จัดการ
+          <Settings size={12} /> จัดการ
         </button>
       </div>
       <select
@@ -464,7 +465,7 @@ function GasPage() {
         <form ref={formRef} onSubmit={handleSave} style={{ ...cardStyle, ...(editingSerial ? editingCardStyle : {}) }}>
           <div style={cardHeaderStyle}>
             <h2 style={cardTitleStyle}>
-              {editingSerial ? <>✏️ แก้ไขถัง <span style={{ color: "#fbbf24" }}>{editingSerial}</span></> : "➕ เพิ่มถังแก๊สใหม่"}
+              {editingSerial ? <><Pencil size={18} color="#fbbf24" /> แก้ไขถัง <span style={{ color: "#fbbf24" }}>{editingSerial}</span></> : <><Plus size={18} color="#60a5fa" /> เพิ่มถังแก๊สใหม่</>}
             </h2>
           </div>
 
@@ -535,7 +536,7 @@ function GasPage() {
 
           <div style={formActionsStyle}>
             <button type="submit" style={primaryButtonStyle} disabled={isSubmitting}>
-              {isSubmitting ? "กำลังบันทึก..." : editingSerial ? "💾 บันทึกการแก้ไข" : "➕ เพิ่มถัง"}
+              {isSubmitting ? "กำลังบันทึก..." : editingSerial ? <><Save size={16} /> บันทึกการแก้ไข</> : <><Plus size={16} /> เพิ่มถัง</>}
             </button>
             {(editingSerial || formData.serial_number) && (
               <button type="button" onClick={clearForm} style={secondaryButtonStyle}>
@@ -548,7 +549,7 @@ function GasPage() {
         {/* ค้นหา */}
         <input
           type="text"
-          placeholder="🔍 ค้นหา Serial, ยี่ห้อ, ชนิด, ขนาด, ลูกค้า, สถานที่, Delivery ID..."
+          placeholder="ค้นหา Serial, ยี่ห้อ, ชนิด, ขนาด, ลูกค้า, สถานที่, Delivery ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={searchInputStyle}
@@ -592,18 +593,18 @@ function GasPage() {
                         <td style={tdStyle}>{item.size || "-"}</td>
                         <td style={tdMutedStyle}>{formatDate(item.manufacture_date)}</td>
                         <td style={isPastDate(expiry) ? tdDangerStyle : tdStyle}>
-                          {formatDate(expiry)}{isPastDate(expiry) && " ⚠️"}
+                          {formatDate(expiry)}{isPastDate(expiry) && <TriangleAlert size={13} style={{ marginLeft: 4 }} />}
                         </td>
                         <td style={isPastDate(nextCheck) ? tdDangerStyle : tdStyle}>
-                          {formatDate(nextCheck)}{isPastDate(nextCheck) && " ⚠️"}
+                          {formatDate(nextCheck)}{isPastDate(nextCheck) && <TriangleAlert size={13} style={{ marginLeft: 4 }} />}
                         </td>
                         <td style={tdStyle}><StatusBadge text={item.status} color={STATUS_COLORS[item.status]} /></td>
                         <td style={tdMutedStyle}>{item.current_location || "-"}</td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           <div style={actionGroupStyle}>
-                            <button type="button" onClick={() => handleShowQR(item)} style={iconBtnStyle("#10b981")} title="QR Code">▦ QR</button>
-                            <button type="button" onClick={() => editCylinder(item)} style={iconBtnStyle("#f59e0b")} title="แก้ไข">✏️</button>
-                            <button type="button" onClick={() => handleDeleteCylinder(item.serial_number)} style={iconBtnStyle("#ef4444")} title="ลบ">🗑️</button>
+                            <button type="button" onClick={() => handleShowQR(item)} style={iconBtnStyle("#10b981")} title="QR Code"><QrCode size={14} /> QR</button>
+                            <button type="button" onClick={() => editCylinder(item)} style={iconBtnStyle("#f59e0b")} title="แก้ไข"><Pencil size={14} /></button>
+                            <button type="button" onClick={() => handleDeleteCylinder(item.serial_number)} style={iconBtnStyle("#ef4444")} title="ลบ"><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -666,7 +667,7 @@ function GasPage() {
                         <td style={{ ...tdStyle, textAlign: "center" }}>
                           {proofImg ? (
                             <button type="button" onClick={() => handleShowImage(proofImg, item.delivery_id)} style={iconBtnStyle("#3b82f6")}>
-                              📷 ดูรูป
+                              <ImageIcon size={14} /> ดูรูป
                             </button>
                           ) : (
                             <span style={{ color: "#6b7280", fontSize: "12px" }}>—</span>
@@ -681,7 +682,7 @@ function GasPage() {
                             disabled={!hasValue(serial)}
                             title={hasValue(serial) ? "QR Code" : "ยังไม่ได้สแกนถัง"}
                           >
-                            ▦ QR
+                            <QrCode size={14} /> QR
                           </button>
                         </td>
                       </tr>
@@ -699,7 +700,7 @@ function GasPage() {
       {/* Toast แจ้งผล */}
       {toast && (
         <div style={{ ...toastStyle, borderColor: toast.type === "success" ? "#10b981" : "#ef4444" }}>
-          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          {toast.type === "success" ? <CircleCheck size={18} color="#10b981" /> : <TriangleAlert size={18} color="#f87171" />}
           <span>{toast.text}</span>
         </div>
       )}
@@ -709,8 +710,8 @@ function GasPage() {
         <div style={modalOverlayStyle} onClick={() => setManageModal({ open: false, type: "", title: "" })}>
           <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeaderStyle}>
-              <h3 style={{ margin: 0 }}>⚙️ {manageModal.title}</h3>
-              <button type="button" onClick={() => setManageModal({ open: false, type: "", title: "" })} style={closeBtnStyle}>✕</button>
+              <h3 style={{ margin: 0 }}>{manageModal.title}</h3>
+              <button type="button" onClick={() => setManageModal({ open: false, type: "", title: "" })} style={closeBtnStyle}><X size={18} /></button>
             </div>
 
             <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
@@ -750,7 +751,7 @@ function GasPage() {
           <div style={{ ...modalContentStyle, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeaderStyle}>
               <h3 style={{ margin: 0 }}>QR Code ถังแก๊ส</h3>
-              <button type="button" onClick={() => setQrModal({ open: false, cylinder: null })} style={closeBtnStyle}>✕</button>
+              <button type="button" onClick={() => setQrModal({ open: false, cylinder: null })} style={closeBtnStyle}><X size={18} /></button>
             </div>
 
             <div style={{ fontSize: "20px", fontWeight: "bold", color: "#60a5fa" }}>{selectedCylinder?.serial_number}</div>
@@ -764,7 +765,7 @@ function GasPage() {
 
             <p style={{ fontSize: "11px", color: "#64748b", wordBreak: "break-all", margin: "0 0 16px" }}>{selectedQrUrl}</p>
 
-            <button type="button" onClick={handlePrintQR} style={{ ...primaryButtonStyle, width: "100%" }}>🖨️ พิมพ์ QR Code</button>
+            <button type="button" onClick={handlePrintQR} style={{ ...primaryButtonStyle, width: "100%" }}><Printer size={16} /> พิมพ์ QR Code</button>
           </div>
         </div>
       )}
@@ -775,7 +776,7 @@ function GasPage() {
           <div style={{ ...modalContentStyle, width: "auto", maxWidth: "90vw" }} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeaderStyle}>
               <h3 style={{ margin: 0 }}>หลักฐานการจัดส่ง #{imageModal.serial}</h3>
-              <button type="button" onClick={() => setImageModal({ open: false, imgSrc: "", rawPath: "", serial: "" })} style={closeBtnStyle}>✕</button>
+              <button type="button" onClick={() => setImageModal({ open: false, imgSrc: "", rawPath: "", serial: "" })} style={closeBtnStyle}><X size={18} /></button>
             </div>
             <img
               src={imageModal.imgSrc}
@@ -844,14 +845,17 @@ const inputStyle = {
   colorScheme: "dark",
 };
 const readOnlyStyle = { background: "#1a2230", color: "#9ca3af", cursor: "not-allowed" };
-const manageBtnStyle = { background: "none", border: "none", color: "#60a5fa", fontSize: "12px", cursor: "pointer", padding: 0 };
+const manageBtnStyle = { display: "inline-flex", alignItems: "center", gap: "4px", background: "none", border: "none", color: "#60a5fa", fontSize: "12px", cursor: "pointer", padding: 0 };
 const formActionsStyle = { display: "flex", gap: "10px", marginTop: "18px" };
 
 const searchInputStyle = { ...inputStyle, height: "44px", marginBottom: "20px", border: "1px solid #3b82f6", padding: "0 16px" };
 
-const primaryButtonStyle = { height: "40px", padding: "0 18px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold", fontSize: "14px" };
+const primaryButtonStyle = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px", height: "40px", padding: "0 18px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold", fontSize: "14px" };
 const secondaryButtonStyle = { height: "40px", padding: "0 18px", border: "1px solid #4b5563", borderRadius: "8px", background: "transparent", color: "#e5e7eb", cursor: "pointer", fontSize: "14px" };
 const iconBtnStyle = (color) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
   padding: "5px 10px",
   border: `1px solid ${color}`,
   borderRadius: "6px",
@@ -894,7 +898,7 @@ const toastStyle = {
 const modalOverlayStyle = { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: "16px" };
 const modalContentStyle = { background: "#1f2937", color: "white", padding: "20px", borderRadius: "14px", width: "380px", maxWidth: "100%", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", border: "1px solid #374151" };
 const modalHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", textAlign: "left" };
-const closeBtnStyle = { background: "none", border: "none", color: "#9ca3af", fontSize: "18px", cursor: "pointer" };
+const closeBtnStyle = { display: "flex", background: "none", border: "none", color: "#9ca3af", fontSize: "18px", cursor: "pointer" };
 const optionListStyle = { maxHeight: "260px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" };
 const optionItemStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#111827", borderRadius: "8px" };
 

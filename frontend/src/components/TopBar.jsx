@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Bell } from "lucide-react";
 
 const getGasStatus = (level) => {
   if (level <= 520) return { text: "ปกติ", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
@@ -39,7 +40,7 @@ function TopBar({
         {/* รออนุมัติส่ง */}
         {isAdmin && (
           <button onClick={() => navigate("/approval")} style={approvalButtonStyle} title="ไปหน้าอนุมัติการจัดส่ง">
-            <span style={{ fontSize: "16px" }}>🔔</span>
+            <Bell size={16} />
             <span className="topbar-hide-sm">รออนุมัติส่ง</span>
             <span
               style={{

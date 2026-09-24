@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import { Settings, Pencil, Trash2, CircleCheck } from "lucide-react";
 import API_BASE_URL from "../config"; 
 
 function MaintenancePage({
@@ -429,7 +430,7 @@ const dueCylinders = useMemo(() => {
                 style={iconButtonStyle}
                 title="จัดการประเภท"
               >
-                ⚙️
+                <Settings size={16} />
               </button>
             </div>
           </div>
@@ -455,7 +456,7 @@ const dueCylinders = useMemo(() => {
                 style={iconButtonStyle}
                 title="จัดการผลตรวจ"
               >
-                ⚙️
+                <Settings size={16} />
               </button>
             </div>
           </div>
@@ -481,7 +482,7 @@ const dueCylinders = useMemo(() => {
                 style={iconButtonStyle}
                 title="จัดการสิ่งที่ต้องทำต่อ"
               >
-                ⚙️
+                <Settings size={16} />
               </button>
             </div>
           </div>
@@ -505,7 +506,7 @@ const dueCylinders = useMemo(() => {
                 style={iconButtonStyle}
                 title="จัดการหมายเหตุ"
               >
-                ⚙️
+                <Settings size={16} />
               </button>
             </div>
           </div>
@@ -536,7 +537,7 @@ const dueCylinders = useMemo(() => {
         </h2>
         <input
           type="text"
-          placeholder="🔍 ค้นหา Serial, ยี่ห้อ, ขนาด..."
+          placeholder="ค้นหา Serial, ยี่ห้อ, ขนาด..."
           value={dueSearchTerm}
           onChange={(e) => setDueSearchTerm(e.target.value)}
           style={searchInputStyle}
@@ -593,7 +594,7 @@ const dueCylinders = useMemo(() => {
               ))
             ) : (
               <tr><td style={emptyCellStyle} colSpan="7">
-                {dueSearchTerm ? "ไม่พบถังที่ค้นหา" : "✅ ไม่มีถังที่เลยกำหนดตรวจ"}
+                {dueSearchTerm ? "ไม่พบถังที่ค้นหา" : <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><CircleCheck size={16} color="#10b981" /> ไม่มีถังที่เลยกำหนดตรวจ</span>}
               </td></tr>
             )}
           </tbody>
@@ -608,7 +609,7 @@ const dueCylinders = useMemo(() => {
         </h2>
         <input
           type="text"
-          placeholder="🔍 ค้นหาประวัติการตรวจ..."
+          placeholder="ค้นหาประวัติการตรวจ..."
           value={historySearchTerm}
           onChange={(e) => setHistorySearchTerm(e.target.value)}
           style={searchInputStyle}
@@ -646,7 +647,7 @@ const dueCylinders = useMemo(() => {
                   <td style={{ ...tdStyle, color: "#9ca3af", minWidth: "180px" }}>{item.description || "-"}</td>
                   <td style={tdNowrapStyle}>
                     <button onClick={() => handleEditClick(item)} style={editButtonStyle}>
-                      ✏️ แก้ไข
+                      <Pencil size={13} /> แก้ไข
                     </button>
                   </td>
                 </tr>
@@ -665,7 +666,7 @@ const dueCylinders = useMemo(() => {
         <div style={modalOverlayStyle}>
           <div style={darkModalStyle}>
             <div style={modalHeaderStyle}>
-              <span style={{ fontWeight: "bold", fontSize: "16px" }}>⚙️ {getModalTitle()}</span>
+              <span style={{ fontWeight: "bold", fontSize: "16px" }}>{getModalTitle()}</span>
               <button onClick={() => setActiveModal(null)} style={closeModalIconStyle}>✕</button>
             </div>
 
@@ -684,7 +685,7 @@ const dueCylinders = useMemo(() => {
               {getCurrentModalList().map((item, idx) => (
                 <div key={idx} style={itemCardStyle}>
                   <span style={{ fontSize: "14px", color: "#e5e7eb" }}>{item}</span>
-                  <button onClick={() => handleRemoveItem(idx)} style={redDeleteButtonStyle}>❌ ลบ</button>
+                  <button onClick={() => handleRemoveItem(idx)} style={redDeleteButtonStyle}><Trash2 size={13} /> ลบ</button>
                 </div>
               ))}
             </div>
@@ -695,7 +696,7 @@ const dueCylinders = useMemo(() => {
       {editingItem && (
         <div style={modalOverlayStyle}>
           <div style={modalStyle}>
-            <h3 style={{ marginTop: 0 }}>✏️ แก้ไขประวัติการตรวจ (ID: {editingItem.maintenance_id})</h3>
+            <h3 style={{ marginTop: 0 }}>แก้ไขประวัติการตรวจ <span style={{ color: "#9ca3af", fontWeight: "normal" }}>#{editingItem.maintenance_id}</span></h3>
             
             <div style={fieldGroupStyle}>
               <label style={labelStyle}>Serial Number</label>
@@ -866,7 +867,7 @@ const tdNowrapStyle = { ...tdStyle, whiteSpace: "nowrap" };
 
 const primaryButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", cursor: "pointer", fontWeight: "bold" };
 const cancelButtonStyle = { height: "42px", padding: "0 16px", border: "none", borderRadius: "8px", background: "#4b5563", color: "white", cursor: "pointer" };
-const editButtonStyle = { padding: "6px 10px", border: "none", borderRadius: "6px", background: "#f59e0b", color: "white", cursor: "pointer" };
+const editButtonStyle = { display: "inline-flex", alignItems: "center", gap: "6px", padding: "5px 10px", border: "1px solid #f59e0b", borderRadius: "6px", background: "rgba(245,158,11,0.12)", color: "#fbbf24", cursor: "pointer", fontSize: "12px" };
 
 const badgeStyle = { padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "bold", whiteSpace: "nowrap", display: "inline-block" };
 const overdueStyle = { background: "#ef4444", color: "white" };
@@ -881,6 +882,6 @@ const darkInputStyle = { height: "42px", padding: "0 10px", borderRadius: "8px",
 const blueAddButtonStyle = { height: "42px", padding: "0 14px", border: "none", borderRadius: "8px", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" };
 const itemListContainerStyle = { maxHeight: "250px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" };
 const itemCardStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#111827", borderRadius: "8px" };
-const redDeleteButtonStyle = { padding: "4px 8px", border: "none", borderRadius: "6px", background: "#dc2626", color: "white", cursor: "pointer", fontSize: "12px" };
+const redDeleteButtonStyle = { display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 8px", border: "1px solid #ef4444", borderRadius: "6px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", cursor: "pointer", fontSize: "12px" };
 
 export default MaintenancePage;

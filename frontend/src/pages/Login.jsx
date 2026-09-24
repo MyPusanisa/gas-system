@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAPI } from "../services/api";
+import { Flame, Eye, EyeOff, User, Lock, TriangleAlert } from "lucide-react";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -61,56 +62,62 @@ function Login() {
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        {/* โลโก้แก๊ส */}
-        <div style={logoWrapperStyle}>
-          <div style={logoCircleStyle}>
-            <span style={{ fontSize: "28px" }}>🔥</span>
-          </div>
+        <div style={logoCircleStyle}>
+          <Flame size={28} />
         </div>
 
-        <h2 style={titleStyle}>Gas Management System</h2>
-        <p style={subtitleStyle}>เข้าสู่ระบบเพื่อจัดการคลังและระบบจัดส่งแก๊ส</p>
+        <h2 style={titleStyle}>GAS SYS</h2>
+        <p style={subtitleStyle}>ระบบจัดการคลังและการจัดส่งถังแก๊ส</p>
 
         <form onSubmit={handleLogin}>
-          {/* ช่อง Username */}
           <div style={inputGroupStyle}>
-            <label style={labelStyle}>ชื่อผู้ใช้งาน (Username)</label>
-            <input
-              type="text"
-              placeholder="กรอกชื่อผู้ใช้ เช่น somchai หรือ admin"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              style={inputStyle}
-              disabled={loading}
-            />
+            <label style={labelStyle}>ชื่อผู้ใช้งาน</label>
+            <div style={inputWrapStyle}>
+              <User size={16} style={inputIconStyle} />
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                style={inputStyle}
+                disabled={loading}
+                autoComplete="username"
+                autoFocus
+              />
+            </div>
           </div>
 
-          {/* ช่อง Password + ปุ่มซ่อน/แสดงรหัสผ่าน */}
           <div style={inputGroupStyle}>
-            <label style={labelStyle}>รหัสผ่าน (Password)</label>
-            <div style={{ position: "relative" }}>
+            <label style={labelStyle}>รหัสผ่าน</label>
+            <div style={inputWrapStyle}>
+              <Lock size={16} style={inputIconStyle} />
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="กรอกรหัสผ่าน"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ ...inputStyle, paddingRight: "40px" }}
+                style={{ ...inputStyle, paddingRight: "44px" }}
                 disabled={loading}
+                autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 style={togglePasswordStyle}
+                title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </div>
 
-          {/* ข้อความแจ้งเตือน Error */}
-          {error && <div style={errorStyle}>⚠️ {error}</div>}
+          {error && (
+            <div style={errorStyle}>
+              <TriangleAlert size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
+              <span>{error}</span>
+            </div>
+          )}
 
-          {/* ปุ่ม Login */}
           <button type="submit" style={buttonStyle} disabled={loading}>
             {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </button>
@@ -125,105 +132,93 @@ const containerStyle = {
   justifyContent: "center",
   alignItems: "center",
   minHeight: "100vh",
-  backgroundColor: "#f1f5f9",
-  fontFamily: "'Kanit', 'Prompt', sans-serif",
+  padding: "16px",
+  boxSizing: "border-box",
+  background: "radial-gradient(circle at 20% 0%, rgba(59,130,246,0.18), transparent 45%), radial-gradient(circle at 90% 100%, rgba(249,115,22,0.14), transparent 45%), #0f172a",
 };
 
 const cardStyle = {
   width: "100%",
-  maxWidth: "420px",
+  maxWidth: "400px",
   padding: "36px 32px",
-  backgroundColor: "#ffffff",
-  borderRadius: "16px",
-  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)",
+  background: "rgba(31,41,55,0.9)",
+  border: "1px solid #374151",
+  borderRadius: "18px",
+  boxShadow: "0 20px 50px rgba(0,0,0,0.45)",
   textAlign: "center",
-};
-
-const logoWrapperStyle = {
-  display: "flex",
-  justifyContent: "center",
-  marginBottom: "16px",
+  boxSizing: "border-box",
 };
 
 const logoCircleStyle = {
   width: "60px",
   height: "60px",
-  borderRadius: "50%",
-  backgroundColor: "#ffedd5",
+  margin: "0 auto 16px",
+  borderRadius: "16px",
+  background: "linear-gradient(135deg, #f97316, #ef4444)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  color: "white",
+  boxShadow: "0 8px 20px rgba(239,68,68,0.35)",
 };
 
-const titleStyle = {
-  fontSize: "22px",
-  fontWeight: "700",
-  color: "#1e293b",
-  marginBottom: "6px",
-};
+const titleStyle = { fontSize: "24px", fontWeight: 700, margin: "0 0 6px", color: "white" };
+const subtitleStyle = { fontSize: "14px", color: "#9ca3af", margin: "0 0 28px" };
 
-const subtitleStyle = {
-  fontSize: "14px",
-  color: "#64748b",
-  marginBottom: "24px",
-};
-
-const inputGroupStyle = {
-  marginBottom: "18px",
-  textAlign: "left",
-};
-
-const labelStyle = {
-  display: "block",
-  fontSize: "13px",
-  fontWeight: "600",
-  color: "#475569",
-  marginBottom: "6px",
-};
+const inputGroupStyle = { marginBottom: "16px", textAlign: "left" };
+const labelStyle = { display: "block", fontSize: "13px", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" };
+const inputWrapStyle = { position: "relative" };
+const inputIconStyle = { position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#6b7280", pointerEvents: "none" };
 
 const inputStyle = {
   width: "100%",
-  padding: "12px 14px",
-  borderRadius: "8px",
-  border: "1px solid #cbd5e1",
-  fontSize: "14px",
-  outline: "none",
+  height: "46px",
+  padding: "0 14px 0 40px",
+  borderRadius: "10px",
+  border: "1px solid #374151",
+  background: "#111827",
+  color: "white",
+  fontSize: "15px",
   boxSizing: "border-box",
 };
 
 const togglePasswordStyle = {
   position: "absolute",
-  right: "10px",
+  right: "8px",
   top: "50%",
   transform: "translateY(-50%)",
+  display: "flex",
+  padding: "6px",
   background: "none",
   border: "none",
+  color: "#9ca3af",
   cursor: "pointer",
-  fontSize: "16px",
 };
 
 const buttonStyle = {
   width: "100%",
-  padding: "12px",
-  backgroundColor: "#2563eb",
-  color: "#ffffff",
+  height: "46px",
+  marginTop: "8px",
+  background: "#2563eb",
+  color: "white",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "10px",
   fontSize: "15px",
-  fontWeight: "600",
+  fontWeight: 600,
   cursor: "pointer",
-  marginTop: "10px",
 };
 
 const errorStyle = {
-  marginBottom: "16px",
+  display: "flex",
+  gap: "8px",
+  marginBottom: "14px",
   padding: "10px 14px",
-  borderRadius: "8px",
-  backgroundColor: "#fef2f2",
-  color: "#991b1b",
+  borderRadius: "10px",
+  background: "rgba(239,68,68,0.12)",
+  border: "1px solid rgba(239,68,68,0.5)",
+  color: "#fca5a5",
   fontSize: "13px",
   textAlign: "left",
-  border: "1px solid #fecaca",
 };
 
 export default Login;

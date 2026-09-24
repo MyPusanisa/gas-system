@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import { API_BASE } from "../config";
-
-const FONT_FAMILY = "'Kanit', 'Sarabun', sans-serif";
+import { Search, CircleCheck, TriangleAlert, PackagePlus, Undo2, Check, User, Phone, MapPin, Truck, ImageOff } from "lucide-react";
 
 export default function AdminApprovalPage() {
   const [pendingList, setPendingList] = useState([]);
@@ -190,136 +189,106 @@ export default function AdminApprovalPage() {
 
   return (
     <Layout>
-      <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
-        
-        {/* Card ค้นหา/รับถังแก๊สคืน */}
-        <div style={cardContainerStyle}>
-          <h3 style={{ margin: "0 0 12px 0", color: "#38bdf8", fontSize: "18px" }}>
-             รับถังแก๊สคืนเข้าคลัง / ลงทะเบียนถังนอกระบบ
-          </h3>
+      <div style={pageStyle}>
+        <div style={{ marginBottom: "20px" }}>
+          <h1 style={titleStyle}>อนุมัติการจัดส่ง</h1>
+          <div style={subtitleStyle}>ตรวจหลักฐานและอนุมัติงานจัดส่ง · รับถังคืนเข้าคลัง</div>
+        </div>
 
-          <form onSubmit={handleSearchCylinder} style={{ display: "flex", gap: "10px" }}>
-            <input
-              type="text"
-              placeholder="กรอกเลข SERIAL NUMBER เพื่อค้นหา..."
-              value={searchSerial}
-              onChange={(e) => {
-                setSearchSerial(e.target.value);
-                setSearchResult(null);
-              }}
-              style={inputStyle}
-            />
+        {/* รับถังแก๊สคืน / ลงทะเบียนถังนอกระบบ */}
+        <div style={cardStyle}>
+          <h2 style={cardTitleStyle}>
+            <Undo2 size={18} color="#60a5fa" /> รับถังคืนเข้าคลัง / ลงทะเบียนถังนอกระบบ
+          </h2>
+
+          <form onSubmit={handleSearchCylinder} style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: "220px" }}>
+              <Search size={16} style={inputIconStyle} />
+              <input
+                type="text"
+                placeholder="กรอก Serial Number เพื่อค้นหา"
+                value={searchSerial}
+                onChange={(e) => {
+                  setSearchSerial(e.target.value);
+                  setSearchResult(null);
+                }}
+                style={{ ...inputStyle, paddingLeft: "38px" }}
+              />
+            </div>
             <button type="submit" disabled={isSearching} style={primaryBtnStyle}>
               {isSearching ? "กำลังค้นหา..." : "ตรวจสอบ"}
             </button>
           </form>
 
-          {/* กรณีพบข้อมูลถังเดิม */}
+          {/* พบถังในระบบ */}
           {searchResult && searchResult.found && (
-            <div style={resultBoxStyle("#166534", "#bbf7d0")}>
-              <p style={{ margin: "0 0 8px 0", fontWeight: "bold" }}>
-                ✅ พบข้อมูลถังแก๊สในระบบ:
-              </p>
-              <div style={{ fontSize: "14px", lineHeight: "1.6" }}>
-                <div><strong>Serial:</strong> {searchResult.data.serial_number}</div>
-                <div><strong>ยี่ห้อ/ประเภท/ขนาด:</strong> {searchResult.data.brand} | {searchResult.data.gas_type} | {searchResult.data.size}</div>
-                <div><strong>วันที่นำเข้าครั้งล่าสุด:</strong> {searchResult.data.import_date || "ยังไม่มีข้อมูล"}</div>
-                
+            <div style={resultBoxStyle("#10b981")}>
+              <div style={resultHeaderStyle("#34d399")}>
+                <CircleCheck size={18} /> พบถังในระบบ
+              </div>
+              <div style={infoGridStyle}>
+                <Info label="Serial" value={searchResult.data.serial_number} strong />
+                <Info label="ยี่ห้อ / ชนิด / ขนาด" value={[searchResult.data.brand, searchResult.data.gas_type, searchResult.data.size].filter(Boolean).join(" · ")} />
+                <Info label="นำเข้าครั้งล่าสุด" value={searchResult.data.import_date || "ยังไม่มีข้อมูล"} />
                 {searchResult.data.next_inspection_date && (
-                  <div style={{ marginTop: "6px", background: "rgba(0,0,0,0.2)", padding: "8px", borderRadius: "6px" }}>
-                    <strong>กำหนดตรวจสภาพครั้งถัดไป:</strong> {searchResult.data.next_inspection_date} 
-                    <span style={{ color: "#facc15", fontWeight: "bold", marginLeft: "10px" }}>
-                      (เหลือเวลาอีก {searchResult.data.days_left ?? calculateDaysLeft(searchResult.data.next_inspection_date)} วัน)
-                    </span>
-                  </div>
+                  <Info
+                    label="ตรวจสภาพครั้งถัดไป"
+                    value={`${searchResult.data.next_inspection_date} (อีก ${searchResult.data.days_left ?? calculateDaysLeft(searchResult.data.next_inspection_date)} วัน)`}
+                  />
                 )}
               </div>
 
-              <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "10px" }}>
-                <label style={{ ...labelStyle, color: "#fff" }}>ระบุวันที่นำเข้ากลับคลังครั้งนี้:</label>
-                <input
-                  type="date"
-                  value={importDate}
-                  onChange={(e) => setImportDate(e.target.value)}
-                  style={{ ...inputStyle, width: "auto", marginBottom: "10px" }}
-                />
-                <button onClick={handleConfirmReturn} style={{ ...primaryBtnStyle, width: "100%", background: "#22c55e" }}>
-                  ยืนยันรับถังนี้กลับเข้าคลังและเริ่มนับรอบตรวจสอบใหม่
+              <div style={resultActionStyle}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={labelStyle}>วันที่รับคืนเข้าคลัง</label>
+                  <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)} style={{ ...inputStyle, width: "180px" }} />
+                </div>
+                <button onClick={handleConfirmReturn} style={{ ...primaryBtnStyle, background: "#059669" }}>
+                  <Check size={16} /> ยืนยันรับถังคืนเข้าคลัง
                 </button>
               </div>
             </div>
           )}
 
-          {/* กรณีไม่พบข้อมูล -> เลือก ยี่ห้อ / ชนิด / ขนาด จาก Master Data เดียวกัน */}
+          {/* ไม่พบถัง -> ลงทะเบียนใหม่ */}
           {searchResult && !searchResult.found && (
-            <div style={resultBoxStyle("#991b1b", "#fecaca")}>
-              <p style={{ margin: "0 0 12px 0", fontWeight: "bold" }}>
-                ⚠️ ไม่พบ Serial Number "{searchSerial}" ในระบบ กรุณาลงทะเบียนนำถังเข้าคลัง
-              </p>
+            <div style={resultBoxStyle("#f59e0b")}>
+              <div style={resultHeaderStyle("#fbbf24")}>
+                <TriangleAlert size={18} /> ไม่พบ Serial "{searchSerial}" ในระบบ — ลงทะเบียนนำเข้าคลัง
+              </div>
 
-              <form onSubmit={handleAddNewCylinder} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
-                
-                {/* ยี่ห้อ Dropdown */}
-                <div>
-                  <label style={labelStyle}>ยี่ห้อ *</label>
-                  <select
-                    value={newCylinderData.brand}
-                    onChange={(e) => setNewCylinderData({ ...newCylinderData, brand: e.target.value })}
-                    style={selectStyle}
-                    required
-                  >
+              <form onSubmit={handleAddNewCylinder} style={formGridStyle}>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>ยี่ห้อ<span style={reqStyle}> *</span></label>
+                  <select value={newCylinderData.brand} onChange={(e) => setNewCylinderData({ ...newCylinderData, brand: e.target.value })} style={inputStyle} required>
                     <option value="">เลือกยี่ห้อ</option>
-                    {options.brands.map((b, idx) => (
-                      <option key={idx} value={b}>{b}</option>
-                    ))}
+                    {options.brands.map((b, idx) => <option key={idx} value={b}>{b}</option>)}
                   </select>
                 </div>
 
-                {/* ชนิดแก๊ส Dropdown */}
-                <div>
-                  <label style={labelStyle}>ชนิดแก๊ส *</label>
-                  <select
-                    value={newCylinderData.gas_type}
-                    onChange={(e) => setNewCylinderData({ ...newCylinderData, gas_type: e.target.value })}
-                    style={selectStyle}
-                    required
-                  >
-                    {options.gas_types.map((g, idx) => (
-                      <option key={idx} value={g}>{g}</option>
-                    ))}
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>ชนิดแก๊ส<span style={reqStyle}> *</span></label>
+                  <select value={newCylinderData.gas_type} onChange={(e) => setNewCylinderData({ ...newCylinderData, gas_type: e.target.value })} style={inputStyle} required>
+                    {options.gas_types.map((g, idx) => <option key={idx} value={g}>{g}</option>)}
                   </select>
                 </div>
 
-                {/* ขนาดถัง Dropdown */}
-                <div>
-                  <label style={labelStyle}>ขนาดถัง *</label>
-                  <select
-                    value={newCylinderData.size}
-                    onChange={(e) => setNewCylinderData({ ...newCylinderData, size: e.target.value })}
-                    style={selectStyle}
-                    required
-                  >
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>ขนาดถัง<span style={reqStyle}> *</span></label>
+                  <select value={newCylinderData.size} onChange={(e) => setNewCylinderData({ ...newCylinderData, size: e.target.value })} style={inputStyle} required>
                     <option value="">เลือกขนาด</option>
-                    {options.sizes.map((s, idx) => (
-                      <option key={idx} value={s}>{s}</option>
-                    ))}
+                    {options.sizes.map((s, idx) => <option key={idx} value={s}>{s}</option>)}
                   </select>
                 </div>
-                
-                <div style={{ gridColumn: "span 3" }}>
+
+                <div style={fieldStyle}>
                   <label style={labelStyle}>วันที่นำเข้าคลัง</label>
-                  <input
-                    type="date"
-                    value={importDate}
-                    onChange={(e) => setImportDate(e.target.value)}
-                    style={inputStyle}
-                    required
-                  />
+                  <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)} style={inputStyle} required />
                 </div>
 
-                <div style={{ gridColumn: "span 3", marginTop: "5px" }}>
-                  <button type="submit" style={{ ...primaryBtnStyle, width: "100%", background: "#3b82f6" }}>
-                    ลงทะเบียนนำเข้าคลัง
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <button type="submit" style={primaryBtnStyle}>
+                    <PackagePlus size={16} /> ลงทะเบียนนำเข้าคลัง
                   </button>
                 </div>
               </form>
@@ -327,83 +296,53 @@ export default function AdminApprovalPage() {
           )}
         </div>
 
-        {/* อนุมัติการจัดส่ง */}
-        <h2 style={{ fontSize: "24px", marginBottom: "20px" }}>อนุมัติการจัดส่ง (Admin Approval)</h2>
+        {/* รายการรออนุมัติ */}
+        <h2 style={{ ...cardTitleStyle, fontSize: "20px" }}>
+          รายการรออนุมัติ <span style={countPillStyle}>{pendingList.length}</span>
+        </h2>
 
         {loading ? (
-          <div>กำลังโหลดข้อมูล...</div>
+          <div style={emptyBoxStyle}>กำลังโหลดข้อมูล...</div>
         ) : pendingList.length === 0 ? (
-          <div style={{ padding: "30px", background: "#1f2937", borderRadius: "12px", textAlign: "center" }}>
-            ไม่มีรายการที่รออนุมัติในขณะนี้
+          <div style={emptyBoxStyle}>
+            <CircleCheck size={28} color="#10b981" />
+            <div style={{ marginTop: "8px" }}>ไม่มีรายการที่รออนุมัติ</div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={approvalGridStyle}>
             {pendingList.map((item) => (
-              <div
-                key={item.delivery_id}
-                style={{
-                  background: "#1f2937",
-                  borderRadius: "12px",
-                  padding: "20px",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 260px",
-                  gap: "20px"
-                }}
-              >
-                <div>
-                  <h3 style={{ marginTop: 0 }}>รหัสงาน: #{item.delivery_id}</h3>
-                  <p><strong>ลูกค้า:</strong> {item.customer_name} ({item.phone})</p>
-                  <p><strong>ที่อยู่:</strong> {item.address}</p>
-                  <p><strong>ประเภทแก๊ส:</strong> {item.brand} | {item.gas_type} | {item.size}</p>
-                  <p><strong>ผู้จัดส่ง:</strong> {item.staff_name || item.staff_id}</p>
+              <div key={item.delivery_id} style={approvalCardStyle}>
+                {item.proof_image_path ? (
+                  <a href={`/Backend/uploads/${item.proof_image_path}`} target="_blank" rel="noreferrer">
+                    <img src={`/Backend/uploads/${item.proof_image_path}`} alt="หลักฐานการจัดส่ง" style={proofImgStyle} />
+                  </a>
+                ) : (
+                  <div style={{ ...proofImgStyle, ...noImageStyle }}>
+                    <ImageOff size={24} />
+                    <span style={{ fontSize: "13px" }}>ไม่มีรูปหลักฐาน</span>
+                  </div>
+                )}
 
-                  <button
-                    onClick={() => handleApprove(item.delivery_id)}
-                    style={{
-                      marginTop: "15px",
-                      padding: "10px 20px",
-                      background: "#22c55e",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                      fontSize: "16px"
-                    }}
-                  >
-                    อนุมัติงานจัดส่ง
+                <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ color: "#fbbf24", fontWeight: 700 }}>#{item.delivery_id}</span>
+                    <span style={pendingBadgeStyle}>รออนุมัติ</span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "16px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <User size={15} color="#9ca3af" /> {item.customer_name}
+                  </div>
+                  {item.phone && <div style={metaRowStyle}><Phone size={13} /> {item.phone}</div>}
+                  <div style={metaRowStyle}><MapPin size={13} /> {item.address || "-"}</div>
+                  <div style={metaRowStyle}><Truck size={13} /> {item.staff_name || item.staff_id || "-"}</div>
+                  <div style={gasTagRowStyle}>
+                    {[item.brand, item.gas_type, item.size].filter(Boolean).map((t) => (
+                      <span key={t} style={gasTagStyle}>{t}</span>
+                    ))}
+                  </div>
+
+                  <button onClick={() => handleApprove(item.delivery_id)} style={{ ...primaryBtnStyle, background: "#059669", marginTop: "auto", justifyContent: "center" }}>
+                    <Check size={16} /> อนุมัติงานจัดส่ง
                   </button>
-                </div>
-
-                <div>
-                  <p style={{ fontWeight: "bold", marginTop: 0, marginBottom: "8px" }}>รูปหลักฐานจัดส่ง:</p>
-                  {item.proof_image_path ? (
-                    <img
-                      src={`${API_BASE.replace('/models', '')}/uploads/${item.proof_image_path}`}
-                      alt="หลักฐาน"
-                      style={{
-                        width: "100%",
-                        height: "180px",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        border: "1px solid #374151"
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        height: "180px",
-                        background: "#0f172a",
-                        borderRadius: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#64748b"
-                      }}
-                    >
-                      ไม่มีรูปภาพ
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -414,60 +353,42 @@ export default function AdminApprovalPage() {
   );
 }
 
+const Info = ({ label, value, strong }) => (
+  <div>
+    <div style={{ fontSize: "12px", color: "#9ca3af" }}>{label}</div>
+    <div style={{ fontWeight: strong ? 700 : 500, color: "white" }}>{value}</div>
+  </div>
+);
+
 // Styles
-const cardContainerStyle = {
-  background: "#1f2937",
-  borderRadius: "12px",
-  padding: "20px",
-  marginBottom: "30px",
-  border: "1px solid #374151",
-  fontFamily: FONT_FAMILY,
-};
+const pageStyle = { maxWidth: "1100px", margin: "0 auto" };
+const titleStyle = { margin: 0, fontSize: "30px", color: "white" };
+const subtitleStyle = { color: "#9ca3af", fontSize: "14px", marginTop: "6px" };
 
-const inputStyle = {
-  padding: "10px 14px",
-  borderRadius: "8px",
-  border: "1px solid #4b5563",
-  background: "#111827",
-  color: "white",
-  width: "100%",
-  fontSize: "14px",
-  boxSizing: "border-box",
-  fontFamily: FONT_FAMILY,
-};
+const cardStyle = { background: "#1f2937", borderRadius: "14px", padding: "20px", marginBottom: "28px", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" };
+const cardTitleStyle = { margin: "0 0 16px", fontSize: "18px", color: "white", display: "flex", alignItems: "center", gap: "10px" };
+const countPillStyle = { background: "#374151", color: "#e5e7eb", fontSize: "13px", padding: "2px 10px", borderRadius: "999px", fontWeight: "normal" };
 
-const selectStyle = {
-  ...inputStyle,
-  cursor: "pointer",
-  fontFamily: FONT_FAMILY,
-};
+const inputStyle = { height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #374151", background: "#111827", color: "white", width: "100%", fontSize: "14px", boxSizing: "border-box" };
+const inputIconStyle = { position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#6b7280", pointerEvents: "none" };
+const labelStyle = { fontSize: "13px", fontWeight: 600, color: "#cbd5e1" };
+const reqStyle = { color: "#f87171" };
+const fieldStyle = { display: "flex", flexDirection: "column", gap: "6px" };
+const formGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" };
 
-const labelStyle = {
-  display: "block",
-  fontSize: "12px",
-  color: "#9ca3af",
-  marginBottom: "4px",
-  fontFamily: FONT_FAMILY,
-};
+const primaryBtnStyle = { display: "inline-flex", alignItems: "center", gap: "6px", height: "40px", padding: "0 18px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "14px", whiteSpace: "nowrap" };
 
-const primaryBtnStyle = {
-  padding: "10px 20px",
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: "bold",
-  fontSize: "14px",
-  whiteSpace: "nowrap",
-  fontFamily: FONT_FAMILY,
-};
+const resultBoxStyle = (accent) => ({ marginTop: "16px", padding: "16px", borderRadius: "12px", background: `${accent}14`, border: `1px solid ${accent}66` });
+const resultHeaderStyle = (color) => ({ display: "flex", alignItems: "center", gap: "8px", color, fontWeight: 600, marginBottom: "12px" });
+const infoGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" };
+const resultActionStyle = { display: "flex", alignItems: "flex-end", gap: "12px", flexWrap: "wrap", marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.1)" };
 
-const resultBoxStyle = (bgColor, textColor) => ({
-  marginTop: "15px",
-  padding: "15px",
-  borderRadius: "8px",
-  background: bgColor,
-  color: textColor,
-  fontFamily: FONT_FAMILY,
-});
+const emptyBoxStyle = { padding: "36px", background: "#1f2937", borderRadius: "14px", textAlign: "center", color: "#9ca3af", display: "flex", flexDirection: "column", alignItems: "center" };
+const approvalGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" };
+const approvalCardStyle = { background: "#1f2937", borderRadius: "14px", overflow: "hidden", display: "flex", flexDirection: "column", border: "1px solid #2b3647" };
+const proofImgStyle = { width: "100%", height: "180px", objectFit: "cover", display: "block", background: "#111827" };
+const noImageStyle = { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", color: "#6b7280" };
+const pendingBadgeStyle = { fontSize: "12px", fontWeight: 600, padding: "2px 10px", borderRadius: "999px", color: "#fbbf24", background: "rgba(245,158,11,0.15)", border: "1px solid #f59e0b" };
+const metaRowStyle = { display: "flex", alignItems: "center", gap: "6px", color: "#9ca3af", fontSize: "13px" };
+const gasTagRowStyle = { display: "flex", gap: "6px", flexWrap: "wrap", margin: "4px 0 8px" };
+const gasTagStyle = { fontSize: "12px", padding: "2px 8px", borderRadius: "6px", background: "#111827", border: "1px solid #374151", color: "#cbd5e1" };

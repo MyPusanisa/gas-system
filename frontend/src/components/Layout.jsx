@@ -1,6 +1,27 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import {
+  LayoutDashboard,
+  Cylinder,
+  Wrench,
+  Users,
+  ClipboardCheck,
+  Truck,
+  LogOut,
+  Menu,
+  X,
+  Flame,
+} from "lucide-react";
 import TopBar from "./TopBar";
+
+const ADMIN_MENU = [
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/gas", label: "ถังแก๊ส", icon: Cylinder },
+  { path: "/maintenance", label: "ตรวจบำรุง", icon: Wrench },
+  { path: "/staff", label: "พนักงานส่ง", icon: Users },
+  { path: "/approval", label: "อนุมัติการจัดส่ง", icon: ClipboardCheck },
+];
+const COMMON_MENU = [{ path: "/delivery", label: "Delivery", icon: Truck }];
 
 // ฟังก์ชันดึงชื่อผู้ใช้จาก LocalStorage แบบรองรับหลาย Key (userName, username, name, user JSON)
 const getStoredUsername = () => {
@@ -73,83 +94,81 @@ function Layout({ children }) {
     navigate("/");
   };
 
-  const getMenuButtonStyle = (path) => ({
-    ...menuButtonStyle,
-    background: location.pathname === path ? "#334155" : "#1f2937",
-  });
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const menu = role === "admin" ? [...ADMIN_MENU, ...COMMON_MENU] : COMMON_MENU;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", flexDirection: "column" }}>
-      <TopBar
-        role={role}
-        username={username}
-        gasLevel={gasLevel}
-        deliverySuccessItems={deliverySuccessItems}
-      />
-
+    <div style={{ minHeight: "100vh", background: "#0f172a" }}>
       {/* แถบเปิดเมนูสำหรับอุปกรณ์มือถือ */}
       <div style={mobileHeaderBarContainerStyle} className="mobile-menu-bar">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           style={mobileMenuToggleBtnStyle}
         >
-          {isMobileMenuOpen ? "✕ ปิดเมนู" : "☰ เมนูหลัก"}
+          {isMobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+          {isMobileMenuOpen ? "ปิดเมนู" : "เมนู"}
         </button>
-        <span style={{ color: "white", fontSize: "14px", fontWeight: "bold" }}>
-          GAS SYS ({role || "staff"})
-        </span>
+        <span style={{ color: "white", fontSize: "14px", fontWeight: 600 }}>GAS SYS</span>
       </div>
 
-      <div style={layoutBodyStyle}>
+      <div style={layoutBodyStyle} className="layout-body">
         {/* Sidebar Navigation */}
         <aside style={{
           ...asideStyle,
-          display: isMobileMenuOpen ? "block" : undefined
+          display: isMobileMenuOpen ? "flex" : undefined
         }} className="responsive-sidebar">
-          <h2 style={{ marginTop: 0, fontSize: "24px" }}>GAS SYS</h2>
-          <p style={{ opacity: 0.85, fontSize: "16px", marginBottom: "24px" }}>
-            {role || "staff"} : {username || "ไม่ระบุชื่อ"}
-          </p>
-
-          <div style={{ marginTop: "10px" }}>
-            {role === "admin" && (
-              <>
-                <button type="button" style={getMenuButtonStyle("/dashboard")} onClick={() => navigate("/dashboard")}>
-                  Dashboard
-                </button>
-                <button type="button" style={getMenuButtonStyle("/gas")} onClick={() => navigate("/gas")}>
-                  ถังแก๊ส
-                </button>
-                <button type="button" style={getMenuButtonStyle("/maintenance")} onClick={() => navigate("/maintenance")}>
-                  Maintenance
-                </button>
-                <button type="button" style={getMenuButtonStyle("/staff")} onClick={() => navigate("/staff")}>
-                  พนักงานส่ง
-                </button>
-                <button type="button" style={getMenuButtonStyle("/approval")} onClick={() => navigate("/approval")}>
-                  อนุมัติการจัดส่ง
-                </button>
-              </>
-            )}
-            <button type="button" style={getMenuButtonStyle("/delivery")} onClick={() => navigate("/delivery")}>
-              Delivery
-            </button>
+          <div style={brandStyle}>
+            <span style={brandIconStyle}><Flame size={20} /></span>
+            <div>
+              <div style={{ fontSize: "18px", fontWeight: 700, lineHeight: 1.1 }}>GAS SYS</div>
+              <div style={{ fontSize: "12px", color: "#9ca3af" }}>ระบบจัดการถังแก๊ส</div>
+            </div>
           </div>
 
+          <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div style={navSectionLabelStyle}>เมนู</div>
+            {menu.map(({ path, label, icon: Icon }) => {
+              const active = isActive(path);
+              return (
+                <button
+                  key={path}
+                  type="button"
+                  onClick={() => navigate(path)}
+                  style={{ ...menuButtonStyle, ...(active ? menuActiveStyle : {}) }}
+                >
+                  <Icon size={18} strokeWidth={active ? 2.4 : 2} />
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+
           <button onClick={handleLogout} style={logoutButtonStyle}>
-            Logout
+            <LogOut size={18} />
+            ออกจากระบบ
           </button>
         </aside>
 
-        {/* ส่วนแสดงผลเนื้อหาหลัก */}
-        <main style={mainStyle}>{children}</main>
+        {/* คอลัมน์ขวา: TopBar + เนื้อหาหลัก */}
+        <div style={contentColumnStyle}>
+          <TopBar
+            role={role}
+            username={username}
+            gasLevel={gasLevel}
+            deliverySuccessItems={deliverySuccessItems}
+          />
+          <main style={mainStyle}>{children}</main>
+        </div>
       </div>
 
       {/* Style แทรก responsive media query */}
       <style>{`
         @media (max-width: 768px) {
+          .layout-body {
+            flex-direction: column;
+          }
           .responsive-sidebar {
-            display: ${isMobileMenuOpen ? "block" : "none"} !important;
+            display: ${isMobileMenuOpen ? "flex" : "none"} !important;
             width: 100% !important;
             min-width: 100% !important;
             box-sizing: border-box !important;
@@ -157,7 +176,10 @@ function Layout({ children }) {
         }
         @media (min-width: 769px) {
           .responsive-sidebar {
-            display: block !important;
+            display: flex !important;
+            position: sticky;
+            top: 0;
+            height: 100vh;
           }
           /* แถบเปิดเมนูใช้เฉพาะบนมือถือ */
           .mobile-menu-bar {
@@ -171,9 +193,14 @@ function Layout({ children }) {
 
 const layoutBodyStyle = {
   display: "flex",
+  minHeight: "100vh",
+};
+
+const contentColumnStyle = {
   flex: 1,
-  minHeight: "calc(100vh - 73px)",
-  flexWrap: "wrap",
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
 };
 
 const mobileHeaderBarContainerStyle = {
@@ -186,63 +213,94 @@ const mobileHeaderBarContainerStyle = {
 };
 
 const mobileMenuToggleBtnStyle = {
-  background: "#3b82f6",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  background: "#2563eb",
   color: "white",
   border: "none",
   padding: "8px 14px",
-  borderRadius: "6px",
+  borderRadius: "8px",
   fontSize: "14px",
-  fontWeight: "bold",
+  fontWeight: 600,
   cursor: "pointer",
 };
 
-const asideStyle = { 
-  width: "240px", 
-  background: "#0b1324", 
-  color: "white", 
-  padding: "20px", 
-  flexShrink: 0, 
-  boxSizing: "border-box" 
+const asideStyle = {
+  width: "240px",
+  background: "#0b1324",
+  borderRight: "1px solid #1f2937",
+  color: "white",
+  padding: "20px 14px",
+  flexShrink: 0,
+  boxSizing: "border-box",
+  flexDirection: "column",
+  gap: "20px",
 };
 
-const mainStyle = { 
-  flex: 1, 
-  padding: "16px", 
-  color: "white", 
-  boxSizing: "border-box", 
-  width: "100%", 
-  maxWidth: "100vw", 
-  overflowX: "hidden" 
+const brandStyle = { display: "flex", alignItems: "center", gap: "10px", padding: "4px 8px 8px" };
+const brandIconStyle = {
+  width: "38px",
+  height: "38px",
+  borderRadius: "10px",
+  background: "linear-gradient(135deg, #f97316, #ef4444)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "white",
 };
 
-const menuButtonStyle = { 
-  width: "100%", 
-  display: "flex", 
-  alignItems: "center", 
-  gap: "10px", 
-  cursor: "pointer", 
-  marginBottom: "16px", 
-  padding: "14px 16px", 
-  borderRadius: "12px", 
-  background: "#1f2937", 
-  color: "white", 
-  border: "none", 
-  fontSize: "18px", 
-  fontWeight: "500", 
-  textAlign: "left" 
+const navSectionLabelStyle = { fontSize: "11px", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", padding: "0 10px 6px" };
+
+const mainStyle = {
+  flex: 1,
+  padding: "24px",
+  color: "white",
+  boxSizing: "border-box",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
+  minWidth: 0,
 };
 
-const logoutButtonStyle = { 
-  marginTop: "30px", 
-  padding: "12px 14px", 
-  border: "none", 
-  borderRadius: "10px", 
-  background: "#ef4444", 
-  color: "white", 
-  cursor: "pointer", 
-  width: "100%", 
-  fontSize: "16px", 
-  fontWeight: "500" 
+const menuButtonStyle = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  cursor: "pointer",
+  padding: "11px 12px",
+  borderRadius: "10px",
+  background: "transparent",
+  color: "#cbd5e1",
+  border: "none",
+  fontSize: "15px",
+  fontWeight: 500,
+  textAlign: "left",
+};
+
+const menuActiveStyle = {
+  background: "rgba(59,130,246,0.15)",
+  color: "white",
+  boxShadow: "inset 3px 0 0 #3b82f6",
+  fontWeight: 600,
+};
+
+const logoutButtonStyle = {
+  marginTop: "auto",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "8px",
+  padding: "11px 14px",
+  border: "1px solid #7f1d1d",
+  borderRadius: "10px",
+  background: "rgba(239,68,68,0.1)",
+  color: "#fca5a5",
+  cursor: "pointer",
+  width: "100%",
+  fontSize: "15px",
+  fontWeight: 500,
 };
 
 export default Layout;
