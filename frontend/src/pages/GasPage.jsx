@@ -58,6 +58,7 @@ function GasPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showDeliveryHistory, setShowDeliveryHistory] = useState(false);
 
   // ตัวเลือกดร็อปดาวน์
   const [brandOptions, setBrandOptions] = useState([]);
@@ -248,7 +249,23 @@ function GasPage() {
     return { text: item.status || "-", color: "#6b7280" };
   };
 
+  // ถังหนึ่งใบอยู่ได้ที่เดียว: ถังที่รับคืนเข้าร้านแล้วอยู่ในตารางคลัง ไม่แสดงซ้ำในตารางจัดส่ง
+  // และถังที่ส่งหลายรอบ แสดงเฉพาะงานล่าสุด (งานเก่าเป็นประวัติ)
+  const stockSerials = new Set(stockCylinders.map((c) => String(c.serial_number)));
+  const latestDeliveryBySerial = deliveries.reduce((acc, d) => {
+    const sn = hasValue(d.serial_number) ? String(d.serial_number) : "";
+    if (sn && (!acc[sn] || Number(d.delivery_id) > Number(acc[sn]))) acc[sn] = d.delivery_id;
+    return acc;
+  }, {});
+  const isHistoryDelivery = (d) => {
+    const sn = hasValue(d.serial_number) ? String(d.serial_number) : "";
+    if (!sn) return false;
+    return stockSerials.has(sn) || String(latestDeliveryBySerial[sn]) !== String(d.delivery_id);
+  };
+  const historyDeliveryCount = deliveries.filter(isHistoryDelivery).length;
+
   const filteredDeliveries = deliveries
+    .filter((item) => showDeliveryHistory || !isHistoryDelivery(item))
     .filter((item) => {
       if (!term) return true;
       return [
@@ -488,7 +505,7 @@ function GasPage() {
           <div>
             <h1 style={titleStyle}>จัดการถังแก๊ส</h1>
             <div style={subtitleStyle}>
-              ถังที่ร้าน {stockCylinders.length} ใบ · ออกไปส่งแล้ว {cylinders.length - stockCylinders.length} ใบ · รายการจัดส่ง {deliveries.length} รายการ
+              ถังที่ร้าน {stockCylinders.length} ใบ · อยู่กับลูกค้า {cylinders.length - stockCylinders.length} ใบ
             </div>
           </div>
         </div>
@@ -696,8 +713,14 @@ function GasPage() {
         <div style={cardStyle}>
           <div style={cardHeaderStyle}>
             <h2 style={cardTitleStyle}>
-              รายการจัดส่ง <span style={countPillStyle}>{filteredDeliveries.length}</span>
+              ถังที่อยู่กับลูกค้า / รายการจัดส่ง <span style={countPillStyle}>{filteredDeliveries.length}</span>
             </h2>
+            {historyDeliveryCount > 0 && (
+              <label style={historyToggleStyle}>
+                <input type="checkbox" checked={showDeliveryHistory} onChange={(e) => setShowDeliveryHistory(e.target.checked)} />
+                แสดงประวัติที่รับถังคืนแล้ว ({historyDeliveryCount})
+              </label>
+            )}
           </div>
           <div style={tableWrapStyle}>
             <table style={tableStyle}>
@@ -719,10 +742,21 @@ function GasPage() {
                 {filteredDeliveries.length > 0 ? (
                   filteredDeliveries.map((item) => {
                     const proofImg = item.proof_image_path || item.proof_image || "";
-                    const status = getDeliveryStatus(item);
+                    const status = !isHistoryDelivery(item)
+                      ? getDeliveryStatus(item)
+                      : stockSerials.has(String(item.serial_number))
+                        ? { text: "รับถังคืนแล้ว", color: "#64748b" }
+                        : { text: "ประวัติ", color: "#64748b" };
                     const serial = item.serial_number || item.serial;
                     return (
-                      <tr key={item.delivery_id || item.id} style={status.text === "สูญหาย" ? { background: "rgba(239,68,68,0.08)" } : undefined}>
+                      <tr
+                        key={item.delivery_id || item.id}
+                        style={
+                          isHistoryDelivery(item)
+                            ? { opacity: 0.55 }
+                            : status.text === "สูญหาย" ? { background: "rgba(239,68,68,0.08)" } : undefined
+                        }
+                      >
                         <td style={{ ...tdStyle, color: "#fbbf24", fontWeight: "bold" }}>#{item.delivery_id || "-"}</td>
                         <td style={tdStyle}>
                           {hasValue(serial)
@@ -939,6 +973,7 @@ const iconBtnStyle = (color) => ({
   fontSize: "12px",
   whiteSpace: "nowrap",
 });
+const historyToggleStyle = { display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#9ca3af", cursor: "pointer" };
 const disabledBtnStyle = { opacity: 0.35, cursor: "not-allowed" };
 const actionGroupStyle = { display: "inline-flex", gap: "6px" };
 
