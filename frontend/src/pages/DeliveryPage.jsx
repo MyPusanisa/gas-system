@@ -192,7 +192,12 @@ function DeliveryPage() {
         .catch(() => {});
 
       const [deliveriesRes, cylindersRes, staffsRes, customersRes] = await Promise.allSettled([
-        apiFetch(`${API_BASE_URL}/delivery/list.php`),
+        // พนักงาน: ขอเฉพาะงานที่มอบหมายให้ตัวเอง
+        apiFetch(
+          storedRole === "staff"
+            ? `${API_BASE_URL}/delivery/list.php?staff_id=${encodeURIComponent(storedStaffId || "0")}`
+            : `${API_BASE_URL}/delivery/list.php`
+        ),
         apiFetch(`${API_BASE_URL}/cylinder/list.php`),
         apiFetch(`${API_BASE_URL}/staff/list.php`),
         apiFetch(`${API_BASE_URL}/customer/list.php`),
@@ -781,71 +786,24 @@ function DeliveryPage() {
 
   const availableStaffs = useMemo(() => staffs, [staffs]);
 
+  // staffId มาจาก localStorage ตอนเข้าหน้า (getInitialUserData) — รหัสพนักงานที่ login อยู่
+  const myStaffId = String(staffId || "").trim();
+
   const visibleDeliveries = useMemo(() => {
-    let currentRole = localStorage.getItem("role") || role;
-    let currentUsername = (
-      localStorage.getItem("username") ||
-      localStorage.getItem("userName") ||
-      localStorage.getItem("name") ||
-      username
-    ).toLowerCase();
-    let currentStaffId = String(localStorage.getItem("staff_id") || staffId || "").trim();
-
-    if (!currentStaffId) {
-      try {
-        const userObj = JSON.parse(localStorage.getItem("user") || "{}");
-        currentStaffId = String(userObj.id || userObj.staff_id || userObj.user_id || "").trim();
-      } catch (e) {}
-    }
-
-    if (currentRole === "admin" || currentRole === "ผู้ดูแลระบบ") {
+    if (role === "admin" || role === "ผู้ดูแลระบบ") {
       return deliveries.filter((d) => d.status !== "success");
     }
-
-    return deliveries.filter((d) => {
-      if (d.status === "pending_approval" || d.status === "success") return false;
-
-      const dStaffId = String(d.staff_id ?? d.staffId ?? "").trim();
-      const dStaffName = String(d.assignedStaff ?? d.staff_name ?? "").toLowerCase();
-
-      const isMyJob =
-        (currentStaffId !== "" && dStaffId === currentStaffId) ||
-        (currentUsername !== "" && (dStaffName.includes(currentUsername) || currentUsername.includes(dStaffName)));
-
-      const isUnassigned = !dStaffId || dStaffId === "0" || dStaffId === "null" || dStaffId === "";
-
-      if (d.status === "pending") {
-        return isMyJob || isUnassigned;
-      }
-      if (d.status === "delivering") {
-        return true;
-      }
-      return false;
-    });
-  }, [deliveries, role, username, staffId]);
-
-  const currentStaffActiveJob = useMemo(() => {
-    let currentUsername =
-      localStorage.getItem("username") ||
-      localStorage.getItem("userName") ||
-      localStorage.getItem("name") ||
-      username;
-    let currentStaffId = localStorage.getItem("staff_id") || staffId;
-
-    if (!currentStaffId) {
-      try {
-        const userObj = JSON.parse(localStorage.getItem("user") || "{}");
-        currentStaffId = userObj.id || userObj.staff_id || "";
-      } catch (e) {}
-    }
-
-    return deliveries.find(
-      (d) =>
-        d.status === "delivering" &&
-        ((currentUsername && (d.assignedStaff || "").includes(currentUsername)) ||
-          (currentStaffId && String(d.staff_id) === String(currentStaffId)))
+    // พนักงาน: เฉพาะงานที่มอบหมายให้ตัวเอง (เทียบ staff_id เท่านั้น) ที่ยังต้องทำ
+    if (!myStaffId) return [];
+    return deliveries.filter(
+      (d) => (d.status === "pending" || d.status === "delivering") && String(d.staff_id ?? "").trim() === myStaffId
     );
-  }, [deliveries, username, staffId]);
+  }, [deliveries, role, myStaffId]);
+
+  const currentStaffActiveJob = useMemo(
+    () => deliveries.find((d) => d.status === "delivering" && myStaffId && String(d.staff_id) === myStaffId),
+    [deliveries, myStaffId]
+  );
 
   const maintenanceDueItems = cylinders.filter((c) => {
     if (!c.nextCheckDate) return false;
@@ -1314,7 +1272,13 @@ function DeliveryPage() {
               </div>
             ))
           ) : (
-            <div style={styles.emptyCard}>ไม่มีรายการงานจัดส่งในขณะนี้</div>
+            <div style={styles.emptyCard}>
+              {role === "staff" && !myStaffId
+                ? "ไม่พบรหัสพนักงานของบัญชีนี้ กรุณาออกจากระบบแล้วเข้าใหม่"
+                : role === "staff"
+                  ? "ยังไม่มีงานที่ได้รับมอบหมาย"
+                  : "ไม่มีรายการงานจัดส่งในขณะนี้"}
+            </div>
           )}
         </div>
 
