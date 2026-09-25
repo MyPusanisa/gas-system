@@ -64,7 +64,9 @@ try {
             // 4. อัปเดตตาราง gas_cylinder ทันที
             if ($serial_number) {
                 $today = date("Y-m-d");
-                $cylinderSql = "UPDATE gas_cylinder SET status = 'จัดส่งสำเร็จ', delivered_date = ? WHERE serial_number = ?";
+                // ไม่ทับถังที่รับคืนเข้าร้านแล้ว (เช่น กดรับถังคืนก่อนกดอนุมัติงาน)
+                $cylinderSql = "UPDATE gas_cylinder SET status = 'จัดส่งสำเร็จ', delivered_date = ?
+                                WHERE serial_number = ? AND COALESCE(status, '') NOT IN ('ในคลัง', 'ปกติ', 'ชำรุด')";
                 $stmtCylinder = $conn->prepare($cylinderSql);
                 $stmtCylinder->bind_param("ss", $today, $serial_number);
                 $stmtCylinder->execute();

@@ -105,6 +105,7 @@ try {
                     current_location = :customer_name,
                     updated_at = CURRENT_TIMESTAMP()
                 WHERE serial_number = :sn
+                  AND COALESCE(status, '') NOT IN ('ในคลัง', 'ปกติ', 'ชำรุด') -- ไม่ทับถังที่รับคืนเข้าร้านแล้ว
             ");
             $stmtDeliveredCyl->execute([
                 ':customer_name' => $customerName,
