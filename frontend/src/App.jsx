@@ -41,21 +41,20 @@ function App() {
         }
       />
 
-      {/* หน้าจัดการพนักงาน (สำหรับ Admin) */}
-      <Route
-        path="/staff"
-        element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <StaffPage />
-          </ProtectedRoute>
-        }
-      />
-
       <Route
         path="/approval"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminApprovalPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <StaffPage />
           </ProtectedRoute>
         }
       />

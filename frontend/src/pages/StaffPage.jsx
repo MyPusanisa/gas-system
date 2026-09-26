@@ -282,7 +282,7 @@ function StaffPage() {
   return (
     <Layout>
       <div style={headerRowStyle}>
-        <h1 style={titleStyle}>จัดการพนักงานส่ง</h1>
+        <h1 style={titleStyle}>จัดการพนักงานส่ง 2</h1>
         <div style={subtitleStyle}>
           พนักงานทั้งหมด {staffs.length} คน · กำลังส่ง {busyCount} · ว่าง {staffs.length - busyCount}
         </div>
